@@ -6,6 +6,11 @@
     <title>easyDesktop</title>
     <link rel="stylesheet" href="/resources/all.min.css">
     <link rel="stylesheet" id="theme_css" href="/theme/dark.css"> 
+    <style>
+        body::-webkit-scrollbar {
+        display: none; /* 隐藏滚动条 */
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -282,6 +287,7 @@
                     }
                 });
                 fileElement.addEventListener('click', function() {
+                    document.getElementById("search_input").value=""
                     timer = setTimeout(async function(){
                         if (file.fileType === '文件夹') {
                             // 进入文件夹
@@ -325,6 +331,7 @@
                     }
                 });
                 listItem.addEventListener('click', function() {
+                    document.getElementById("search_input").value=""
                     timer = setTimeout(async function(){
                         if (file.fileType === '文件夹') {
                             // 进入文件夹
@@ -344,20 +351,29 @@
                 
                 filesListContainer.appendChild(listItem);
             });
+            window.scrollTo(0, 0);
         }
         // 视图切换
-        document.getElementById('gridViewBtn').addEventListener('click', function() {
+        async function grid_view() {
             document.getElementById('filesContainer').style.display = 'grid';
             document.getElementById('filesListContainer').style.display = 'none';
             document.getElementById('gridViewBtn').classList.add('active');
             document.getElementById('listViewBtn').classList.remove('active');
-        });
-
-        document.getElementById('listViewBtn').addEventListener('click', function() {
+        }
+        async function list_view() {
             document.getElementById('filesContainer').style.display = 'none';
             document.getElementById('filesListContainer').style.display = 'block';
             document.getElementById('gridViewBtn').classList.remove('active');
             document.getElementById('listViewBtn').classList.add('active');
+        }
+        document.getElementById('gridViewBtn').addEventListener('click', function() {
+            grid_view()
+            window.pywebview.api.update_config("view", "block");
+        });
+
+        document.getElementById('listViewBtn').addEventListener('click', function() {
+            list_view()
+            window.pywebview.api.update_config("view", "list");
         });
 
         // 页面加载完成后执行
@@ -879,44 +895,54 @@
         e.preventDefault();
     }
 </script>
-    
+    <style>
+        .settings_box {
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            background-color: rgba(0,0,0,0.5);
+            top: 0px;
+        }
+    </style>
     <!-- 主题设置面板 -->
-    <div class="theme-settings-panel" id="themeSettingsPanel">
-        <div class="settings-header">
-            <h3>主题设置</h3>
-            <button class="close-btn" id="closeThemePanel"><i class="fas fa-times"></i></button>
-        </div>
-        
-        <div class="settings-section">
-            <div class="system-theme-toggle">
-                <span>跟随系统主题</span>
-                <label class="switch">
-                    <input type="checkbox" id="followSystemTheme">
-                    <span class="slider round"></span>
-                </label>
+    <div class="settings_box" id="themeSettingsPanel">
+        <div class="theme-settings-panel">
+            <div class="settings-header">
+                <h3>主题设置</h3>
+                <button class="close-btn" id="closeThemePanel"><i class="fas fa-times"></i></button>
             </div>
-        </div>
-        
-        <div class="settings-section">
-            <h4>选择主题</h4>
-            <div class="theme-cards">
-                <div class="theme-card" data-theme="light">
-                    <div class="theme-preview">
-                        <img src="/resources/theme_previews/light.png" alt="浅色主题预览">
-                    </div>
-                    <span>浅色主题</span>
+            
+            <div class="settings-section">
+                <div class="system-theme-toggle">
+                    <span>跟随系统主题</span>
+                    <label class="switch">
+                        <input type="checkbox" id="followSystemTheme">
+                        <span class="slider round"></span>
+                    </label>
                 </div>
-                <div class="theme-card" data-theme="dark">
-                    <div class="theme-preview">
-                        <img src="/resources/theme_previews/dark.png" alt="深色主题预览">
+            </div>
+            
+            <div class="settings-section">
+                <h4>选择主题</h4>
+                <div class="theme-cards">
+                    <div class="theme-card" data-theme="light">
+                        <div class="theme-preview">
+                            <img src="/resources/theme_previews/light.png" alt="浅色主题预览">
+                        </div>
+                        <span>浅色主题</span>
                     </div>
-                    <span>深色主题</span>
-                </div>
-                <div class="theme-card" data-theme="zzz">
-                    <div class="theme-preview">
-                        <img src="/theme/zzz_bg.png" alt="绝区零主题预览">
+                    <div class="theme-card" data-theme="dark">
+                        <div class="theme-preview">
+                            <img src="/resources/theme_previews/dark.png" alt="深色主题预览">
+                        </div>
+                        <span>深色主题</span>
                     </div>
-                    <span>绝区零主题</span>
+                    <div class="theme-card" data-theme="zzz">
+                        <div class="theme-preview">
+                            <img src="/theme/zzz_bg.png" alt="绝区零主题预览">
+                        </div>
+                        <span>绝区零主题</span>
+                    </div>
                 </div>
             </div>
         </div>

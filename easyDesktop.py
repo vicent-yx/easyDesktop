@@ -21,6 +21,7 @@ else:
         "language":"zh-CN",
         "follow_sys":True,
         "theme": "light",
+        "view":"block"
     }
     json.dump(config, open("config.json", "w"))
 
@@ -29,7 +30,7 @@ window_state = False
 moving = False
 screen_size = pyautogui.size()
 file_ico_path = "./resources/file_icos/"
-scripts_type=[".py",".java",".c",".cpp",".h",".hpp",".cs",".php",".rb",".go",".swift",".kt",".m",".pl",".r",".sh",".bash",".zsh",".lua",".scala",".groovy",".dart",".rs",".jl",".hs",".f",".f90",".f95",".v",".vhd",".clj",".ex",".exs",".elm",".purs",".erl",".hrl",".fs",".fsx",".fsi",".ml",".mli",".pas",".pp",".d",".nim",".cr",".cbl",".cob",".ada",".adb",".ads"]
+scripts_type=[".py",".java",".c",".vbs",".cpp",".h",".hpp",".cs",".php",".rb",".go",".swift",".kt",".m",".pl",".r",".sh",".bash",".zsh",".lua",".scala",".groovy",".dart",".rs",".jl",".hs",".f",".f90",".f95",".v",".vhd",".clj",".ex",".exs",".elm",".purs",".erl",".hrl",".fs",".fsx",".fsi",".ml",".mli",".pas",".pp",".d",".nim",".cr",".cbl",".cob",".ada",".adb",".ads"]
 file_ico = {
     ".mp3":"./resources/file_icos/mp3.png",
     ".mp4":"./resources/file_icos/mp4.png",
@@ -54,6 +55,7 @@ file_ico = {
     ".html":"./resources/file_icos/html.png",
     ".css":"./resources/file_icos/css.png",
     ".js":"./resources/file_icos/js.png",
+    ".bat":"./resources/file_icos/bat.png",
 
     "unkonw":"./resources/file_icos/unkonw.png"
 }
@@ -320,13 +322,19 @@ def moveIn_window():
     window.hide()
     moving = False
     wait_open()
-def on_loaded():
+def sys_theme():
     if darkdetect.isDark()==True:
         window.evaluate_js("load_theme('dark')")
     else:
         window.evaluate_js("load_theme('light')")
-    time.sleep(1)
+def on_loaded():
+    sys_theme()
+    if config["view"]=="list":
+        window.evaluate_js("list_view()")
+    else:
+        window.evaluate_js("grid_view()")
     moveIn_window()
+    # wait_open()
 
 desktop_path = get_desktop_path()
 def get_initials(text):
@@ -344,6 +352,8 @@ class appAPI():
         global config
         config[part]=data
         json.dump(config, open("config.json", "w"))
+        if part=="follow_sys" and data==True:
+            sys_theme()
     def where_d(self):
         return desktop_path
     def get_parent(self,path):

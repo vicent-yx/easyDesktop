@@ -521,7 +521,6 @@
             padding: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             z-index: 1000;
-            display: none;
             border: 1px solid rgba(0, 0, 0, 0.1);
             overflow-y: auto;
         }
