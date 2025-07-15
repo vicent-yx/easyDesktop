@@ -237,7 +237,7 @@ def get_window_rect(hwnd):
         'height': rect[3] - rect[1]
     }
 
-def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=30, delay=0.01):
+def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=60, delay=0.005):
     for i in range(steps + 1):
         progress = i / steps
         eased_progress = ease_out_quad(progress)

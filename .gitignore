@@ -4,3 +4,4 @@ build/
 dist/
 *.spec
 config.json
+b.html

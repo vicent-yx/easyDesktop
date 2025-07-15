@@ -513,7 +513,10 @@
         }
 
         function navigateTo(path) {
-            if (path === currentPath) return;
+            if (path === currentPath){
+                push(null,true, path);
+                return
+            }
             
             // 添加到历史记录
             pathHistory = pathHistory.slice(0, currentHistoryIndex + 1);
@@ -939,9 +942,9 @@
                     </div>
                     <div class="theme-card" data-theme="zzz">
                         <div class="theme-preview">
-                            <img src="/theme/zzz_bg.png" alt="绝区零主题预览">
+                            <img src="/resources/theme_previews/3z.png" alt="绝区零主题预览">
                         </div>
-                        <span>绝区零主题</span>
+                        <span>3Z主题</span>
                     </div>
                 </div>
             </div>
