@@ -387,6 +387,7 @@
             const themePanel = document.getElementById('themeSettingsPanel');
             const closeBtn = document.getElementById('closeThemePanel');
             const followSystemToggle = document.getElementById('followSystemTheme');
+            const autoStartToggle = document.getElementById('autoStartToggle');
             const themeCards = document.querySelectorAll('.theme-card');
             
             // 切换设置面板显示
@@ -406,11 +407,16 @@
                 const followSystem = this.checked;
                 window.pywebview.api.update_config("follow_sys",followSystem);
                 
-                // 如果启用跟随系统，禁用主题选择
+                // 禁用主题选择
                 themeCards.forEach(card => {
                     card.style.opacity = followSystem ? '0.5' : '1';
                     card.style.pointerEvents = followSystem ? 'none' : 'auto';
                 });
+            });
+            // 自启动设置
+            autoStartToggle.addEventListener('change', function() {
+                const auto_start_result = this.checked;
+                window.pywebview.api.update_config("auto_start",auto_start_result);
             });
             
             // 主题卡片点击事件
@@ -905,6 +911,7 @@
             position: fixed;
             background-color: rgba(0,0,0,0.5);
             top: 0px;
+            left: 0px;
         }
     </style>
     <!-- 主题设置面板 -->
@@ -915,6 +922,15 @@
                 <button class="close-btn" id="closeThemePanel"><i class="fas fa-times"></i></button>
             </div>
             
+            <div class="settings-section">
+                <div class="system-theme-toggle">
+                    <span>开机自启动</span>
+                    <label class="switch">
+                        <input type="checkbox" id="autoStartToggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
             <div class="settings-section">
                 <div class="system-theme-toggle">
                     <span>跟随系统主题</span>

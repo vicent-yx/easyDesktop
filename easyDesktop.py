@@ -12,6 +12,9 @@ import shutil
 import darkdetect
 import json
 from PIL import Image
+import ctypes
+import winreg as reg
+import sys
 
 if os.path.exists("config.json"):
     config = json.load(open("config.json"))
@@ -21,7 +24,8 @@ else:
         "language":"zh-CN",
         "follow_sys":True,
         "theme": "light",
-        "view":"block"
+        "view":"block",
+        "auto_start":False
     }
     json.dump(config, open("config.json", "w"))
 
@@ -188,6 +192,20 @@ def update_inf(current_dir):
     for item in file_data:
         out_data.append(item)
     return out_data
+GWL_EXSTYLE = -20
+WS_EX_TOOLWINDOW = 0x00000080
+WS_EX_APPWINDOW = 0x00040000
+def hide_from_taskbar(window):
+    hwnd = ctypes.windll.user32.FindWindowW(None, window.title)
+    
+    # 获取当前窗口样式
+    style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
+    
+    # 添加工具窗口样式，移除APPWINDOW样式
+    style = (style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW
+    
+    # 设置新样式
+    ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
 def is_desktop_and_mouse_in_corner():
     try:
         screen_width = win32api.GetSystemMetrics(0)
@@ -256,6 +274,7 @@ def out_window():
     """将窗口从初始位置丝滑移出到目标位置"""
     window.show()
     hwnd = win32gui.FindWindow(None, "easyDesktop")
+    hide_from_taskbar(window)
     if not hwnd:
         print("未找到名为 'easyDesktop' 的窗口")
         return False
@@ -336,6 +355,21 @@ def on_loaded():
     moveIn_window()
     # wait_open()
 
+def autoStart_registry():
+    python_exe = sys.executable
+    script_path = os.path.abspath(sys.argv[0])
+    key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_path, 0, reg.KEY_SET_VALUE)
+    reg.SetValueEx(key, "easyDesktop", 0, reg.REG_SZ, f'"{python_exe}" "{script_path}"')
+    reg.CloseKey(key)
+
+def remove_autoStart_registry():
+    key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+    key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_path, 0, reg.KEY_SET_VALUE)
+    reg.DeleteValue(key, "easyDesktop")
+    reg.CloseKey(key)
+    print("成功从开机启动项中移除")
+
 desktop_path = get_desktop_path()
 def get_initials(text):
     initials = pinyin(text, style=Style.FIRST_LETTER,errors="default")
@@ -354,6 +388,11 @@ class appAPI():
         json.dump(config, open("config.json", "w"))
         if part=="follow_sys" and data==True:
             sys_theme()
+        if part=="auto_start":
+            if data==True:
+                autoStart_registry()
+            else:
+                remove_autoStart_registry()
     def where_d(self):
         return desktop_path
     def get_parent(self,path):
@@ -499,4 +538,4 @@ window = webview.create_window(
     hidden=True,
     easy_drag=False
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)

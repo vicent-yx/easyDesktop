@@ -3,5 +3,5 @@ ed/
 build/
 dist/
 *.spec
-config.json
+*.json
 b.html
