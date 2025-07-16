@@ -8,7 +8,7 @@
 ![主界面](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/main_show.jpg)
 
 ## 🔧 开发信息
- 软件使用pywebview开发，界面使用html+css+js实现，实际操作（如打开文、新建文件等）由python实现（js通过pywebview调用）
+ 软件使用pywebview开发，界面使用html+css+js实现，实际操作（如打开文件、新建文件等）由python实现（js通过pywebview调用）
 
 
 ## ✨ 核心功能
@@ -54,7 +54,7 @@
 | ![浅色主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/main.jpg) | 浅色主题 |
 | ![深色主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/dark_theme.jpg) | 深色主题 |
 | ![3Z主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/3z_theme.jpg) | 3Z主题 |
-
+注意：本软件不自带桌面壁纸，请自行下载壁纸并设置背景。
 
 ### 操作界面
 | 右键菜单 | 新建文件 |
