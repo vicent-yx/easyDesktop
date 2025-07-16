@@ -12,9 +12,9 @@ import shutil
 import darkdetect
 import json
 from PIL import Image
-import ctypes
 import winreg as reg
 import sys
+from ctypes import windll
 
 if os.path.exists("config.json"):
     config = json.load(open("config.json"))
@@ -25,7 +25,10 @@ else:
         "follow_sys":True,
         "theme": "light",
         "view":"block",
-        "auto_start":False
+        "auto_start":False,
+        "use_bg":False,
+        "bg":"",
+        "ms_ef":0
     }
     json.dump(config, open("config.json", "w"))
 
@@ -64,15 +67,6 @@ file_ico = {
     "unkonw":"./resources/file_icos/unkonw.png"
 }
 def turn_png(file_path):
-    """
-    将ICO文件转换为PNG格式并替换原始ICO文件
-    
-    参数:
-        file_path (str): ICO文件的路径
-        
-    返回:
-        bool: 转换是否成功
-    """
     try:
         # 检查文件是否存在
         if not os.path.exists(file_path):
@@ -196,16 +190,10 @@ GWL_EXSTYLE = -20
 WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_APPWINDOW = 0x00040000
 def hide_from_taskbar(window):
-    hwnd = ctypes.windll.user32.FindWindowW(None, window.title)
-    
-    # 获取当前窗口样式
-    style = ctypes.windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-    
-    # 添加工具窗口样式，移除APPWINDOW样式
+    hwnd = windll.user32.FindWindowW(None, window.title)
+    style = windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
     style = (style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW
-    
-    # 设置新样式
-    ctypes.windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
+    windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
 def is_desktop_and_mouse_in_corner():
     try:
         screen_width = win32api.GetSystemMetrics(0)
@@ -271,7 +259,6 @@ def out_window():
     moving = True
     window_state=True
     window.evaluate_js("document.getElementById('b2d').click();document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
-    """将窗口从初始位置丝滑移出到目标位置"""
     window.show()
     hwnd = win32gui.FindWindow(None, "easyDesktop")
     hide_from_taskbar(window)
@@ -318,7 +305,6 @@ def out_window():
         time.sleep(0.1)
 
 def moveIn_window():
-    # return
     global moving
     if moving == True:
         return
@@ -378,6 +364,16 @@ def getPinyin(text):
     result = "".join(lazy_pinyin(text, style=Style.NORMAL, errors="default"))
     return result
 class appAPI():
+    def set_bg(self):
+        file_types = ('Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)', 'All files (*.*)')
+        bg_file = window.create_file_dialog(file_types=file_types,allow_multiple=False)[0]
+        if bg_file:
+            file_path = "bg."+str(bg_file).split(".")[-1]
+            if os.path.exists(config["bg"]):
+                os.remove(config["bg"])
+            shutil.copy(bg_file,file_path)
+            return file_path
+        return ""
     def get_config(self):
         global config
         return config
@@ -449,6 +445,9 @@ class appAPI():
             if not os.path.exists(file_path):
                 if suffix == "folder":
                     os.mkdir(file_path)
+                elif suffix == "xlsx":
+                    print("创建表格：",file_path)
+                    shutil.copy("resources/empty.xlsx",file_path)
                 else:
                     with open(file_path, 'w')as f:
                         f.write("")
@@ -465,6 +464,9 @@ class appAPI():
                 if not os.path.exists(new_path):
                     if suffix == "folder":
                         os.mkdir(new_path)
+                    elif suffix == "xlsx":
+                        print("创建表格：",new_path)
+                        shutil.copy("/resources/empty.xlsx",new_path)
                     else:
                         with open(new_path, 'w')as f:
                             f.write("")
@@ -524,7 +526,7 @@ class appAPI():
 
 width = int(screen_size.width*0.4)
 height = int(screen_size.height*0.3)
-
+webview.settings['ALLOW_FILE_URLS'] = True
 window = webview.create_window(
     'easyDesktop',
     'easyFileDesk.html',
@@ -538,4 +540,4 @@ window = webview.create_window(
     hidden=True,
     easy_drag=False
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)
