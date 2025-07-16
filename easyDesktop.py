@@ -417,7 +417,7 @@ class appAPI():
         return {"success":True}
     def show_file(self,file_path):
         file = os.path.realpath(file_path)
-        os.system(f'explorer /select, {file}')
+        subprocess.Popen(f'explorer /select, {file}', shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
         moveIn_window()
         return {"success":True}
     def open_mhyGame(self,file_path,game):
@@ -553,4 +553,4 @@ window = webview.create_window(
     hidden=True,
     easy_drag=False
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)
