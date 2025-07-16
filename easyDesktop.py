@@ -132,7 +132,13 @@ def match_ico(file_name):
         return "/resources/file_icos/script.png"
     else:
         return file_ico["unkonw"]
-
+def check_recover(data,match):
+    result = False
+    for d in data:
+        if d["filePath"]==match:
+            result = True
+            break
+    return result
 def update_inf(dir_path):
     out_data = []
     exe_data = []
@@ -196,10 +202,16 @@ def update_inf(dir_path):
             else:
                 dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":full_path,"ico":"./resources/file_icos/dir.png","mark":2})
     for item in exe_data:
+        if check_recover(out_data,item["filePath"])==True:
+            continue
         out_data.append(item)
     for item in dir_data:
+        if check_recover(out_data,item["filePath"])==True:
+            continue
         out_data.append(item)
     for item in file_data:
+        if check_recover(out_data,item["filePath"])==True:
+            continue
         out_data.append(item)
     return out_data
 GWL_EXSTYLE = -20
