@@ -7,6 +7,10 @@
 
 ![主界面](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/main_show.jpg)
 
+## 🔧 开发信息
+ 软件使用pywebview开发，界面使用html+css+js实现，实际操作（如打开文、新建文件等）由python实现（js通过pywebview调用）
+
+
 ## ✨ 核心功能
 
 ### 🖥️ 智能呼出与布局
