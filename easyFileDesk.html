@@ -7,235 +7,253 @@
     <link rel="stylesheet" href="/resources/all.min.css">
     <link rel="stylesheet" id="theme_css" href="/theme/dark.css"> 
     <style>
+        body{
+            margin: unset;
+            padding-top: 0px;
+            overflow: hidden;
+        }
         body::-webkit-scrollbar {
             display: none; /* 隐藏滚动条 */
         }
     </style>
 </head>
 <body>
-    <div class="container" id="main">
-        <div class="header">
-            <div class="time-display">
-                <i class="fas fa-clock"></i>
-                <span id="current-time">loading...</span>
-            </div>
-            <div class="path-navigation">
-                <button id="pathBackBtn" class="path-btn"><i class="fas fa-arrow-up"></i></button>
-                <div class="breadcrumb" id="breadcrumb">
-                    <span id="b2d" class="breadcrumb-item" data-path="">桌面</span>
-                </div>
-                <div class="search_box"id="search_box">
-                    <input id="search_input" oninput="load_search()" class="search_input" type="text" placeholder="搜索...">
-                </div>
-            </div>
-            <div class="view-toggle">
-                <button id="gridViewBtn" class="view-btn active"><i class="fas fa-th-large"></i></button>
-                <button id="listViewBtn" class="view-btn"><i class="fas fa-list"></i></button>
-            </div>
-            <button id="settingsBtn" class="settings-btn"><i class="fas fa-cog"></i></button>
-        </div>
-
-        <div class="files-grid" id="filesContainer">
-            <!-- 网格视图内容 -->
-        </div>
-        <div class="files-list" id="filesListContainer" style="display:none;">
-            <!-- 列表视图内容 -->
-        </div>
-            <!-- 文件项将通过JavaScript动态生成 -->
-        </div>
-
-        <!-- 右键菜单 -->
-        <div class="context-menu" id="contextMenu">
-            <div class="context-menu-item" id="menuOpen">
-                <i class="fas fa-folder-open"></i>
-                <span>打开</span>
-            </div>
-            <div class="context-menu-item" id="menuCopy">
-                <i class="fas fa-copy"></i>
-                <span>复制</span>
-            </div>
-            <div class="context-menu-item" id="menuRename">
-                <i class="fas fa-edit"></i>
-                <span>重命名</span>
-            </div>
-            <div class="context-menu-item delete" id="menuDelete">
-                <i class="fas fa-trash-alt"></i>
-                <span>删除</span>
-            </div>
-        </div>
-        <div class="context-menu" id="blankMenu">
-            <div class="context-menu-item" id="menuPaste">
-                <i class="fas fa-paste"></i>
-                <span>粘贴</span>
-            </div>
-            <div class="context-menu-item" id="menuNew">
-                <i class="fas fa-plus"></i>
-                <span>新建</span>
-            </div>
-        </div>
-
-        <!-- 重命名对话框 -->
-        <div class="rename-overlay" id="renameOverlay">
-            <div class="rename-container">
-                <h3>重命名文件</h3>
-                <input type="text" class="rename-input" id="renameInput" placeholder="输入新文件名">
-                <div class="rename-buttons">
-                    <button class="rename-btn cancel" id="renameCancel">取消</button>
-                    <button class="rename-btn confirm" id="renameConfirm">确认</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 删除确认对话框 -->
-        <div class="delete-confirm" id="deleteConfirm">
-            <div class="delete-container">
-                <h3>确认删除</h3>
-                <p>您确定要删除文件 "<span id="deleteFileName"></span>" 吗？此操作不可恢复。</p>
-                <div class="delete-buttons">
-                    <button class="delete-btn cancel" id="deleteCancel">取消</button>
-                    <button class="delete-btn confirm" id="deleteConfirmBtn">确认删除</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- 新建文件对话框 -->
-        <div class="rename-overlay" id="newFileOverlay">
-            <div class="rename-container">
-                <h3>新建文件</h3>
-                <select id="newFileTypeSelect" class="rename-input">
-                    <option value="docx">Word 文档 (.docx)</option>
-                    <option value="xlsx">Excel 表格 (.xlsx)</option>
-                    <option value="pptx">PPT 演示 (.pptx)</option>
-                    <option value="txt">文本文件 (.txt)</option>
-                    <option value="folder">文件夹</option>
-                </select>
-                <div class="rename-buttons">
-                    <button class="rename-btn cancel" id="newFileCancel">取消</button>
-                    <button class="rename-btn confirm" id="newFileConfirm">确认</button>
-                </div>
-            </div>
-        </div>
-    </div>
     <style>
-        .settings_box {
+        .content_box{
             width: 100%;
-            height: 100%;
-            position: fixed;
-            background-color: rgba(0,0,0,0.5);
-            top: 0px;
-            left: 0px;
+            height: 100vh;
+            overflow: scroll;
+            margin: unset;
         }
-        
-        /* 背景设置样式 */
-        .bg-settings {
-            margin-top: 20px;
-            padding: 15px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-        }
-        
-        .bg-buttons {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        
-        .bg-btn {
-            flex: 1;
-            padding: 8px;
-            border-radius: 4px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .bg-btn:hover {
-            opacity: 0.8;
-        }
-        
-        .bg-reset {
-            background: #ff6b6b;
-            color: white;
-        }
-        
-        .bg-custom {
-            background: #5dade2;
-            color: white;
-        }
-        
-        .blur-slider {
-            width: 100%;
-            margin-top: 10px;
-        }
-        
-        .blur-label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-        .theme-settings-panel::-webkit-scrollbar {
+        .content_box::-webkit-scrollbar {
             display: none; /* 隐藏滚动条 */
         }
     </style>
-    <!-- 主题设置面板 -->
-    <div class="settings_box" id="themeSettingsPanel" style="height: 100vh;display: flex;">
-        <div class="theme-settings-panel" id="themeSettings_box" style="height: 90vh;overflow: scroll;display: block;">
-            <div class="settings-header">
-                <h3>设置</h3>
-                <button class="close-btn" id="closeThemePanel"><i class="fas fa-times"></i></button>
+    <div class="content_box">
+        <div class="container" id="main" style="margin-top: 20px;">
+            <div class="header">
+                <div class="time-display">
+                    <i class="fas fa-clock"></i>
+                    <span id="current-time">loading...</span>
+                </div>
+                <div class="path-navigation">
+                    <button id="pathBackBtn" class="path-btn"><i class="fas fa-arrow-up"></i></button>
+                    <div class="breadcrumb" id="breadcrumb">
+                        <span id="b2d" class="breadcrumb-item" data-path="">桌面</span>
+                    </div>
+                    <div class="search_box"id="search_box">
+                        <input id="search_input" oninput="load_search()" class="search_input" type="text" placeholder="搜索...">
+                    </div>
+                </div>
+                <div class="view-toggle">
+                    <button id="gridViewBtn" class="view-btn active"><i class="fas fa-th-large"></i></button>
+                    <button id="listViewBtn" class="view-btn"><i class="fas fa-list"></i></button>
+                </div>
+                <button id="settingsBtn" class="settings-btn"><i class="fas fa-cog"></i></button>
             </div>
+
+            <div class="files-grid" id="filesContainer">
+                <!-- 网格视图内容 -->
+            </div>
+            <div class="files-list" id="filesListContainer" style="display:none;">
+                <!-- 列表视图内容 -->
+            </div>
+                <!-- 文件项将通过JavaScript动态生成 -->
+            </div>
+
+            <!-- 右键菜单 -->
+            <div class="context-menu" id="contextMenu">
+                <div class="context-menu-item" id="menuOpen">
+                    <i class="fas fa-folder-open"></i>
+                    <span>打开</span>
+                </div>
+                <div class="context-menu-item" id="menuCopy">
+                    <i class="fas fa-copy"></i>
+                    <span>复制</span>
+                </div>
+                <div class="context-menu-item" id="menuRename">
+                    <i class="fas fa-edit"></i>
+                    <span>重命名</span>
+                </div>
+                <div class="context-menu-item delete" id="menuDelete">
+                    <i class="fas fa-trash-alt"></i>
+                    <span>删除</span>
+                </div>
+            </div>
+            <div class="context-menu" id="blankMenu">
+                <div class="context-menu-item" id="menuPaste">
+                    <i class="fas fa-paste"></i>
+                    <span>粘贴</span>
+                </div>
+                <div class="context-menu-item" id="menuNew">
+                    <i class="fas fa-plus"></i>
+                    <span>新建</span>
+                </div>
+            </div>
+
+            <!-- 重命名对话框 -->
+            <div class="rename-overlay" id="renameOverlay">
+                <div class="rename-container">
+                    <h3>重命名文件</h3>
+                    <input type="text" class="rename-input" id="renameInput" placeholder="输入新文件名">
+                    <div class="rename-buttons">
+                        <button class="rename-btn cancel" id="renameCancel">取消</button>
+                        <button class="rename-btn confirm" id="renameConfirm">确认</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 删除确认对话框 -->
+            <div class="delete-confirm" id="deleteConfirm">
+                <div class="delete-container">
+                    <h3>确认删除</h3>
+                    <p>您确定要删除文件 "<span id="deleteFileName"></span>" 吗？此操作不可恢复。</p>
+                    <div class="delete-buttons">
+                        <button class="delete-btn cancel" id="deleteCancel">取消</button>
+                        <button class="delete-btn confirm" id="deleteConfirmBtn">确认删除</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 新建文件对话框 -->
+            <div class="rename-overlay" id="newFileOverlay">
+                <div class="rename-container">
+                    <h3>新建文件</h3>
+                    <select id="newFileTypeSelect" class="rename-input">
+                        <option value="docx">Word 文档 (.docx)</option>
+                        <option value="xlsx">Excel 表格 (.xlsx)</option>
+                        <option value="pptx">PPT 演示 (.pptx)</option>
+                        <option value="txt">文本文件 (.txt)</option>
+                        <option value="folder">文件夹</option>
+                    </select>
+                    <div class="rename-buttons">
+                        <button class="rename-btn cancel" id="newFileCancel">取消</button>
+                        <button class="rename-btn confirm" id="newFileConfirm">确认</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <style>
+            .settings_box {
+                width: 100%;
+                height: 100%;
+                position: fixed;
+                background-color: rgba(0,0,0,0.5);
+                top: 0px;
+                left: 0px;
+            }
             
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>开机自启动</span>
-                    <label class="switch">
-                        <input type="checkbox" id="autoStartToggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <div class="settings-section" style="margin-bottom: 20px;">
-                <div class="system-theme-toggle">
-                    <span>跟随系统主题</span>
-                    <label class="switch">
-                        <input type="checkbox" id="followSystemTheme">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
+            /* 背景设置样式 */
+            .bg-settings {
+                margin-top: 20px;
+                padding: 15px;
+                background: rgba(255,255,255,0.1);
+                border-radius: 8px;
+            }
             
-            <div class="settings-section">
-                <h4>选择主题</h4>
-                <div class="theme-cards">
-                    <div class="theme-card" data-theme="light">
-                        <div class="theme-preview">
-                            <img src="/resources/theme_previews/light.png" alt="浅色主题预览">
-                        </div>
-                        <span>浅色主题</span>
-                    </div>
-                    <div class="theme-card" data-theme="dark">
-                        <div class="theme-preview">
-                            <img src="/resources/theme_previews/dark.png" alt="深色主题预览">
-                        </div>
-                        <span>深色主题</span>
-                    </div>
-                    <div class="theme-card" data-theme="zzz">
-                        <div class="theme-preview">
-                            <img src="/resources/theme_previews/3z.png" alt="绝区零主题预览">
-                        </div>
-                        <span>3Z主题</span>
+            .bg-buttons {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .bg-btn {
+                flex: 1;
+                padding: 8px;
+                border-radius: 4px;
+                border: none;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .bg-btn:hover {
+                opacity: 0.8;
+            }
+            
+            .bg-reset {
+                background: #ff6b6b;
+                color: white;
+            }
+            
+            .bg-custom {
+                background: #5dade2;
+                color: white;
+            }
+            
+            .blur-slider {
+                width: 100%;
+                margin-top: 10px;
+            }
+            
+            .blur-label {
+                display: block;
+                margin-bottom: 5px;
+                font-size: 14px;
+            }
+            .theme-settings-panel::-webkit-scrollbar {
+                display: none; /* 隐藏滚动条 */
+            }
+        </style>
+        <!-- 主题设置面板 -->
+        <div class="settings_box" id="themeSettingsPanel" style="height: 100vh;display: flex;">
+            <div class="theme-settings-panel" id="themeSettings_box" style="height: 90vh;overflow: scroll;display: block;">
+                <div class="settings-header">
+                    <h3>设置</h3>
+                    <button class="close-btn" id="closeThemePanel"><i class="fas fa-times"></i></button>
+                </div>
+                
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>开机自启动</span>
+                        <label class="switch">
+                            <input type="checkbox" id="autoStartToggle">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
                 </div>
-            </div>
-            <div class="settings-section" style="margin-top: 20px;">
-                <h4>背景设置</h4>
-                <div class="bg-settings">
-                    <div class="bg-buttons">
-                        <button id="bgResetBtn" class="bg-btn bg-reset">恢复默认</button>
-                        <button id="bgCustomBtn" class="bg-btn bg-custom">选择图片</button>
+                <div class="settings-section" style="margin-bottom: 20px;">
+                    <div class="system-theme-toggle">
+                        <span>跟随系统主题</span>
+                        <label class="switch">
+                            <input type="checkbox" id="followSystemTheme">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
-                    <label class="blur-label">磨砂效果强度: <span id="blurValue">0</span>%</label>
-                    <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
+                </div>
+                
+                <div class="settings-section">
+                    <h4>选择主题</h4>
+                    <div class="theme-cards">
+                        <div class="theme-card" data-theme="light">
+                            <div class="theme-preview">
+                                <img src="/resources/theme_previews/light.png" alt="浅色主题预览">
+                            </div>
+                            <span>浅色主题</span>
+                        </div>
+                        <div class="theme-card" data-theme="dark">
+                            <div class="theme-preview">
+                                <img src="/resources/theme_previews/dark.png" alt="深色主题预览">
+                            </div>
+                            <span>深色主题</span>
+                        </div>
+                        <div class="theme-card" data-theme="zzz">
+                            <div class="theme-preview">
+                                <img src="/resources/theme_previews/3z.png" alt="绝区零主题预览">
+                            </div>
+                            <span>3Z主题</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section" style="margin-top: 20px;">
+                    <h4>背景设置</h4>
+                    <div class="bg-settings">
+                        <div class="bg-buttons">
+                            <button id="bgResetBtn" class="bg-btn bg-reset">恢复默认</button>
+                            <button id="bgCustomBtn" class="bg-btn bg-custom">选择图片</button>
+                        </div>
+                        <label class="blur-label">磨砂效果强度: <span id="blurValue">0</span>%</label>
+                        <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
+                    </div>
                 </div>
             </div>
         </div>

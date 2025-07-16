@@ -14,6 +14,7 @@ let currentPath = ''; // 当前浏览路径
 let pathHistory = []; // 路径历史记录
 let currentHistoryIndex = -1; // 当前历史记录索引
 let timer = null
+let db_click_action = false
 
 // 获取文件类型
 function getFileType(fileName,fileType) {
@@ -157,18 +158,23 @@ async function push(fData = null,useLoadDir = false, path = ''){
         
         // 添加点击事件
         fileElement.addEventListener('dblclick', function() {
+            db_click_action = true
             clearTimeout(timer)
             if (file.fileType === '文件夹') {
                 open_file(file.filePath);
             } else if (file.game) {
                 open_mhyGame(file.filePath, file.game);
             } else {
-                open_file(file.filePath);
+                window.pywebview.api.show_file(file.filePath);
             }
         });
         fileElement.addEventListener('click', function() {
             document.getElementById("search_input").value=""
             timer = setTimeout(async function(){
+                if(db_click_action==true){
+                    db_click_action = false
+                    return
+                }
                 if (file.fileType === '文件夹') {
                     // 进入文件夹
                     navigateTo(file.filePath);
@@ -623,15 +629,11 @@ document.addEventListener('click', hideAllMenus);
 function applyBackgroundSettings(config) {
     const body = document.body;
     if (config.use_bg && config.bg) {
-        body.style.backgroundImage = '';
-        body.style.backdropFilter = '';
-        setTimeout(function () { 
-            body.style.backgroundImage = `url("${config.bg}")`;
-            body.style.backdropFilter = `blur(${config.ms_ef || 0}px)`;
-            body.style.backgroundRepeat="no-repeat"
-            body.style.backgroundSize="cover"
-            body.style.backgroundPosition="center"
-        },100);
+        body.style.backgroundImage = `url("${config.bg}")`;
+        body.style.backdropFilter = `blur(${config.ms_ef || 0}px)`;
+        body.style.backgroundRepeat="no-repeat"
+        body.style.backgroundSize="cover"
+        body.style.backgroundPosition="center"
     } else {
         body.style.backgroundImage = '';
         body.style.backdropFilter = '';
@@ -645,7 +647,7 @@ async function initBackgroundSettings() {
     const blurValue = document.getElementById('blurValue');
     
     // 设置滑块初始值
-    blurSlider.value = config.ms_ef || 50;
+    blurSlider.value = config.ms_ef;
     blurValue.textContent = blurSlider.value;
     
     // 滑块事件
@@ -664,6 +666,7 @@ async function initBackgroundSettings() {
         blurValue.textContent = '50';
         applyBackgroundSettings(await window.pywebview.api.get_config())
     });
+    
     
     // 选择图片按钮
     document.getElementById('bgCustomBtn').addEventListener('click', async function() {

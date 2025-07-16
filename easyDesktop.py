@@ -16,6 +16,14 @@ import winreg as reg
 import sys
 from ctypes import windll
 
+def get_real_path():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        return os.path.dirname(os.path.abspath(__file__))
+os.chdir(get_real_path())
+
+
 if os.path.exists("config.json"):
     config = json.load(open("config.json"))
 else:
@@ -407,6 +415,11 @@ class appAPI():
         os.startfile(file_path)
         moveIn_window()
         return {"success":True}
+    def show_file(self,file_path):
+        file = os.path.realpath(file_path)
+        os.system(f'explorer /select, {file}')
+        moveIn_window()
+        return {"success":True}
     def open_mhyGame(self,file_path,game):
         open_command = {
             "ys":"--game=hk4e_cn",
@@ -419,7 +432,7 @@ class appAPI():
             game_c = open_command[game]
         subprocess.Popen(f'"{file_path}" {game_c}', shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
     def copy_file(self,file_path):
-        subprocess.run(['powershell', '-Command', f'Get-Item {file_path} | Set-Clipboard'],shell=False)
+        subprocess.run(['powershell', '-Command', f'Get-Item {file_path} | Set-Clipboard'],shell=False,creationflags=subprocess.CREATE_NO_WINDOW)
         return {"success":True}
     def rename_file(self,file_path,new_name):
         if os.path.isfile(file_path):
@@ -487,7 +500,7 @@ class appAPI():
                 '$files = Get-Clipboard -Format FileDropList; '
                 'if ($files) { $files | ForEach-Object { $_.FullName } }'
             ]
-            result = subprocess.run(command, capture_output=True, text=True, check=True,shell=False)
+            result = subprocess.run(command, capture_output=True, text=True, check=True,shell=False,creationflags=subprocess.CREATE_NO_WINDOW)
             output = result.stdout.strip()
             if not output:
                 return {"success":True}
