@@ -5,7 +5,6 @@
 
 **隐藏桌面图标，但不隐藏便捷性！** EasyDesktop 是一款创新的桌面增强工具，让您在保持桌面整洁美观的同时，快速访问桌面文件。只需将鼠标移至屏幕左下角，即可呼出智能文件面板！
 
-
 ![主界面](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/main_show.jpg)
 
 ## ✨ 核心功能
