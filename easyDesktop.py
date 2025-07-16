@@ -133,7 +133,7 @@ def match_ico(file_name):
     else:
         return file_ico["unkonw"]
 
-def update_inf(current_dir):
+def update_inf(dir_path):
     out_data = []
     exe_data = []
     dir_data = []
@@ -141,52 +141,60 @@ def update_inf(current_dir):
     # if os.path.exists("desktopICO"):
     #     os.remove("desktopICO")
     # os.mkdir("desktopICO")
-    for item in os.listdir(current_dir):
-        if "desktop.ini" in item:
-            continue
-        filename, _ = os.path.splitext(item)
-        full_path = os.path.join(current_dir, item)
-        if os.path.isfile(full_path):
-            extension = os.path.splitext(full_path)[1]
-            if ".lnk" in extension:
-                target_path = get_shortcut_target(full_path)
-                extension = os.path.splitext(target_path)[1]
-                if ".exe" in extension:
-                    # 针对米哈游游戏的适配
-                    if "miHoYo" in target_path and "launcher" in target_path:
-                        if "原神" in item or "Genshin Impact" in item:
-                            exe_icon = "./resources/file_icos/ys.ico"
-                            game = "ys"
-                        elif "星穹铁道" in item or "Star Rail" in item:
-                            exe_icon = "./resources/file_icos/sr.ico"
-                            game = "sr"
-                        elif "绝区零" in item or "Zero" in item:
-                            exe_icon = "./resources/file_icos/zzz.ico"
-                            game = "zzz"
-                        elif "崩坏3" in item or "Honkai Impact 3" in item:
-                            exe_icon = "./resources/file_icos/bh3.ico"
-                            game = "bh3"
+    if dir_path == "desktop":
+        get_count = 2
+        path_list = [desktop_path,public_desktop]
+    else:
+        get_count = 1
+        path_list = [dir_path]
+    for i in range(get_count):
+        current_dir = path_list[i]
+        for item in os.listdir(current_dir):
+            if "desktop.ini" in item:
+                continue
+            filename, _ = os.path.splitext(item)
+            full_path = os.path.join(current_dir, item)
+            if os.path.isfile(full_path):
+                extension = os.path.splitext(full_path)[1]
+                if ".lnk" in extension:
+                    target_path = get_shortcut_target(full_path)
+                    extension = os.path.splitext(target_path)[1]
+                    if ".exe" in extension:
+                        # 针对米哈游游戏的适配
+                        if "miHoYo" in target_path and "launcher" in target_path:
+                            if "原神" in item or "Genshin Impact" in item:
+                                exe_icon = "./resources/file_icos/ys.ico"
+                                game = "ys"
+                            elif "星穹铁道" in item or "Star Rail" in item:
+                                exe_icon = "./resources/file_icos/sr.ico"
+                                game = "sr"
+                            elif "绝区零" in item or "Zero" in item:
+                                exe_icon = "./resources/file_icos/zzz.ico"
+                                game = "zzz"
+                            elif "崩坏3" in item or "Honkai Impact 3" in item:
+                                exe_icon = "./resources/file_icos/bh3.ico"
+                                game = "bh3"
+                            else:
+                                exe_icon = "./resources/file_icos/mhy_lancher.ico"
+                                game = "mhy"
+                            exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":target_path,"ico":exe_icon,"game":game})
                         else:
-                            exe_icon = "./resources/file_icos/mhy_lancher.ico"
-                            game = "mhy"
-                        exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":target_path,"ico":exe_icon,"game":game})
+                            if not target_path in had_load_exe:
+                                exe_icon=get_icon(target_path,item)
+                            else:
+                                exe_icon = had_load_exe[target_path]
+                            exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":target_path,"ico":exe_icon})
+                        continue
                     else:
-                        if not target_path in had_load_exe:
-                            exe_icon=get_icon(target_path,item)
+                        if os.path.isfile(target_path):
+                            file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":target_path,"ico":match_ico(item)})
                         else:
-                            exe_icon = had_load_exe[target_path]
-                        exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":target_path,"ico":exe_icon})
-                    continue
+                            dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":target_path,"ico":"./resources/file_icos/dir.png","mark":1})
+                        continue
                 else:
-                    if os.path.isfile(target_path):
-                        file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":target_path,"ico":match_ico(item)})
-                    else:
-                        dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":target_path,"ico":"./resources/file_icos/dir.png","mark":1})
-                    continue
+                    file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":full_path,"ico":match_ico(item)})
             else:
-                file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":full_path,"ico":match_ico(item)})
-        else:
-            dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":full_path,"ico":"./resources/file_icos/dir.png","mark":2})
+                dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":full_path,"ico":"./resources/file_icos/dir.png","mark":2})
     for item in exe_data:
         out_data.append(item)
     for item in dir_data:
@@ -365,6 +373,7 @@ def remove_autoStart_registry():
     print("成功从开机启动项中移除")
 
 desktop_path = get_desktop_path()
+public_desktop = os.path.join(os.environ['PUBLIC'], 'Desktop')
 def get_initials(text):
     initials = pinyin(text, style=Style.FIRST_LETTER,errors="default")
     return ''.join([item[0] for item in initials])
@@ -408,7 +417,7 @@ class appAPI():
         return outData
     def get_inf(self,path):
         if path == "desktop" or path=="" or path=="\\":
-            path = os.path.join(os.path.expanduser("~"), "Desktop")
+            path = "desktop"
         data = update_inf(path)
         return {"success":True,"data":data}
     def open_file(self,file_path):
