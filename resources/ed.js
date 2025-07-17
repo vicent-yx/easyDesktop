@@ -15,6 +15,7 @@ let pathHistory = []; // 路径历史记录
 let currentHistoryIndex = -1; // 当前历史记录索引
 let timer = null
 let db_click_action = false
+let in_edit = false
 
 // 获取文件类型
 function getFileType(fileName,fileType) {
@@ -880,9 +881,10 @@ async function load_theme(theme){
 document.addEventListener('keydown', function(event) {
     if (document.activeElement.id !== 'search_input') {
         const searchInput = document.getElementById('search_input');
+        if(document.getElementById("renameOverlay").style.display == "flex")return
         if (searchInput) {
             if (!event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1) {
-            searchInput.focus();
+                searchInput.focus();
             }
         }
     }
