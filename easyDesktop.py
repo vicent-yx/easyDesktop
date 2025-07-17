@@ -40,6 +40,7 @@ else:
     }
     json.dump(config, open("config.json", "w"))
 
+ignore_action = False
 had_load_exe = {}
 window_state = False
 moving = False
@@ -281,7 +282,7 @@ def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=60
         time.sleep(delay)
 
 def out_window():
-    global moving
+    global moving,ignore_action
     if moving == True:
         return
     moving = True
@@ -325,7 +326,7 @@ def out_window():
                 break
     moving = False
     while True:
-        if is_mouse_in_easyDesktop()==False:
+        if is_mouse_in_easyDesktop()==False and ignore_action==False:
             moveIn_window()
             break
         if window_state==False:
@@ -394,8 +395,11 @@ def getPinyin(text):
     return result
 class appAPI():
     def set_bg(self):
+        global ignore_action
         file_types = ('Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)', 'All files (*.*)')
+        ignore_action = True
         bg_file = window.create_file_dialog(file_types=file_types,allow_multiple=False)[0]
+        ignore_action = False
         if bg_file:
             file_path = "bg."+str(bg_file).split(".")[-1]
             if os.path.exists(config["bg"]):
@@ -470,13 +474,15 @@ class appAPI():
             return {"success":False,"message":"拒绝访问（无权限）"}
         finally:
             return {"success":True}
-    def new_file(self,suffix):
+    def new_file(self,suffix,current_path):
+        if current_path == "desktop" or current_path=="" or current_path=="\\":
+            current_path = desktop_path
         try:
             if suffix == "folder":
                 base_name = "新建文件夹"
             else:
                 base_name = f"新建文档.{suffix}"
-            file_path = os.path.join(desktop_path, base_name)
+            file_path = os.path.join(current_path, base_name)
             if not os.path.exists(file_path):
                 if suffix == "folder":
                     os.mkdir(file_path)
@@ -513,7 +519,7 @@ class appAPI():
             return {"success":False,"message":"拒绝访问"}
         finally:
             return {"success":True}
-    def put_file(file_path):
+    def put_file(self,target_path):
         saved_files = []
         try:
             command = [
@@ -540,7 +546,7 @@ class appAPI():
                 return {"success":False,"message":"剪切板中没有有效的文件"}
             for src_path in valid_paths:
                 filename = os.path.basename(src_path)
-                dest_path = os.path.join(desktop_path, filename)
+                dest_path = os.path.join(target_path, filename)
                 # 处理文件名冲突
                 counter = 1
                 base_name, extension = os.path.splitext(filename)

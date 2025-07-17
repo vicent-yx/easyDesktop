@@ -78,11 +78,11 @@ function copy_file(filePath) {
 }
 function rename_file(filePath, newName) {
     window.pywebview.api.rename_file(filePath, newName);
-    push()
+    push(null,true,currentPath)
 }
 async function remove_file(filePath) {
     var r = await window.pywebview.api.remove_file(filePath);
-    push()
+    push(null,true,currentPath);
     return r
 }
 
@@ -572,16 +572,16 @@ function hideAllMenus() {
 }
 
 document.addEventListener('click', hideAllMenus);
-// 模拟的put_file函数
+
 async function put_file() {
-    await window.pywebview.api.put_file();
-    push(null);
+    await window.pywebview.api.put_file(currentPath);
+    push(null,true,currentPath)
 }
 
-// 模拟的new_file函数
+
 async function new_file(fileType) {
-    await window.pywebview.api.new_file(fileType);
-    push(null); // 刷新界面
+    await window.pywebview.api.new_file(fileType,currentPath);
+    push(null,true,currentPath); // 刷新界面
 }
 
 // 粘贴按钮事件
@@ -614,7 +614,6 @@ newFileConfirm.addEventListener('click',async function() {
     if (selectedType) {
         await new_file(selectedType);
         newFileOverlay.style.display = 'none';
-        push(null);
     }
 });
 function hideAllMenus() {
