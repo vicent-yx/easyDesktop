@@ -18,7 +18,6 @@ let db_click_action = false
 
 // 获取文件类型
 function getFileType(fileName,fileType) {
-    console.log('文件类型：',fileType);
     const ext = fileName.split('.').pop().toLowerCase();
     const types = {
         'docx': '文档',
@@ -416,9 +415,9 @@ async function updateBreadcrumb(path) {
 }
 
 function navigateTo(path) {
+    document.getElementById("content_box").scrollTo(0, 0);
     if (path === currentPath){
         push(null,true, path);
-        window.scrollTo(0, 0);
         return
     }
     
@@ -468,7 +467,6 @@ async function loadDirector(path) {
     try {
         const response = await window.pywebview.api.get_inf(path);
         response = response["data"]
-        console.log(response);
         if (response && response.data) {
             return response.data.map(item => ({
                 ico: item.is_dir ? '/resources/folder.png' : getFileIcon(item.name),
@@ -803,13 +801,39 @@ function showError(code) {
         }, 500);
     }, 5000);
 }
+function checkChineseChars(str) {
+    // 正则表达式匹配中文字符
+    const chineseRegex = /[\u4e00-\u9fa5]/;
+    // 正则表达式匹配非中文字符
+    const nonChineseRegex = /[^\u4e00-\u9fa5]/;
+    const hasChinese = chineseRegex.test(str);
+    const hasNonChinese = nonChineseRegex.test(str);
+    if (!hasChinese) {
+        return {"have_cn": false};
+    }
+    if (hasChinese && !hasNonChinese) {
+        return {
+            "have_cn": true,
+            "origin": str,
+            "fix": str
+        };
+    }
+    // 包含中文也包含非中文的情况
+    const chineseOnly = str.split('').filter(c => chineseRegex.test(c)).join('');
+    return {
+        "have_cn": true,
+        "origin": str,
+        "fix": chineseOnly
+    };
+}
 function contains(mainStr, searchStr) {
-    const cleanMainStr = mainStr.replace(/[^\w]/g, '');
-    const cleanSearchStr = searchStr.replace(/[^\w]/g, '');
+    const cleanMainStr = mainStr.replace(/[^\w\u4e00-\u9fa5]/g, '');
+    const cleanSearchStr = searchStr.replace(/[^\w\u4e00-\u9fa5]/g, '');
     const regex = new RegExp(cleanSearchStr, 'i');
     return regex.test(cleanMainStr);
 }
 async function load_search(){
+    console.log("input")
     const key = document.getElementById("search_input").value
     if(key==""){
         push(files_data)
@@ -817,17 +841,33 @@ async function load_search(){
     }
     py_data = await window.pywebview.api.load_search_index(files_data)
     out_data = []
-    for(var i=0;i<files_data.length;i++){
-        if(contains(py_data[files_data[i]["fileName"]]["sxpy"],key)==true){
-            out_data.push(files_data[i])
-            continue
+    deal_key = await checkChineseChars(key)
+    if(deal_key["have_cn"]==true){
+        for(var i=0;i<files_data.length;i++){
+            if(contains(files_data[i]["fileName"],deal_key["origin"])==true){
+                out_data.push(files_data[i])
+                continue
+            }
+            if(contains(files_data[i]["fileName"],deal_key["fix"])==true){
+                out_data.push(files_data[i])
+                continue
+            }
         }
-        if(contains(py_data[files_data[i]["fileName"]]["py"],key)==true){
-            out_data.push(files_data[i])
-            continue
+    }else{
+        for(var i=0;i<files_data.length;i++){
+            if(contains(py_data[files_data[i]["fileName"]]["sxpy"],key)==true){
+                out_data.push(files_data[i])
+                console.log("1")
+                continue
+            }
+            if(contains(py_data[files_data[i]["fileName"]]["py"],key)==true){
+                out_data.push(files_data[i])
+                continue
+            }
         }
     }
     push(out_data)
+    console.log("完成搜索")
 }
 async function load_theme(theme){
     const theme_inf = {
