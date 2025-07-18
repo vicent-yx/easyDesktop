@@ -319,7 +319,7 @@ def out_window():
     start_x = -width
     start_y = screen_height - height // 2
     end_x = int(screen_width * 0.1)
-    end_y = int(screen_height * 0.4)
+    end_y = int(screen_height - ((screen_height * 0.1)+height))
     win32gui.MoveWindow(hwnd, start_x, start_y, width, height, True)
     win32gui.UpdateWindow(hwnd)
     time.sleep(0.1)
@@ -386,7 +386,7 @@ def check_update():
         print("无法访问更新服务器")
         return
     r = json.loads(str(r.content,"utf-8"))
-    if r["v"]!="1.4.3":
+    if r["v"]!="1.5.0":
         print("有新版本")
         if config["ign_update"]==r["v"]:
             return
