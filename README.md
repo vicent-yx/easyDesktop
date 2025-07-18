@@ -13,7 +13,7 @@
 
 ## ✨ 核心功能
 
-### 🖥️ 智能呼出与布局
+### 🖥️ 快捷呼出与布局
 - **角落触发**：鼠标移至左下角即可呼出面板
 - **双视图模式**：网格布局（默认）与列表布局自由切换
 - **深度文件操作**：
@@ -36,10 +36,17 @@
 - **高级自定义**：
   - 自定义背景图片
   - 磨砂效果强度调节
+  - 自行选择使用全屏模式或窗口模式
+  - 窗口模式下窗口大小可调节并记录
 
 | 自定义背景及磨砂 | 跟随系统主题切换深浅色主题 |
 |-----|------|
 ![自定义背景](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/bg_set.gif)|![主题切换](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/sys_theme.gif)
+
+| 全屏模式 | 调整窗口大小 |
+|-----|------|
+![自定义背景](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/fullScreen_show.gif)|![主题切换](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/resize_show.gif)
+
 
 ### ⚙️ 便捷设置
 - **开机自启**：一次设置，永久自动运行

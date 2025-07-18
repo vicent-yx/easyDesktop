@@ -10,6 +10,7 @@
         body{
             margin: unset;
             padding-top: 0px;
+            padding-bottom: 0px;
             overflow: hidden;
         }
         body::-webkit-scrollbar {
@@ -193,6 +194,21 @@
             .theme-settings-panel::-webkit-scrollbar {
                 display: none; /* 隐藏滚动条 */
             }
+            .fit_btn{
+                width: 100%;
+            }
+            .fit_btn {
+                width: 100%;
+                padding: 12px 20px;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                margin-bottom: 20px;
+            }
         </style>
         <!-- 主题设置面板 -->
         <div class="settings_box" id="themeSettingsPanel" style="height: 100vh;display: flex;">
@@ -211,6 +227,15 @@
                         </label>
                     </div>
                 </div>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>全屏模式</span>
+                        <label class="switch">
+                            <input type="checkbox" id="fullScreenToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
                 <div class="settings-section" style="margin-bottom: 20px;">
                     <div class="system-theme-toggle">
                         <span>跟随系统主题</span>
@@ -220,7 +245,7 @@
                         </label>
                     </div>
                 </div>
-                
+                <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
                 <div class="settings-section">
                     <h4>选择主题</h4>
                     <div class="theme-cards">

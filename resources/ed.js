@@ -95,6 +95,9 @@ function showContextMenu(e, file) {
     contextMenu.style.display = 'block';
     contextMenu.style.left = `${e.pageX}px`;
     contextMenu.style.top = `${e.pageY}px`;
+    if(e.pageY+contextMenu.offsetHeight>window.innerHeight){
+        window.scrollTo(0, document.documentElement.scrollHeight)
+    }
 }
 
 // 隐藏右键菜单
@@ -104,6 +107,7 @@ function hideContextMenu() {
 
 // 显示重命名对话框
 function showRenameDialog() {
+    window.pywebview.api.disable_autoshount()
     const renameOverlay = document.getElementById('renameOverlay');
     const renameInput = document.getElementById('renameInput');
     
@@ -273,6 +277,7 @@ window.addEventListener('pywebviewready',async function() {
     const closeBtn = document.getElementById('closeThemePanel');
     const followSystemToggle = document.getElementById('followSystemTheme');
     const autoStartToggle = document.getElementById('autoStartToggle');
+    const fullScreenToggle = document.getElementById('fullScreenToggle');
     const themeCards = document.querySelectorAll('.theme-card');
     
     // 切换设置面板显示
@@ -298,6 +303,9 @@ window.addEventListener('pywebviewready',async function() {
 
         // pack自启动
         autoStartToggle.checked = config.auto_start;
+
+        // 全屏
+        fullScreenToggle.checked = config.full_screen;
         
         // 清除所有主题卡片的active状态
         themeCards.forEach(card => card.classList.remove('active'));
@@ -360,6 +368,11 @@ window.addEventListener('pywebviewready',async function() {
     autoStartToggle.addEventListener('change', function() {
         const auto_start_result = this.checked;
         window.pywebview.api.update_config("auto_start",auto_start_result);
+    });
+    // 全屏设置
+    fullScreenToggle.addEventListener('change', function() {
+        const full_screen_result = this.checked;
+        window.pywebview.api.update_config("full_screen",full_screen_result);
     });
     
     // 主题卡片点击事件
@@ -599,17 +612,20 @@ menuPaste.addEventListener('click',async function() {
 
 // 新建按钮事件
 menuNew.addEventListener('click', function() {
+    window.pywebview.api.disable_autoshount()
     newFileOverlay.style.display = 'flex';
     blankMenu.style.display = 'none';
 });
 
 // 取消新建
 newFileCancel.addEventListener('click', function() {
+    window.pywebview.api.enable_autoshount()
     newFileOverlay.style.display = 'none';
 });
 
 // 确认新建
 newFileConfirm.addEventListener('click',async function() {
+    window.pywebview.api.enable_autoshount()
     const selectedType = newFileTypeSelect.value;
     if (selectedType) {
         await new_file(selectedType);
@@ -714,6 +730,7 @@ window.addEventListener('pywebviewready',async function() {
     document.getElementById('renameCancel').addEventListener('click', function() {
         if(dealling)return
         dealling = true
+        window.pywebview.api.enable_autoshount()
         document.getElementById('renameOverlay').style.display = 'none';
         dealling = false
     });
@@ -721,6 +738,7 @@ window.addEventListener('pywebviewready',async function() {
     document.getElementById('renameConfirm').addEventListener('click', function() {
         if(dealling)return
         dealling = true
+        window.pywebview.api.enable_autoshount()
         const newName = document.getElementById('renameInput').value.trim();
         if (newName) {
             rename_file(selectedFile.filePath, newName);
@@ -750,6 +768,7 @@ window.addEventListener('pywebviewready',async function() {
     
     // 重命名输入框按回车确认
     document.getElementById('renameInput').addEventListener('keyup', function(e) {
+        window.pywebview.api.enable_autoshount()
         if (e.key === 'Enter') {
             document.getElementById('renameConfirm').click();
         }
@@ -888,6 +907,20 @@ document.addEventListener('keydown', function(event) {
         }
     }
 });
+async function fit_window(){
+    window.pywebview.api.fit_window_start()
+}
+async function disable_settings(){
+    document.getElementById("fit_btn").innerText = "点击完成调整"
+    document.getElementById("fit_btn").onclick=async function(){ 
+        window.pywebview.api.fit_window_end()
+    }
+    document.getElementById("closeThemePanel").style.display = "none"
+    document.querySelectorAll(".settings-section").forEach((item)=>{
+        console.log(item)
+        item.style.display = "none"
+    })
+}
 function disableScroll() {
     document.body.style.overflow = "hidden"
     document.addEventListener('touchmove', preventDefault, { passive: false });
@@ -910,3 +943,11 @@ function preventDefault(e) {
     }
 }
 disableScroll()
+
+document.addEventListener('click', function(event) {
+    console.log("click")
+    console.log(event.target)
+    if (["content_box", "main"].includes(event.target.id)) {
+        window.pywebview.api.fullS_close();
+    }
+});
