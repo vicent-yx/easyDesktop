@@ -14,8 +14,20 @@ import json
 from PIL import Image
 import winreg as reg
 import sys
+from easygui import msgbox,buttonbox
 from ctypes import windll
+from threading import Thread
+from requests import get as requests_get
+import webbrowser
 
+os.environ["FUSION_LOG"] = "1"
+os.environ["FUSION_LOG_PATH"] = "/logs/"
+try:
+    dll_path = os.environ.get('PYTHONNET_PYDLL')
+    if dll_path and os.path.exists(dll_path):
+        windll(dll_path)  # 测试直接加载
+except:
+    msgbox("无法加载pythonnet")
 def get_real_path():
     if getattr(sys, 'frozen', False):
         return os.path.dirname(sys.executable)
@@ -36,7 +48,8 @@ else:
         "auto_start":False,
         "use_bg":False,
         "bg":"",
-        "ms_ef":0
+        "ms_ef":0,
+        "ign_update":""
     }
     json.dump(config, open("config.json", "w"))
 
@@ -361,7 +374,34 @@ def sys_theme():
         window.evaluate_js("load_theme('dark')")
     else:
         window.evaluate_js("load_theme('light')")
+
+def check_update():
+    global config
+    try:
+        r = requests_get("https://api.codevicent.xyz/app_inf/ed")
+    except:
+        print("无法访问更新服务器")
+        return
+    if r.status_code!=200:
+        print("无法访问更新服务器")
+        return
+    r = json.loads(str(r.content,"utf-8"))
+    if r["v"]!="1.4.3":
+        print("有新版本")
+        if config["ign_update"]==r["v"]:
+            return
+        ask = buttonbox("EasyDesktop有新版本，是否前往更新？\n"+r["update_inf"], "EasyDesktop更新检查",choices=("前往更新","忽略此版本","取消"))
+        if ask=="前往更新":
+            webbrowser.open(r["download_url"])
+        elif ask=="忽略此版本":
+            update_config("ign_update",r["v"])
+        else:
+            pass
+    else:
+        print("无新版本")
+
 def on_loaded():
+    Thread(target=check_update).start()
     sys_theme()
     if config["view"]=="list":
         window.evaluate_js("list_view()")
@@ -369,7 +409,17 @@ def on_loaded():
         window.evaluate_js("grid_view()")
     moveIn_window()
     # wait_open()
-
+def update_config(part,data):
+    global config
+    config[part]=data
+    json.dump(config, open("config.json", "w"))
+    if part=="follow_sys" and data==True:
+        sys_theme()
+    if part=="auto_start":
+        if data==True:
+            autoStart_registry()
+        else:
+            remove_autoStart_registry()
 def autoStart_registry():
     python_exe = sys.executable
     script_path = os.path.abspath(sys.argv[0])
@@ -398,8 +448,9 @@ class appAPI():
         global ignore_action
         file_types = ('Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)', 'All files (*.*)')
         ignore_action = True
-        bg_file = window.create_file_dialog(file_types=file_types,allow_multiple=False)[0]
+        bg_file = window.create_file_dialog(file_types=file_types,allow_multiple=False)
         ignore_action = False
+        bg_file = bg_file[0]
         if bg_file:
             file_path = "bg."+str(bg_file).split(".")[-1]
             if os.path.exists(config["bg"]):
@@ -411,17 +462,7 @@ class appAPI():
         global config
         return config
     def update_config(self,part,data):
-        print("update_config",part,data)
-        global config
-        config[part]=data
-        json.dump(config, open("config.json", "w"))
-        if part=="follow_sys" and data==True:
-            sys_theme()
-        if part=="auto_start":
-            if data==True:
-                autoStart_registry()
-            else:
-                remove_autoStart_registry()
+        update_config(part,data)
     def where_d(self):
         return desktop_path
     def get_parent(self,path):
