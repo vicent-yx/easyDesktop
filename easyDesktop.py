@@ -6,7 +6,7 @@ import win32api
 import win32con
 import time
 import webview
-import pyautogui
+import pystray
 import subprocess
 from pypinyin import pinyin, Style ,lazy_pinyin
 import shutil
@@ -20,9 +20,31 @@ from ctypes import windll
 from threading import Thread
 from requests import get as requests_get
 import webbrowser
-import pythoncom
+from pyautogui import size
+import keyboard
+import send2trash
+import re
+import win32ui
+import pygetwindow as gw
+import psutil
 
+def is_already_running(mutex_name):
+    mutex = windll.kernel32.CreateMutexW(None, False, mutex_name)
+    last_error = windll.kernel32.GetLastError()
+    return last_error == 183  # ERROR_ALREADY_EXISTS
+if is_already_running("Global\\YourAppName_123e4567-e89b-12d3-a456-426614174000"):
+    msgbox("检测到正在运行的easyDesktop.exe~")
+    os._exit(0)
 
+try:
+    json.dump("",open("test.json","w",encoding="utf-8"))
+except PermissionError:
+    msgbox("遇到权限问题，请以管理员身份运行或将软件安装到非C盘目录，否则将无法使用自定义背景及设置保存功能。","EasyDesktop")
+finally:
+    if os.path.exists("test.json"):
+        os.remove("test.json")
+
+icon = None
 hwnd = None
 os.environ["FUSION_LOG"] = "1"
 os.environ["FUSION_LOG_PATH"] = "/logs/"
@@ -39,8 +61,23 @@ def get_real_path():
         return os.path.dirname(os.path.abspath(__file__))
 os.chdir(get_real_path())
 
-screen_width = win32api.GetSystemMetrics(0)
-screen_height = win32api.GetSystemMetrics(1)
+def get_screenSize():
+    r1_width = win32api.GetSystemMetrics(0)
+    r1_height = win32api.GetSystemMetrics(1)
+
+    r2_width,r2_height = size()
+    if r1_width==r2_width and r1_height==r2_height:
+        return r2_width,r2_height
+    else:
+        add_c_1 = r1_width+r1_width
+        add_c_2 = r2_height+r2_height
+        if add_c_1>add_c_2:
+            return r1_width,r1_height
+        else:
+            return r2_width,r2_height
+        
+screen_width,screen_height=get_screenSize()
+print(screen_width,screen_height)
 width = int(screen_width*0.65)
 height = int(screen_height*0.4)
 if os.path.exists("config.json"):
@@ -59,11 +96,16 @@ else:
         "ign_update":"",
         "width":width,
         "height":height,
-        "full_screen":False
+        "full_screen":False,
+        "fdr":True,
+        "cf_type":"1",
+        "show_sysApp":False
     }
     json.dump(config, open("config.json", "w"))
 print("init", config)
 
+had_open_win = False
+key_quik_start = False
 had_clear_fit = False
 fullS_close = False
 resize_window = None
@@ -101,6 +143,19 @@ file_ico = {
 
     "unkonw":"./resources/file_icos/unkonw.png"
 }
+def putOut_window(cf):
+    global key_quik_start,config,window_state,fullS_close
+    if cf == config["cf_type"]:
+        if window_state == False:
+            key_quik_start = True
+        else:
+            fullS_close = True
+def key_cf2():
+    putOut_window("2")
+def key_cf3():
+    putOut_window("3")
+keyboard.add_hotkey('windows+shift',key_cf2)
+keyboard.add_hotkey('windows+`',key_cf3)
 def get_sfb():
     windll.user32.SetProcessDPIAware()
     try:
@@ -127,9 +182,7 @@ def turn_png(file_path):
             png_path = os.path.splitext(file_path)[0] + '.png'
             img.save(png_path, 'PNG')
             # os.remove(file_path)
-            new_path = os.path.splitext(file_path)[0] + '.png'
-            os.rename(png_path, new_path)
-            return new_path
+            return png_path
             
     except Exception as e:
         print(f"转换过程中发生错误: {str(e)}")
@@ -145,13 +198,76 @@ def get_icon(exe_path,name):
         output_path = "./desktopICO/"+dir_name+"/"+name+'.ico'
         extractor = IconExtractor(exe_path)
         extractor.export_icon(output_path)
-        had_load_exe[exe_path]=output_path
         output_path=turn_png(output_path)
+        had_load_exe[exe_path]=output_path
         return output_path
     except Exception as e:
         print(e, "\n", exe_path)
         return "/resources/file_icos/exe.png"
+def get_url_icon(url_path):
+    print(url_path)
+    dir_name = os.path.dirname(url_path).replace("/","-").replace(R"\\","-").replace(":","-")
+    # 解析 .url 文件
+    icon_file = None
+    icon_index = 0
+    try:
+        with open(url_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        icon_match = re.search(r'IconFile\s*=\s*(.*)', content, re.IGNORECASE)
+        index_match = re.search(r'IconIndex\s*=\s*(\d+)', content, re.IGNORECASE)
+        
+        if icon_match:
+            icon_file = icon_match.group(1).strip()
+            if icon_file.startswith('"') and icon_file.endswith('"'):
+                icon_file = icon_file[1:-1]
+            icon_file = os.path.expandvars(icon_file)
+            if not os.path.isabs(icon_file):
+                base_dir = os.path.dirname(os.path.abspath(url_path))
+                icon_file = os.path.join(base_dir, icon_file)
+        
+        if index_match:
+            icon_index = int(index_match.group(1))
+    except Exception as e:
+        print(f"解析 .url 文件失败: {e}")
+        return "/resources/file_icos/exe.png"
 
+    if not icon_file or not os.path.exists(icon_file):
+        print(f"图标文件不存在: {icon_file}")
+        return "/resources/file_icos/exe.png"
+
+    # 从文件资源中提取图标
+    try:
+        large, small = win32gui.ExtractIconEx(icon_file, icon_index)
+        if not large and not small:
+            return "/resources/file_icos/exe.png"
+        hicon = large[0] if large else small[0]
+        ico_x = win32api.GetSystemMetrics(win32con.SM_CXICON)
+        ico_y = win32api.GetSystemMetrics(win32con.SM_CYICON)
+        hdc = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
+        hbmp = win32ui.CreateBitmap()
+        hbmp.CreateCompatibleBitmap(hdc, ico_x, ico_y)
+        hdc = hdc.CreateCompatibleDC()
+        hdc.SelectObject(hbmp)
+        hdc.DrawIcon((0, 0), hicon)
+        bmp_info = hbmp.GetInfo()
+        bmp_bytes = hbmp.GetBitmapBits(True)
+        image = Image.frombuffer(
+            'RGBA',
+            (bmp_info['bmWidth'], bmp_info['bmHeight']),
+            bmp_bytes, 'raw', 'BGRA', 0, 1
+        )
+        
+        # 清理资源
+        win32gui.DestroyIcon(hicon)
+        del hdc
+        del hbmp
+        if not os.path.exists("./desktopICO/"+dir_name):
+            os.makedirs("./desktopICO/"+dir_name)
+        image.save("./desktopICO/"+dir_name+"/"+os.path.basename(url_path)+'.png')
+        return "./desktopICO/"+dir_name+"/"+os.path.basename(url_path)+'.png'
+    except Exception as e:
+        print(f"提取图标失败: {e}")
+        return "/resources/file_icos/exe.png"
 def get_shortcut_target(shortcut_path):
     if not os.path.exists(shortcut_path):
         raise FileNotFoundError(f"快捷方式文件 {shortcut_path} 不存在")
@@ -176,6 +292,7 @@ def check_recover(data,match):
             break
     return result
 def update_inf(dir_path):
+    global config
     out_data = []
     exe_data = []
     dir_data = []
@@ -198,45 +315,55 @@ def update_inf(dir_path):
             full_path = os.path.join(current_dir, item)
             if os.path.isfile(full_path):
                 extension = os.path.splitext(full_path)[1]
-                if ".lnk" in extension:
+                if ".lnk" == extension:
                     target_path = get_shortcut_target(full_path)
                     extension = os.path.splitext(target_path)[1]
-                    if ".exe" in extension:
+                    if ".exe" == extension:
                         # 针对米哈游游戏的适配
                         if "miHoYo" in target_path and "launcher" in target_path:
                             if "原神" in item or "Genshin Impact" in item:
                                 exe_icon = "./resources/file_icos/ys.ico"
-                                game = "ys"
                             elif "星穹铁道" in item or "Star Rail" in item:
                                 exe_icon = "./resources/file_icos/sr.ico"
-                                game = "sr"
                             elif "绝区零" in item or "Zero" in item:
                                 exe_icon = "./resources/file_icos/zzz.ico"
-                                game = "zzz"
                             elif "崩坏3" in item or "Honkai Impact 3" in item:
                                 exe_icon = "./resources/file_icos/bh3.ico"
-                                game = "bh3"
                             else:
                                 exe_icon = "./resources/file_icos/mhy_lancher.ico"
-                                game = "mhy"
-                            exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":target_path,"ico":exe_icon,"game":game})
+                            exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":full_path,"ico":exe_icon})
                         else:
                             if not target_path in had_load_exe:
                                 exe_icon=get_icon(target_path,item)
                             else:
                                 exe_icon = had_load_exe[target_path]
-                            exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":target_path,"ico":exe_icon})
+                            exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(target_path),"filePath":full_path,"ico":exe_icon})
                         continue
+                    elif ".url" == extension:
+                        icon_image = get_url_icon(target_path)
+                        exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(full_path),"filePath":full_path,"ico":icon_image})
                     else:
                         if os.path.isfile(target_path):
                             file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":target_path,"ico":match_ico(item)})
                         else:
                             dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":target_path,"ico":"./resources/file_icos/dir.png","mark":1})
                         continue
+                elif ".url" == extension:
+                    icon_image = get_url_icon(full_path)
+                    exe_data.append({"fileName":filename,"fileType":extension,"file":os.path.basename(full_path),"filePath":full_path,"ico":icon_image})
                 else:
                     file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":full_path,"ico":match_ico(item)})
             else:
                 dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":full_path,"ico":"./resources/file_icos/dir.png","mark":2})
+    # if config["show_sysApp"]==True:
+    if config["show_sysApp"]==True and (dir_path=="desktop" or dir_path=="" or dir_path=="/"):
+        sys_app_data=[
+            {"fileName":"此电脑","fileType":"应用程序","file":"_.exe","filePath":"此电脑","ico":"./resources/file_icos/cdn.png","sysApp":True},
+            {"fileName":"控制面板","fileType":"应用程序","file":"_.exe","filePath":"控制面板","ico":"./resources/file_icos/kzmb.png","sysApp":True},
+            {"fileName":"回收站","fileType":"应用程序","file":"_.exe","filePath":"回收站","ico":"./resources/file_icos/rbs.png","sysApp":True}
+        ]
+        for item in sys_app_data:
+            out_data.append(item)
     for item in exe_data:
         if check_recover(out_data,item)==True:
             continue
@@ -258,6 +385,32 @@ def hide_from_taskbar(window):
     style = windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
     style = (style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW
     windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
+def is_focused_window_fullscreen():
+    try:
+        # 获取当前获焦窗口
+        active_window = gw.getActiveWindow()
+        
+        if not active_window:
+            return False
+            
+        # 获取主显示器信息（通常第一个显示器是主显示器）
+        screen_width, screen_height = get_screenSize()
+        
+        # 获取窗口位置和尺寸
+        window = active_window
+        window_left, window_top = window.left, window.top
+        window_width, window_height = window.width, window.height
+        
+        # 检查窗口是否覆盖整个屏幕（允许几个像素的误差）
+        tolerance = 5  # 像素容差
+        return (abs(window_left) <= tolerance and
+                abs(window_top) <= tolerance and
+                abs(window_width - screen_width) <= tolerance and
+                abs(window_height - screen_height) <= tolerance)
+    
+    except Exception as e:
+        print(f"检测全屏时出错: {e}")
+        return False
 def is_desktop_and_mouse_in_corner():
     try:
         screen_width = win32api.GetSystemMetrics(0)
@@ -284,10 +437,26 @@ def is_mouse_in_easyDesktop():
     except:
         return False
 def wait_open():
+    global key_quik_start,config
+    start_wait_time = int(time.time())
+    had_reflesh = False
     while True:
-        if is_desktop_and_mouse_in_corner():
-            out_window()
-            break
+        if int(time.time())-start_wait_time>3:
+            if had_reflesh==False:
+                window.evaluate_js("document.getElementById('b2d').click()")
+                had_reflesh = True
+        if config["fdr"]==True:
+            if is_focused_window_fullscreen()==True:
+                time.sleep(1)
+                continue
+        if config["cf_type"]=="2" or config["cf_type"]=="3":
+            if key_quik_start==True:
+                out_window()
+                break
+        else:
+            if is_desktop_and_mouse_in_corner():
+                out_window()
+                break
         if window_state==True:
             break
         time.sleep(0.5)
@@ -307,24 +476,38 @@ def get_window_rect(hwnd):
         'height': rect[3] - rect[1]
     }
 
-def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=60, delay=0.005):
+def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=60, delay=0.003):
+    global window,config
+    screen_width, screen_height = get_screenSize()
     for i in range(steps + 1):
         progress = i / steps
         eased_progress = ease_out_quad(progress)
         current_x = start_x + (end_x - start_x) * eased_progress
         current_y = start_y + (end_y - start_y) * eased_progress
-        win32gui.MoveWindow(hwnd, int(current_x), int(current_y), width, height, True)
+        if config["full_screen"]==True:
+            if start_x<end_x:
+                win32gui.MoveWindow(hwnd, int(current_x), int(current_y), screen_width, screen_height, True)
+                # win32gui.MoveWindow(hwnd, int(current_x), int(current_y), int(screen_width*eased_progress), int(screen_height*eased_progress), True)
+            else:
+                win32gui.MoveWindow(hwnd, int(current_x), int(current_y), int(screen_width-(screen_width*eased_progress)), int(screen_height-(screen_height*eased_progress)),True)
+        else:
+            if start_x<end_x:
+                win32gui.MoveWindow(hwnd, int(current_x), int(current_y), width, height, True)
+                # win32gui.MoveWindow(hwnd, int(current_x), int(current_y), int(0+(config["width"])*eased_progress), int(0+(config["height"])*eased_progress), True)
+            else:
+                win32gui.MoveWindow(hwnd, int(current_x), int(current_y), int(config["width"]-(config["width"]*eased_progress)), int(config["height"]-(config["height"]*eased_progress)),True)
         time.sleep(delay)
 
 def out_window():
-    global moving,ignore_action,fullS_close
+    global moving,ignore_action,fullS_close,key_quik_start
+    key_quik_start=False
     if moving == True:
         return
     moving = True
     window_state=True
     if config["full_screen"]==False:
         window.resize(config["width"],config["height"])
-    window.evaluate_js("document.getElementById('b2d').click();document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
+    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
     hwnd = win32gui.FindWindow(None, "easyDesktop")
     hide_from_taskbar(window)
     if not hwnd:
@@ -352,25 +535,23 @@ def out_window():
     time.sleep(0.1)
     window.show()
     animate_window(hwnd, start_x, start_y, end_x, end_y, width, height)
+    # if config["full_screen"]==True:
+    #     while True:
+    #         if is_desktop_and_mouse_in_corner()==False:
+    #             break
+    #         time.sleep(0.1)
     while True:
-        hwnd = win32gui.FindWindow(None, "easyDesktop")
-        if not hwnd:
+        if is_mouse_in_easyDesktop()==True:
             break
-        try:
-            left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-            point = win32api.GetCursorPos()
-            above_window = (point[1] <= bottom and point[0] >= left and point[0] <= right)
-        except:
-            break
-        finally:
-            if above_window:
-                break
+        time.sleep(0.1)
     moving = False
     while True:
-        if (is_mouse_in_easyDesktop()==False and ignore_action==False) or fullS_close==True:
+        if ((is_mouse_in_easyDesktop()==False and ignore_action==False) and config["full_screen"]==False) or fullS_close==True:
             fullS_close=False
             moveIn_window()
             break
+        # if config["full_screen"] == True and is_desktop_and_mouse_in_corner()==True:
+        #     fullS_close = True
         if window_state==False:
             break
         time.sleep(0.1)
@@ -395,7 +576,7 @@ def moveIn_window():
     start_x = -width
     start_y = screen_height - height // 2
     animate_window(hwnd, current_x, current_y, start_x, start_y, width, height)
-    # window.hide()
+    window.hide()
     moving = False
     wait_open()
 def sys_theme():
@@ -415,7 +596,7 @@ def check_update():
         print("无法访问更新服务器")
         return
     r = json.loads(str(r.content,"utf-8"))
-    if r["v"]!="1.6.0":
+    if r["v"]!="1.7.0":
         print("有新版本")
         if config["ign_update"]==r["v"]:
             return
@@ -432,9 +613,10 @@ def check_update():
 def on_loaded():
     global hwnd,config
     if config["full_screen"]==True:
-        window.toggle_fullscreen()
+        window.resize(screen_width,screen_height)
     window.hide()
     Thread(target=check_update).start()
+    Thread(target=stray).start()
     sys_theme()
     if config["view"]=="list":
         window.evaluate_js("list_view()")
@@ -455,7 +637,6 @@ def update_config(part,data):
         else:
             remove_autoStart_registry()
     if part == "full_screen":
-        window.toggle_fullscreen()
         if data==False:
             ignore_action = True
             window.resize(config["width"],config["height"])
@@ -463,6 +644,10 @@ def update_config(part,data):
             win32gui.MoveWindow(hwnd, int(end_x), int(end_y), width, height, True)
             time.sleep(1)
             ignore_action = False
+        else:
+            win32gui.MoveWindow(hwnd, 0, 0, screen_width, screen_height, True)
+    if part == "show_sysApp":
+        window.evaluate_js("document.getElementById('b2d').click();")
 def autoStart_registry():
     python_exe = sys.executable
     script_path = os.path.abspath(sys.argv[0])
@@ -498,6 +683,40 @@ def get_initials(text):
 def getPinyin(text):
     result = "".join(lazy_pinyin(text, style=Style.NORMAL, errors="default"))
     return result
+def quit_ed():
+    global icon
+    window.destroy()
+    icon.stop()
+    os._exit(0)
+    
+def stray():
+    global icon
+    image = Image.open("ed_logo.png")
+    icon = pystray.Icon("name", image, "title")
+    menu = (pystray.MenuItem("Exit", quit_ed),)
+    icon.menu = menu
+    icon.run()
+def open_windows_system_component(component_name):
+    commands = {
+        "此电脑": r'explorer.exe shell:MyComputerFolder',
+        "控制面板": r'explorer.exe shell:::{26EE0668-A00A-44D7-9371-BEB064C98683}',
+        "回收站": r'explorer.exe shell:RecycleBinFolder'
+    }
+    if component_name not in commands:
+        return False
+    try:
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        startupinfo.wShowWindow = 0
+        subprocess.Popen(
+            commands[component_name],
+            startupinfo=startupinfo,
+            shell=True
+        )
+        return True
+    except Exception as e:
+        print(f"打开 {component_name} 时出错: {str(e)}")
+        return False
 class appAPI():
     def set_bg(self):
         global ignore_action
@@ -526,6 +745,7 @@ class appAPI():
         outData = {}
         for f in data:
             outData[f["fileName"]]={"sxpy":get_initials(f["fileName"]),"py":getPinyin(f["fileName"])}
+        return outData
     def fit_window_start(self):
         global ignore_action,config,resize_window,hwnd,had_clear_fit
         if config["full_screen"]==True:
@@ -551,19 +771,27 @@ class appAPI():
         print("config:",config["width"],config["height"])
         print("window: ",width,height)
         print("webview:",window.width,window.height)
+        time.sleep(3)
         while True:
             try:
                 resize_window.get_cookies()
+                active_window = gw.getActiveWindow()
+                if active_window.title != "easyDesktop-fit":
+                    break
             except:
-                if had_clear_fit==False:
-                    self.fit_window_end()
                 break
+            print("1")
             time.sleep(0.1)
+        if had_clear_fit==False:
+            self.fit_window_end()
     def fit_window_end(self):
         global ignore_action,config,resize_window,had_clear_fit
         had_clear_fit = True
-        width,height,end_x,end_y=get_windowInf(resize_window.title)
-        sfb = get_sfb()
+        try:
+            width,height,end_x,end_y=get_windowInf(resize_window.title)
+        except:
+            window.show()
+            return
         window.resize(width,height)
         update_config("width",width)
         update_config("height",height)
@@ -583,26 +811,19 @@ class appAPI():
         if config["full_screen"]==True:
             fullS_close = True
     def open_file(self,file_path):
+        global fullS_close
         os.startfile(file_path)
-        moveIn_window()
+        fullS_close = True
         return {"success":True}
     
     def show_file(self,file_path):
+        global fullS_close
         file = os.path.realpath(file_path)
         subprocess.Popen(f'explorer /select, {file}', shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
-        moveIn_window()
+        fullS_close = True
         return {"success":True}
-    def open_mhyGame(self,file_path,game):
-        open_command = {
-            "ys":"--game=hk4e_cn",
-            "sr":"--game=hkrpg_cn",
-            "zzz":"--game=nap_cn",
-            "bh3":"--game=bh3_cn"
-        }
-        game_c = ""
-        if game in open_command.keys():
-            game_c = open_command[game]
-        subprocess.Popen(f'"{file_path}" {game_c}', shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, encoding='utf-8')
+    def open_sysApp(self,file_path):
+        open_windows_system_component(file_path)
     def copy_file(self,file_path):
         subprocess.run(['powershell', '-Command', f'Get-Item {file_path} | Set-Clipboard'],shell=False,creationflags=subprocess.CREATE_NO_WINDOW)
         return {"success":True}
@@ -612,10 +833,16 @@ class appAPI():
         else:
             new_path = os.path.join(os.path.dirname(file_path), new_name)
         os.rename(file_path, os.path.join(os.path.dirname(file_path), new_path))
-        return {"success":True}
-    def remove_file(self,file_path):
+        return {"success":True,"file":new_path}
+    def remove_file(self,file_path,del_type="remove"):
         try:
-            os.remove(file_path)
+            if del_type=="rubbish":
+                send2trash.send2trash(file_path)
+                return {"success":True}
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
         except:
             return {"success":False,"message":"拒绝访问（无权限）"}
         finally:
@@ -640,7 +867,7 @@ class appAPI():
                         f.write("")
                         f.close()
                 print(f"已创建: {file_path}")
-                return file_path
+                return {"success":True,"file":file_path}
             count = 1
             while True:
                 if suffix == "folder":
@@ -659,12 +886,10 @@ class appAPI():
                             f.write("")
                             f.close()
                     print(f"已创建: {new_path}")
-                    return {"success":True}
+                    return {"success":True,"file":new_path}
                 count += 1
         except:
             return {"success":False,"message":"拒绝访问"}
-        finally:
-            return {"success":True}
     def disable_autoshount(self):
         global ignore_action
         ignore_action = True
@@ -707,14 +932,13 @@ class appAPI():
                     dest_path = os.path.join(desktop_path, new_filename)
                     counter += 1
                 shutil.copy2(src_path, dest_path)
-                saved_files.append(dest_path)
-            return {"success":True}
+                saved_files.append(os.path.abspath(dest_path))
         except subprocess.CalledProcessError as e:
             return {"success":False,"message":f"粘贴失败: {e.stderr}"}
         except Exception as e:
             return {"success":False,"message":f"粘贴失败: {str(e)}"}
         finally:
-            return {"success":True}
+            return {"success":True,"files":saved_files}
 webview.settings['ALLOW_FILE_URLS'] = True
 window = webview.create_window(
     'easyDesktop',

@@ -123,6 +123,14 @@ body {
     opacity: 1;
     z-index: 10;
 }
+.file-item_hover {
+    background: rgba(40, 40, 60, 0.8);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    opacity: 1;
+    z-index: 10;
+}
 
 .file-icon {
     width: 64px;

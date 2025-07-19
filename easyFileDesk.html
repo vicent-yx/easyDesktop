@@ -111,7 +111,8 @@
                     <p>您确定要删除文件 "<span id="deleteFileName"></span>" 吗？此操作不可恢复。</p>
                     <div class="delete-buttons">
                         <button class="delete-btn cancel" id="deleteCancel">取消</button>
-                        <button class="delete-btn confirm" id="deleteConfirmBtn">确认删除</button>
+                        <button class="delete-btn confirm" id="deleteConfirmBtn">彻底删除</button>
+                        <button class="delete-btn confirm" id="deleteConfirmBtn_r">移到回收站</button>
                     </div>
                 </div>
             </div>
@@ -209,6 +210,28 @@
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
                 margin-bottom: 20px;
             }
+            #cf_type_toggle {
+                width: 50%;
+                padding: 5px 10px;
+                font-size: 14px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                background-color: #fff;
+                appearance: none; /* 移除默认下拉箭头 */
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>"); /* 自定义下拉箭头 */
+                background-repeat: no-repeat;
+                background-position: right 10px center;
+                background-size: 20px;
+                transition: border-color 0.3s ease;
+            }
+
+            #cf_type_toggle:focus {
+                border-color: #5dade2; /* 聚焦时边框颜色 */
+                outline: none;
+                box-shadow: 0 0 5px rgba(93, 173, 226, 0.5);
+            }
         </style>
         <!-- 主题设置面板 -->
         <div class="settings_box" id="themeSettingsPanel" style="height: 100vh;display: flex;">
@@ -234,6 +257,36 @@
                             <input type="checkbox" id="fullScreenToggle">
                             <span class="slider round"></span>
                         </label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>防打扰</span>
+                        <label class="switch">
+                            <input type="checkbox" id="fdrToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <p id="fdr_note" style="font-size: 10px;color: rgb(163, 163, 163);">当有软件全屏时不触发easyDesktop</p>
+                 <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>显示系统应用</span>
+                        <label class="switch">
+                            <input type="checkbox" id="sysappToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <p id="sys_note" style="font-size: 10px;color: rgb(163, 163, 163);">在桌面显示此电脑、回收站、控制面板</p>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>呼出方式</span>
+                        <select id="cf_type_toggle">
+                            <option value="1">鼠标移到左下角</option>
+                            <option value="2">win+shift</option>
+                            <option value="3">win+~</option>
+                        </select>
                     </div>
                 </div>
                 <div class="settings-section" style="margin-bottom: 20px;">
@@ -280,6 +333,7 @@
                         <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
                     </div>
                 </div>
+                <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.7.0</p>
             </div>
         </div>
     </div>
