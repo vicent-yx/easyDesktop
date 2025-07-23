@@ -1,12 +1,27 @@
+# Custom1(Already deduplicated)
 desktopICO/
 ed/
 build/
 dist/
-bugs_report/
 *.spec
 *.json
 b.html
 bg.png
 bg.jpg
+
+# Custom2(Already deduplicated)
+AppData/
+output/
+.vs/
+.vscode/
+.idea/
+.conda/
+main.build/
+main.dist/
+main.onefile-build/
+report.xml
+nuitka-crash-report.xml
+build_upload.log
+error*.log/
+*log.txt
 *.zip
-*.txt
