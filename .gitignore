@@ -2,9 +2,11 @@ desktopICO/
 ed/
 build/
 dist/
+bugs_report/
 *.spec
 *.json
 b.html
 bg.png
 bg.jpg
 *.zip
+*.txt

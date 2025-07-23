@@ -4,6 +4,7 @@ import win32com.client
 import win32gui
 import win32api
 import win32con
+# import win32event
 import time
 import webview
 import pystray
@@ -26,15 +27,20 @@ import send2trash
 import re
 import win32ui
 import pygetwindow as gw
-import psutil
 
-def is_already_running(mutex_name):
-    mutex = windll.kernel32.CreateMutexW(None, False, mutex_name)
-    last_error = windll.kernel32.GetLastError()
-    return last_error == 183  # ERROR_ALREADY_EXISTS
-if is_already_running("Global\\YourAppName_123e4567-e89b-12d3-a456-426614174000"):
-    msgbox("检测到正在运行的easyDesktop.exe~")
-    os._exit(0)
+# def is_already_running():
+#     mutex_name = windll.kernel32.CreateMutexW(None, False,"EasyDesktop_Mutex_UniqueName")
+#     try:
+#         mutex = win32event.CreateMutex(None, False, mutex_name)
+#         last_error = win32api.GetLastError()
+        
+#         if last_error == win32event.ERROR_ALREADY_EXISTS:
+#             return False
+#         return True
+#     except:
+#         return True
+# if is_already_running():
+#     os._exit(0)
 
 try:
     json.dump("",open("test.json","w",encoding="utf-8"))
@@ -80,10 +86,7 @@ screen_width,screen_height=get_screenSize()
 print(screen_width,screen_height)
 width = int(screen_width*0.65)
 height = int(screen_height*0.4)
-if os.path.exists("config.json"):
-    config = json.load(open("config.json"))
-else:
-    config = {
+defeat_config = {
         "theme":"light",
         "language":"zh-CN",
         "follow_sys":True,
@@ -99,10 +102,22 @@ else:
         "full_screen":False,
         "fdr":True,
         "cf_type":"1",
-        "show_sysApp":False
+        "out_cf_type":"1",
+        "show_sysApp":False,
+        "scale":100,
+        "df_dir":"desktop",
+        "df_dir_name":"桌面",
+        "of_s":True
     }
+if os.path.exists("config.json"):
+    config = json.load(open("config.json"))
+    for c_item in defeat_config.keys():
+        if c_item not in config.keys():
+            config[c_item] = defeat_config[c_item]
     json.dump(config, open("config.json", "w"))
-print("init", config)
+else:
+    config = defeat_config
+    json.dump(config, open("config.json", "w"))
 
 had_open_win = False
 key_quik_start = False
@@ -346,7 +361,7 @@ def update_inf(dir_path):
                         if os.path.isfile(target_path):
                             file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":target_path,"ico":match_ico(item)})
                         else:
-                            dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":target_path,"ico":"./resources/file_icos/dir.png","mark":1})
+                            dir_data.append({"fileName":os.path.basename(full_path),"fileType":"文件夹","file":item,"filePath":target_path,"ico":"./resources/file_icos/dir.png","mark":1})
                         continue
                 elif ".url" == extension:
                     icon_image = get_url_icon(full_path)
@@ -354,9 +369,9 @@ def update_inf(dir_path):
                 else:
                     file_data.append({"fileName":filename,"fileType":extension,"file":item,"filePath":full_path,"ico":match_ico(item)})
             else:
-                dir_data.append({"fileName":filename,"fileType":"文件夹","file":item,"filePath":full_path,"ico":"./resources/file_icos/dir.png","mark":2})
+                dir_data.append({"fileName":item,"fileType":"文件夹","file":item,"filePath":full_path,"ico":"./resources/file_icos/dir.png","mark":2})
     # if config["show_sysApp"]==True:
-    if config["show_sysApp"]==True and (dir_path=="desktop" or dir_path=="" or dir_path=="/"):
+    if config["show_sysApp"]==True and (dir_path=="desktop" or dir_path=="" or dir_path=="/" or dir_path==desktop_path or dir_path==public_desktop):
         sys_app_data=[
             {"fileName":"此电脑","fileType":"应用程序","file":"_.exe","filePath":"此电脑","ico":"./resources/file_icos/cdn.png","sysApp":True},
             {"fileName":"控制面板","fileType":"应用程序","file":"_.exe","filePath":"控制面板","ico":"./resources/file_icos/kzmb.png","sysApp":True},
@@ -392,15 +407,12 @@ def is_focused_window_fullscreen():
         
         if not active_window:
             return False
-            
-        # 获取主显示器信息（通常第一个显示器是主显示器）
         screen_width, screen_height = get_screenSize()
-        
-        # 获取窗口位置和尺寸
         window = active_window
+        if window.title == "Program Manager" or window.title == "":
+            return False
         window_left, window_top = window.left, window.top
-        window_width, window_height = window.width, window.height
-        
+        window_width, window_height = window.width, window.height 
         # 检查窗口是否覆盖整个屏幕（允许几个像素的误差）
         tolerance = 5  # 像素容差
         return (abs(window_left) <= tolerance and
@@ -410,6 +422,14 @@ def is_focused_window_fullscreen():
     
     except Exception as e:
         print(f"检测全屏时出错: {e}")
+        return False
+def is_ed_focused():
+    active_window = gw.getActiveWindow()
+    if not active_window:
+        return False
+    if active_window.title == "easyDesktop":
+        return True
+    else:
         return False
 def is_desktop_and_mouse_in_corner():
     try:
@@ -459,7 +479,7 @@ def wait_open():
                 break
         if window_state==True:
             break
-        time.sleep(0.5)
+        time.sleep(0.4)
 def ease_out_quad(t):
     # 缓动函数
     return t * (2 - t)
@@ -514,7 +534,9 @@ def out_window():
         print("未找到名为 'easyDesktop' 的窗口")
         return False
     try:
-        win32gui.SetForegroundWindow(hwnd)
+        windll.user32.keybd_event(0x12, 0, 0, 0)
+        windll.user32.SetForegroundWindow(hwnd)
+        windll.user32.keybd_event(0x12, 0, 0x0002, 0)
     except:
         pass
     screen_width = win32api.GetSystemMetrics(0)
@@ -532,6 +554,7 @@ def out_window():
         end_y = int(screen_height - ((screen_height * 0.1)+height))
     win32gui.MoveWindow(hwnd, start_x, start_y, width, height, True)
     win32gui.UpdateWindow(hwnd)
+    
     time.sleep(0.1)
     window.show()
     animate_window(hwnd, start_x, start_y, end_x, end_y, width, height)
@@ -546,7 +569,11 @@ def out_window():
         time.sleep(0.1)
     moving = False
     while True:
-        if ((is_mouse_in_easyDesktop()==False and ignore_action==False) and config["full_screen"]==False) or fullS_close==True:
+        if config["out_cf_type"]=="1":
+            tj = (is_mouse_in_easyDesktop()==False and ignore_action==False)
+        else:
+            tj = (is_ed_focused()==False and ignore_action==False)
+        if (tj==True and config["full_screen"]==False) or fullS_close==True:
             fullS_close=False
             moveIn_window()
             break
@@ -575,7 +602,7 @@ def moveIn_window():
     current_y = rect['top']
     start_x = -width
     start_y = screen_height - height // 2
-    animate_window(hwnd, current_x, current_y, start_x, start_y, width, height)
+    animate_window(hwnd, current_x, current_y, start_x, start_y+500, width, height)
     window.hide()
     moving = False
     wait_open()
@@ -596,7 +623,7 @@ def check_update():
         print("无法访问更新服务器")
         return
     r = json.loads(str(r.content,"utf-8"))
-    if r["v"]!="1.7.0":
+    if r["v"]!="1.8.0":
         print("有新版本")
         if config["ign_update"]==r["v"]:
             return
@@ -718,6 +745,19 @@ def open_windows_system_component(component_name):
         print(f"打开 {component_name} 时出错: {str(e)}")
         return False
 class appAPI():
+    def bug_report(self,part,data):
+        if not os.path.exists("bugs_report"):
+            os.mkdir("bugs_report")
+        bugs_report_file = "bugs_report/"+str(int(time.time()))+".txt"
+        with open(bugs_report_file, "w") as f:
+            f.write(f'''
+part: {part},
+error: {data}
+'''                
+            )
+            f.close()
+            msgbox("程序运行出现严重错误，请反馈给开发者，谢谢！\n错误已保存至bugs_report文件夹中\n点击ok将打开错误报告","easydesktop")
+            os.startfile(os.path.abspath(bugs_report_file))
     def set_bg(self):
         global ignore_action
         file_types = ('Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)', 'All files (*.*)')
@@ -780,7 +820,6 @@ class appAPI():
                     break
             except:
                 break
-            print("1")
             time.sleep(0.1)
         if had_clear_fit==False:
             self.fit_window_end()
@@ -801,6 +840,23 @@ class appAPI():
         win32gui.MoveWindow(hwnd, int(end_x), int(end_y), width, height, True)
         time.sleep(1)
         ignore_action = False
+    def change_defeatDir(self,path):
+        if path==None:
+            path = window.create_file_dialog(dialog_type=webview.FOLDER_DIALOG)
+            if path!=None:
+                path = path[0]
+                update_config("df_dir",path)
+                name = os.path.basename(path)
+                if name=="":
+                    name = path.split("\\")[-2]
+                update_config("df_dir_name",name)
+                return {"success":True,"data":path,"name":name}
+            else:
+                return {"success":True,"data":config["df_dir"],"name":config["df_dir_name"]}
+        else:
+            update_config("df_dir","desktop")
+            update_config("df_dir_name","桌面")
+            return {"success":True,"data":path,"name":"桌面"}
     def get_inf(self,path):
         if path == "desktop" or path=="" or path=="\\":
             path = "desktop"
@@ -811,9 +867,10 @@ class appAPI():
         if config["full_screen"]==True:
             fullS_close = True
     def open_file(self,file_path):
-        global fullS_close
+        global fullS_close,config
         os.startfile(file_path)
-        fullS_close = True
+        if config["of_s"]==True:
+            fullS_close = True
         return {"success":True}
     
     def show_file(self,file_path):

@@ -14,7 +14,12 @@ from time import sleep
 import psutil
 from ctypes import windll
 import json
+import win32com
 progressbar=""
+
+def get_desktop_path():
+    shell = win32com.client.Dispatch("WScript.Shell")
+    return shell.SpecialFolders("Desktop")
 def create_shortcut(target_path, shorcut_path,install_path):
     shell = Dispatch('WScript.Shell')
     shortcut = shell.CreateShortcut(shorcut_path)
@@ -168,6 +173,10 @@ def un_install():
     #     download_inf_var.set("卸载失败")
 def install():
     global download_inf_var,install_started,progressbar
+    if os.path.exists(os.path.join(install_path,"config.json")):
+        user_config = json.load(open(os.path.join(install_path,"config.json"),"r",encoding="utf-8"))
+    else:
+        user_config = None
     # try:
     progressbar["mode"]="indeterminate"
     progressbar["orient"]=tkinter.HORIZONTAL
@@ -230,11 +239,14 @@ def install():
     pythoncom.CoInitialize()
     if os.path.exists(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk")):
         os.remove(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk"))
-    desktop_path = os.path.join(os.path.expanduser('~'), 'Desktop')
+    desktop_path = get_desktop_path()
     target_path = os.path.join(install_path,"easyDesktop.exe")
     shortcut_path = os.path.join(desktop_path, 'EasyDesktop.lnk')
     create_shortcut(target_path, shortcut_path,install_path)
     pythoncom.CoUninitialize()
+
+    if user_config!=None:
+        json.dump(user_config, open(os.path.join(install_path,"config.json"),"w",encoding="utf-8"))
 
     download_inf_var.set("完成")
     install_started=False

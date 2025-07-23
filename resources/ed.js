@@ -9,7 +9,7 @@ const scripts_type=[".py",".java",".c",".cpp",".h",".hpp",".cs",".php",".rb",".g
 let files_data = []
 let selectedFile = null;
 let contextMenu = null;
-let dealling = false;
+let dealing = false;
 let currentPath = ''; // 当前浏览路径
 let pathHistory = []; // 路径历史记录
 let currentHistoryIndex = -1; // 当前历史记录索引
@@ -19,6 +19,9 @@ let in_edit = false
 
 // 获取文件类型
 function getFileType(fileName,fileType) {
+    if(fileType == '文件夹'){
+        return '文件夹';
+    }
     const ext = fileName.split('.').pop().toLowerCase();
     const types = {
         'docx': '文档',
@@ -44,9 +47,7 @@ function getFileType(fileName,fileType) {
     }
     if(ext in types){
         return types[ext];
-    } else if(fileType == '文件夹'){
-        return '文件夹';
-    } else {
+    }{
         return fileType.slice(1)+'文件';
     }
 }
@@ -100,14 +101,15 @@ async function remove_file_r(filePath) {
 }
 
 // 显示右键菜单
-function showContextMenu(e, file) {
+async function showContextMenu(e, file) {
     e.preventDefault();
+    config = await window.pywebview.api.get_config();
     blankMenu.style.display = 'none';
     selectedFile = file;
     
     contextMenu.style.display = 'block';
-    contextMenu.style.left = `${e.pageX}px`;
-    contextMenu.style.top = `${e.pageY}px`;
+    contextMenu.style.left = `${e.pageX/(config["scale"]/100)}px`;
+    contextMenu.style.top = `${e.pageY/(config["scale"]/100)}px`;
     if(e.pageY+contextMenu.offsetHeight>window.innerHeight){
         window.scrollTo(0, document.documentElement.scrollHeight)
     }
@@ -145,130 +147,145 @@ function showDeleteConfirm() {
     hideContextMenu();
 }
 async function push(fData = null,useLoadDir = false, path = ''){
-    if(fData==null){
-        if(useLoadDir && path) {
-            files_data = await loadDirectory(path);
-            currentPath = path;
-        } else {
-            files_data = await window.pywebview.api.get_inf("desktop");
-            console.log(files_data);
-            files_data = files_data["data"];
-        }
-        fData = files_data
-    }
-    
-    const filesContainer = document.getElementById('filesContainer');
-    const filesListContainer = document.getElementById('filesListContainer');
-    filesContainer.innerHTML = '';
-    filesListContainer.innerHTML = '';
-    contextMenu = document.getElementById('contextMenu');
-    
-    // 渲染网格视图
-    fData.forEach(file => {
-        const fileElement = document.createElement('div');
-        fileElement.className = 'file-item';
-        
-        const fileType = getFileType(file.file,file.fileType);
-        
-        fileElement.innerHTML = `
-            <img src="${file.ico}" alt="${file.fileName}" class="file-icon">
-            <span class="file-name">${file.fileName}</span>
-            <span class="file-type">${fileType}</span>
-        `;
-        
-        // 添加点击事件
-        fileElement.addEventListener('dblclick', function() {
-            db_click_action = true
-            clearTimeout(timer)
-            if (file.fileType === '文件夹') {
-                open_file(file.filePath);
-            }else if(file.sysApp){
-                window.pywebview.api.open_sysApp(file.filePath);
-            }else {
-                window.pywebview.api.show_file(file.filePath);
+    try{
+        if(fData==null){
+            if(useLoadDir && path) {
+                files_data = await loadDirectory(path);
+                currentPath = path;
+            } else {
+                files_data = await window.pywebview.api.get_inf("desktop");
+                console.log(files_data);
+                files_data = files_data["data"];
             }
-        });
-        fileElement.addEventListener('click', function() {
-            document.getElementById("search_input").value=""
-            timer = setTimeout(async function(){
-                if(db_click_action==true){
-                    db_click_action = false
-                    return
-                }
+            fData = files_data
+        }
+        
+        const filesContainer = document.getElementById('filesContainer');
+        const filesListContainer = document.getElementById('filesListContainer');
+        filesContainer.innerHTML = '';
+        filesListContainer.innerHTML = '';
+        contextMenu = document.getElementById('contextMenu');
+        
+        // 渲染网格视图
+        fData.forEach(file => {
+            const fileElement = document.createElement('div');
+            fileElement.className = 'file-item';
+            
+            const fileType = getFileType(file.file,file.fileType);
+            
+            fileElement.innerHTML = `
+                <img src="${file.ico}" alt="${file.fileName}" class="file-icon">
+                <span class="file-name">${file.fileName}</span>
+                <span class="file-type">${fileType}</span>
+            `;
+            
+            // 添加点击事件
+            fileElement.addEventListener('dblclick', function() {
+                db_click_action = true
+                clearTimeout(timer)
                 if (file.fileType === '文件夹') {
-                    // 进入文件夹
-                    navigateTo(file.filePath);
+                    open_file(file.filePath);
                 }else if(file.sysApp){
                     window.pywebview.api.open_sysApp(file.filePath);
                 }else {
-                    open_file(file.filePath);
+                    window.pywebview.api.show_file(file.filePath);
                 }
-            },200)
+            });
+            fileElement.addEventListener('click', function() {
+                document.getElementById("search_input").value=""
+                timer = setTimeout(async function(){
+                    if(db_click_action==true){
+                        db_click_action = false
+                        return
+                    }
+                    if (file.fileType === '文件夹') {
+                        // 进入文件夹
+                        navigateTo(file.filePath);
+                    }else if(file.sysApp){
+                        window.pywebview.api.open_sysApp(file.filePath);
+                    }else {
+                        open_file(file.filePath);
+                    }
+                },200)
+            });
+            file_e_id = file.filePath
+            while(file_e_id.includes("\\") || file_e_id.includes("/") || file_e_id.includes(":")){
+                file_e_id = file_e_id.replace("\\","-").replace("/","-").replace(":","-")
+            }
+            fileElement.id = file_e_id
+            
+            // 添加右键菜单事件
+            fileElement.addEventListener('contextmenu', function(e) {
+                showContextMenu(e, file);
+            });
+            
+            filesContainer.appendChild(fileElement);
         });
-        file_e_id = file.filePath
-        while(file_e_id.includes("\\") || file_e_id.includes("/") || file_e_id.includes(":")){
-            file_e_id = file_e_id.replace("\\","-").replace("/","-").replace(":","-")
+        if(fData.length == 0){
+            filesContainer.style.minHeight = "75vh"
+        }else{
+            filesContainer.style.minHeight = "0"
         }
-        fileElement.id = file_e_id
-        
-        // 添加右键菜单事件
-        fileElement.addEventListener('contextmenu', function(e) {
-            showContextMenu(e, file);
-        });
-        
-        filesContainer.appendChild(fileElement);
-    });
 
-    // 渲染列表视图
-    fData.forEach(file => {
-        const listItem = document.createElement('div');
-        listItem.className = 'file-list-item';
-        
-        const fileType = getFileType(file.file,file.fileType);
-        
-        listItem.innerHTML = `
-            <img src="${file.ico}" alt="${file.fileName}" class="file-list-icon">
-            <span class="file-list-name">${file.fileName}</span>
-            <span class="file-list-type">${fileType}</span>
-        `;
-        
-        // 添加点击事件
-        listItem.addEventListener('dblclick', function() {
-            db_click_action = true
-            clearTimeout(timer)
-            if (file.fileType === '文件夹') {
-                open_file(file.filePath);
-            }else if(file.sysApp){
-                window.pywebview.api.open_sysApp(file.filePath);
-            }else {
-                window.pywebview.api.show_file(file.filePath);
-            }
-        });
-        listItem.addEventListener('click', function() {
-            document.getElementById("search_input").value=""
-            timer = setTimeout(async function(){
-                if(db_click_action==true){
-                    db_click_action = false
-                    return
-                }
+        // 渲染列表视图
+        fData.forEach(file => {
+            const listItem = document.createElement('div');
+            listItem.className = 'file-list-item';
+            
+            const fileType = getFileType(file.file,file.fileType);
+            
+            listItem.innerHTML = `
+                <img src="${file.ico}" alt="${file.fileName}" class="file-list-icon">
+                <span class="file-list-name">${file.fileName}</span>
+                <span class="file-list-type">${fileType}</span>
+            `;
+            
+            // 添加点击事件
+            listItem.addEventListener('dblclick', function() {
+                db_click_action = true
+                clearTimeout(timer)
                 if (file.fileType === '文件夹') {
-                    // 进入文件夹
-                    navigateTo(file.filePath);
+                    open_file(file.filePath);
                 }else if(file.sysApp){
                     window.pywebview.api.open_sysApp(file.filePath);
                 }else {
-                    open_file(file.filePath);
+                    window.pywebview.api.show_file(file.filePath);
                 }
-            },200)
+            });
+            listItem.addEventListener('click', function() {
+                document.getElementById("search_input").value=""
+                timer = setTimeout(async function(){
+                    if(db_click_action==true){
+                        db_click_action = false
+                        return
+                    }
+                    if (file.fileType === '文件夹') {
+                        // 进入文件夹
+                        navigateTo(file.filePath);
+                    }else if(file.sysApp){
+                        window.pywebview.api.open_sysApp(file.filePath);
+                    }else {
+                        open_file(file.filePath);
+                    }
+                },200)
+            });
+            
+            // 添加右键菜单事件
+            listItem.addEventListener('contextmenu', function(e) {
+                showContextMenu(e, file);
+            });
+            
+            filesListContainer.appendChild(listItem);
         });
-        
-        // 添加右键菜单事件
-        listItem.addEventListener('contextmenu', function(e) {
-            showContextMenu(e, file);
-        });
-        
-        filesListContainer.appendChild(listItem);
-    });
+        if(fData.length == 0){
+            filesContainer.style.minHeight = "75vh";
+        }else{
+            filesContainer.style.minHeight = "0px";
+        }
+    }catch (error) {
+        window.pywebview.api.bug_report("push",error.toString())
+        console.error(error);
+    }
 }
 // 视图切换
 async function grid_view() {
@@ -293,9 +310,28 @@ document.getElementById('listViewBtn').addEventListener('click', function() {
     window.pywebview.api.update_config("view", "list");
 });
 
+async function set_scale(value){
+    let real_scale = value / 100
+    const container = document.getElementById('content_box');
+    container.style.height = 100/real_scale + 'vh';
+    document.body.style.zoom = real_scale;
+}
+async function pack_df_dir_settings(){
+    config = await window.pywebview.api.get_config();
+    setting_btns = document.getElementById("dir_btn_box")
+    document.getElementById("b2d").dataset.path = config.df_dir
+    document.getElementById("b2d").innerText = config.df_dir_name
+    document.getElementById("defeat_dir_show").innerText="当前选择："+config.df_dir
+    if (config.df_dir=="desktop"){
+        setting_btns.children[0].className="dir_btn dir_btn_active"
+        setting_btns.children[1].className="dir_btn"
+    }else{
+        setting_btns.children[0].className="dir_btn"
+        setting_btns.children[1].className="dir_btn dir_btn_active"
+    }
+}
 // 页面加载完成后执行
 window.addEventListener('pywebviewready',async function() {
-    push(null);
     document.getElementById('pathBackBtn').addEventListener('click', async function(){
         parent_path = await window.pywebview.api.get_parent(currentPath)
         navigateTo(parent_path)
@@ -308,8 +344,11 @@ window.addEventListener('pywebviewready',async function() {
     const fullScreenToggle = document.getElementById('fullScreenToggle');
     const themeCards = document.querySelectorAll('.theme-card');
     const fdrToggle = document.getElementById('fdrToggle');
+    const of_sToggle = document.getElementById('of_sToggle');
     const cf_type_select = document.getElementById('cf_type_toggle');
+    const out_cf_type_select = document.getElementById('out_cf_type_toggle');
     const sysappToggle = document.getElementById('sysappToggle');
+    const sc_range = document.getElementById('sc_slider');
     
     // 切换设置面板显示
     settingsBtn.addEventListener('click', function() {
@@ -333,8 +372,13 @@ window.addEventListener('pywebviewready',async function() {
         autoStartToggle.checked = config.auto_start;
         fullScreenToggle.checked = config.full_screen;
         fdrToggle.checked = config.fdr;
+        of_sToggle.checked = config.of_s;
         cf_type_select.value = config.cf_type;
+        out_cf_type_select.value = config.out_cf_type;
         sysappToggle.checked = config.show_sysApp;
+        sc_range.value = config.scale;
+        document.getElementById("sc_input").innerText="缩放比例：" + config.scale + "%"
+        set_scale(config.scale)
         
         // 清除所有主题卡片的active状态
         themeCards.forEach(card => card.classList.remove('active'));
@@ -408,14 +452,29 @@ window.addEventListener('pywebviewready',async function() {
         const fdr_result = this.checked;
         window.pywebview.api.update_config("fdr",fdr_result);
     });
+    of_sToggle.addEventListener('change', function() {
+        const ofs_result = this.checked;
+        window.pywebview.api.update_config("of_s",ofs_result);
+    });
     cf_type_select.addEventListener('change', function() {
         const cf_type_result = this.value;
         window.pywebview.api.update_config("cf_type",cf_type_result);
+    });
+    out_cf_type_select.addEventListener('change', function() {
+        const out_cf_type_result = this.value;
+        window.pywebview.api.update_config("out_cf_type",out_cf_type_result);
     });
     sysappToggle.addEventListener('change', function() {
         const sys_result = this.checked;
         window.pywebview.api.update_config("show_sysApp",sys_result);
     });
+    sc_range.addEventListener('input', function() {
+        const sc_result = this.value;
+        document.getElementById("sc_input").innerText="缩放比例：" + sc_result + "%"
+        window.pywebview.api.update_config("scale",sc_result);
+        set_scale(sc_result)
+    });
+
     
     // 主题卡片点击事件
     themeCards.forEach(card => {
@@ -431,24 +490,52 @@ window.addEventListener('pywebviewready',async function() {
             this.classList.add('active');
         });
     });
-});
+    await pack_df_dir_settings();
+    this_dir = await window.pywebview.api.get_inf(config["df_dir"])
+    push(this_dir.data)
 
+});
+async function change_defeatDir(path=null){
+    window.pywebview.api.disable_autoshount()
+    try{
+        old_path = currentPath
+        old_df_dir = config["df_dir"]
+        r = await window.pywebview.api.change_defeatDir(path);
+        window.pywebview.api.enable_autoshount()
+        if(r["success"]==true){
+            document.getElementById("b2d").dataset.path = r["data"]
+            document.getElementById("b2d").innerText = r["name"]
+            pack_df_dir_settings()
+            document.getElementById("b2d").click()
+        }
+    }catch{
+        window.pywebview.api.enable_autoshount()
+    }
+    
+}
 async function updateBreadcrumb(path) {
+    config = await window.pywebview.api.get_config();
     const breadcrumb = document.getElementById('breadcrumb');
     breadcrumb.innerHTML = '';
     desktop_path = await window.pywebview.api.where_d()
     
-    const parts = path.replace(desktop_path,"").split('\\').filter(part => part.length > 0);
+    if(config.df_dir=="desktop"){
+        parts = path.replace(desktop_path,"").split('\\').filter(part => part.length > 0);
+    }else{
+        parts = path.replace(config.df_dir,"").split('\\').filter(part => part.length > 0);
+    }
+    
     let currentPath = '';
     
     // 添加桌面项
     const rootItem = document.createElement('span');
     rootItem.className = 'breadcrumb-item';
-    rootItem.textContent = '桌面';
-    rootItem.dataset.path = "\\";
+    rootItem.textContent = config.df_dir_name ;
+    rootItem.dataset.path = config.df_dir;
     rootItem.id = "b2d"
     breadcrumb.appendChild(rootItem);
     
+    if(path == config.df_dir)return
     // 添加路径各部分
     parts.forEach((part, index) => {
         currentPath += part+"\\";
@@ -790,16 +877,16 @@ window.addEventListener('pywebviewready',async function() {
     
     // 重命名相关事件
     document.getElementById('renameCancel').addEventListener('click', function() {
-        if(dealling)return
-        dealling = true
+        if(dealing)return
+        dealing = true
         window.pywebview.api.enable_autoshount()
         document.getElementById('renameOverlay').style.display = 'none';
-        dealling = false
+        dealing = false
     });
-    
+    let dealing = false
     document.getElementById('renameConfirm').addEventListener('click', function() {
-        if(dealling)return
-        dealling = true
+        if(dealing)return
+        dealing = true
         window.pywebview.api.enable_autoshount()
         const newName = document.getElementById('renameInput').value.trim();
         if (newName) {
@@ -816,22 +903,22 @@ window.addEventListener('pywebviewready',async function() {
     });
     
     document.getElementById('deleteConfirmBtn').addEventListener('click',async function() {
-        dealling = true
+        dealing = true
         var r = await remove_file(selectedFile.filePath);
         if(r["success"]==false){
             showError(r["message"])
         }
         document.getElementById('deleteConfirm').style.display = 'none';
-        dealling = false
+        dealing = false
     });
     document.getElementById('deleteConfirmBtn_r').addEventListener('click',async function() {
-        dealling = true
+        dealing = true
         var r = await remove_file_r(selectedFile.filePath,"rubbish");
         if(r["success"]==false){
             showError(r["message"])
         }
         document.getElementById('deleteConfirm').style.display = 'none';
-        dealling = false
+        dealing = false
     });
     
     // 点击页面其他位置关闭右键菜单
@@ -985,10 +1072,11 @@ async function disable_settings(){
     document.getElementById("fit_btn").onclick=async function(){ 
         window.pywebview.api.fit_window_end()
     }
-    document.getElementById("fdr_note").style.display = "none"
-    document.getElementById("sys_note").style.display = "none"
     document.getElementById("closeThemePanel").style.display = "none"
     document.querySelectorAll(".settings-section").forEach((item)=>{
+        item.style.display = "none"
+    })
+    document.querySelectorAll(".setting_note").forEach((item)=>{
         item.style.display = "none"
     })
 }

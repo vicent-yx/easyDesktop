@@ -143,6 +143,7 @@
                 background-color: rgba(0,0,0,0.5);
                 top: 0px;
                 left: 0px;
+                position: fixed;
             }
             
             /* 背景设置样式 */
@@ -200,7 +201,7 @@
             }
             .fit_btn {
                 width: 100%;
-                padding: 12px 20px;
+                padding: 6px 10px;
                 border: none;
                 border-radius: 8px;
                 font-size: 16px;
@@ -208,9 +209,14 @@
                 cursor: pointer;
                 transition: background-color 0.3s ease;
                 box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                margin-bottom: 20px;
+                margin-bottom: 15px;
+                margin-top: 15px;
             }
-            #cf_type_toggle {
+            .setting_note{
+                font-size: 10px;
+                color: rgb(163, 163, 163);
+            }
+            .cf_type_toggle {
                 width: 50%;
                 padding: 5px 10px;
                 font-size: 14px;
@@ -227,14 +233,47 @@
                 transition: border-color 0.3s ease;
             }
 
-            #cf_type_toggle:focus {
+            .cf_type_toggle:focus {
                 border-color: #5dade2; /* 聚焦时边框颜色 */
                 outline: none;
                 box-shadow: 0 0 5px rgba(93, 173, 226, 0.5);
             }
+            .dir_btn_box {
+                display: flex;
+                width: 40%;
+                padding: 4px;
+                border-radius: 12px;
+                overflow: hidden;
+                margin-left: auto;
+                transition: background-color 0.3s ease;
+            }
+            .dir_btn {
+                flex: 1;
+                height: 30px;
+                cursor: pointer;
+                background-color: #fff;
+                border: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+                color: #333;
+                transition: all 0.3s ease;
+            }
+
+            .dir_btn:hover {
+                background-color: #f7f7f7;
+            }
+
+            .dir_btn_active {
+                background-color: #5dade2;
+                color: white;
+                font-weight: bold;
+                box-shadow: 0 0 5px rgba(93, 173, 226, 0.5);
+            }
         </style>
         <!-- 主题设置面板 -->
-        <div class="settings_box" id="themeSettingsPanel" style="height: 100vh;display: flex;">
+        <div class="settings_box" id="themeSettingsPanel" style="display: flex;">
             <div class="theme-settings-panel" id="themeSettings_box" style="height: 90vh;overflow: scroll;display: block;">
                 <div class="settings-header">
                     <h3>设置</h3>
@@ -268,8 +307,8 @@
                         </label>
                     </div>
                 </div>
-                <p id="fdr_note" style="font-size: 10px;color: rgb(163, 163, 163);">当有软件全屏时不触发easyDesktop</p>
-                 <div class="settings-section">
+                <p id="fdr_note" class="setting_note">当有软件全屏时不触发easyDesktop</p>
+                <div class="settings-section">
                     <div class="system-theme-toggle">
                         <span>显示系统应用</span>
                         <label class="switch">
@@ -278,18 +317,53 @@
                         </label>
                     </div>
                 </div>
-                <p id="sys_note" style="font-size: 10px;color: rgb(163, 163, 163);">在桌面显示此电脑、回收站、控制面板</p>
+                <p id="sys_note" class="setting_note">在桌面显示此电脑、回收站、控制面板</p>
                 <div class="settings-section">
                     <div class="system-theme-toggle">
-                        <span>呼出方式</span>
-                        <select id="cf_type_toggle">
+                        <span>打开文件后收起窗口</span>
+                        <label class="switch">
+                            <input type="checkbox" id="of_sToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>呼出触发方式</span>
+                        <select class="cf_type_toggle" id="cf_type_toggle">
                             <option value="1">鼠标移到左下角</option>
                             <option value="2">win+shift</option>
                             <option value="3">win+~</option>
                         </select>
                     </div>
                 </div>
-                <div class="settings-section" style="margin-bottom: 20px;">
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>收起触发方式</span>
+                        <select class="cf_type_toggle" id="out_cf_type_toggle">
+                            <option value="1">鼠标移出窗口</option>
+                            <option value="2">窗口失焦</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <label id="sc_input">缩放比例：</label>
+                    <input type="range" style="width: 100%;" id="sc_slider" class="sc-slider" min="40" max="120" value="100">
+                </div>
+                <div class="settings-section" style="display: flex;">
+                    <span>默认文件夹</span>
+                    <div class="dir_btn_box" id="dir_btn_box">
+                        <div class="dir_btn" onclick="change_defeatDir('desktop')">
+                            <span>桌面</span>
+                        </div>
+                        <div class="dir_btn" onclick="change_defeatDir()">
+                            <span>自定义</span>
+                        </div>
+                    </div>
+                </div>
+                <p id="defeat_dir_show" class="setting_note">当前选择：桌面</p>
+                <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
+                <div class="settings-section">
                     <div class="system-theme-toggle">
                         <span>跟随系统主题</span>
                         <label class="switch">
@@ -298,7 +372,6 @@
                         </label>
                     </div>
                 </div>
-                <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
                 <div class="settings-section">
                     <h4>选择主题</h4>
                     <div class="theme-cards">
@@ -333,7 +406,7 @@
                         <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
                     </div>
                 </div>
-                <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.7.0</p>
+                <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.8.0</p>
             </div>
         </div>
     </div>
