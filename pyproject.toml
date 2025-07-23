@@ -31,7 +31,7 @@ dependencies = [
     "pystray==0.19.5",
     "pythonnet==3.0.5",
     "pytweening==1.2.0",
-    "pywebview==5.4",
+    "pywebview==5.1",
     "pywin32==311",
     "requests==2.32.4",
     "send2trash==1.8.3",
