@@ -4,8 +4,6 @@ import win32com.client
 import win32gui
 import win32api
 import win32con
-
-# import win32event
 import time
 import webview
 import pystray
@@ -22,41 +20,26 @@ from ctypes import windll
 from threading import Thread
 from requests import get as requests_get
 import webbrowser
-
 import keyboard
 import send2trash
 import re
 import win32ui
+import config as cfg
 
-# 常量定义
-APP_VERSION = "1.8.0"
-APP_NAME = "easyDesktop"
-DEFAULT_WINDOW_TITLE = "easyDesktop"
-DESKTOP_ICO_PATH = "./desktopICO/"
-RESOURCES_PATH = "./resources/"
-FILE_ICO_PATH = "./resources/file_icos/"
-CONFIG_FILE = "config.json"
-BUGS_REPORT_DIR = "bugs_report"
-EMPTY_XLSX_TEMPLATE = "resources/empty.xlsx"
 
-# Windows API 常量
-SM_CXSCREEN = 0  # 屏幕宽度
-SM_CYSCREEN = 1  # 屏幕高度
-GWL_EXSTYLE = -20
-WS_EX_TOOLWINDOW = 0x00000080
-WS_EX_APPWINDOW = 0x00040000
-
-# 动画和界面常量
-ANIMATION_STEPS = 60
-ANIMATION_DELAY = 0.003
-WINDOW_WIDTH_RATIO = 0.65
-WINDOW_HEIGHT_RATIO = 0.4
-WINDOW_POSITION_RATIO = 0.1
-TOLERANCE = 5  # 像素容差
-CORNER_SIZE = 100  # 角落区域的边长
-WAIT_TIMEOUT = 3  # 等待超时时间（秒）
-SLEEP_INTERVAL = 0.4  # 循环间隔（秒）
-MOUSE_CHECK_INTERVAL = 0.1  # 鼠标检查间隔（秒）
+has_opened_window = False
+key_quick_start = False
+has_cleared_fit = False
+fullscreen_close = False
+resize_window = None
+ignore_action = False
+loaded_exe_cache = {}
+window_state = False
+moving = False
+icon = None
+hwnd = None
+os.environ["FUSION_LOG"] = "1"
+os.environ["FUSION_LOG_PATH"] = "/logs/"
 
 
 try:
@@ -64,16 +47,13 @@ try:
 except PermissionError:
     msgbox(
         "遇到权限问题，请以管理员身份运行或将软件安装到非C盘目录，否则将无法使用自定义背景及设置保存功能。",
-        APP_NAME,
+        cfg.APP_NAME,
     )
 finally:
     if os.path.exists("test.json"):
         os.remove("test.json")
 
-icon = None
-hwnd = None
-os.environ["FUSION_LOG"] = "1"
-os.environ["FUSION_LOG_PATH"] = "/logs/"
+
 try:
     dll_path = os.environ.get("PYTHONNET_PYDLL")
     if dll_path and os.path.exists(dll_path):
@@ -94,8 +74,8 @@ os.chdir(get_real_path())
 
 def get_screen_size():
     # 使用原生 Windows API 获取屏幕尺寸
-    screen_width = win32api.GetSystemMetrics(SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(SM_CYSCREEN)
+    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
+    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
     return screen_width, screen_height
 
 
@@ -107,130 +87,18 @@ def get_active_window():
 
 screen_width, screen_height = get_screen_size()
 print(screen_width, screen_height)
-width = int(screen_width * WINDOW_WIDTH_RATIO)
-height = int(screen_height * WINDOW_HEIGHT_RATIO)
-default_config = {
-    "theme": "light",
-    "language": "zh-CN",
-    "follow_sys": True,
-    "view": "block",
-    "auto_start": False,
-    "use_bg": False,
-    "bg": "",
-    "ms_ef": 0,
-    "ign_update": "",
-    "width": width,
-    "height": height,
-    "full_screen": False,
-    "fdr": True,
-    "cf_type": "1",
-    "out_cf_type": "1",
-    "show_sysApp": False,
-    "scale": 100,
-    "df_dir": "desktop",
-    "df_dir_name": "桌面",
-    "of_s": True,
-}
-if os.path.exists(CONFIG_FILE):
-    config = json.load(open(CONFIG_FILE))
+width = int(screen_width * cfg.WINDOW_WIDTH_RATIO)
+height = int(screen_height * cfg.WINDOW_HEIGHT_RATIO)
+default_config = cfg.get_default_config(width, height)
+if os.path.exists(cfg.CONFIG_FILE):
+    config = json.load(open(cfg.CONFIG_FILE))
     for c_item in default_config.keys():
         if c_item not in config.keys():
             config[c_item] = default_config[c_item]
-    json.dump(config, open(CONFIG_FILE, "w"))
+    json.dump(config, open(cfg.CONFIG_FILE, "w"))
 else:
     config = default_config
-    json.dump(config, open(CONFIG_FILE, "w"))
-
-has_opened_window = False
-key_quick_start = False
-has_cleared_fit = False
-fullscreen_close = False
-resize_window = None
-ignore_action = False
-loaded_exe_cache = {}
-window_state = False
-moving = False
-file_ico_path = FILE_ICO_PATH
-scripts_type = [
-    ".py",
-    ".java",
-    ".c",
-    ".vbs",
-    ".cpp",
-    ".h",
-    ".hpp",
-    ".cs",
-    ".php",
-    ".rb",
-    ".go",
-    ".swift",
-    ".kt",
-    ".m",
-    ".pl",
-    ".r",
-    ".sh",
-    ".bash",
-    ".zsh",
-    ".lua",
-    ".scala",
-    ".groovy",
-    ".dart",
-    ".rs",
-    ".jl",
-    ".hs",
-    ".f",
-    ".f90",
-    ".f95",
-    ".v",
-    ".vhd",
-    ".clj",
-    ".ex",
-    ".exs",
-    ".elm",
-    ".purs",
-    ".erl",
-    ".hrl",
-    ".fs",
-    ".fsx",
-    ".fsi",
-    ".ml",
-    ".mli",
-    ".pas",
-    ".pp",
-    ".d",
-    ".nim",
-    ".cr",
-    ".cbl",
-    ".cob",
-    ".ada",
-    ".adb",
-    ".ads",
-]
-file_ico = {
-    ".mp3": "./resources/file_icos/mp3.png",
-    ".mp4": "./resources/file_icos/mp4.png",
-    ".mkv": "./resources/file_icos/mkv.png",
-    ".m4a": "./resources/file_icos/m4a.png",
-    ".doc": "./resources/file_icos/doc.png",
-    ".docx": "./resources/file_icos/docx.png",
-    ".xls": "./resources/file_icos/xls.png",
-    ".xlsx": "./resources/file_icos/xlsx.png",
-    ".pdf": "./resources/file_icos/pdf.png",
-    ".ppt": "./resources/file_icos/ppt.png",
-    ".pptx": "./resources/file_icos/pptx.png",
-    ".zip": "./resources/file_icos/zip.png",
-    ".rar": "./resources/file_icos/zip.png",
-    ".png": "./resources/file_icos/image.png",
-    ".jpg": "./resources/file_icos/image.png",
-    ".jpeg": "./resources/file_icos/image.png",
-    ".gif": "./resources/file_icos/image.png",
-    ".txt": "./resources/file_icos/txt.png",
-    ".html": "./resources/file_icos/html.png",
-    ".css": "./resources/file_icos/css.png",
-    ".js": "./resources/file_icos/js.png",
-    ".bat": "./resources/file_icos/bat.png",
-    "unkonw": "./resources/file_icos/unkonw.png",
-}
+    json.dump(config, open(cfg.CONFIG_FILE, "w"))
 
 
 def putOut_window(cf):
@@ -303,9 +171,9 @@ def get_desktop_path():
 def get_icon(exe_path, name):
     try:
         dir_name = os.path.dirname(exe_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
-        if not os.path.exists(DESKTOP_ICO_PATH + dir_name):
-            os.makedirs(DESKTOP_ICO_PATH + dir_name)
-        output_path = DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
+        if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
+            os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
+        output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
         
         # 检查exe文件是否存在
         if not os.path.exists(exe_path):
@@ -385,10 +253,10 @@ def get_url_icon(url_path):
         win32gui.DestroyIcon(hicon)
         del hdc
         del hbmp
-        if not os.path.exists(DESKTOP_ICO_PATH + dir_name):
-            os.makedirs(DESKTOP_ICO_PATH + dir_name)
-        image.save(DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png")
-        return DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png"
+        if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
+            os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
+        image.save(cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png")
+        return cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png"
     except Exception as e:
         print(f"提取图标失败: {e}")
         return "/resources/file_icos/exe.png"
@@ -405,12 +273,12 @@ def get_shortcut_target(shortcut_path):
 
 def match_ico(file_name):
     extension = os.path.splitext(file_name)[1]
-    if extension in file_ico:
-        return file_ico[extension]
-    elif extension in scripts_type:
-        return "/resources/file_icos/script.png"
+    if extension in cfg.FILE_ICO:
+        return cfg.FILE_ICO[extension]
+    elif extension in cfg.SCRIPTS_TYPE:
+        return "./resources/file_icos/script.png"
     else:
-        return file_ico["unkonw"]
+        return cfg.FILE_ICO["unkonw"]
 
 
 def check_recover(data, match):
@@ -428,9 +296,7 @@ def update_inf(dir_path):
     exe_data = []
     dir_data = []
     file_data = []
-    # if os.path.exists("desktopICO"):
-    #     os.remove("desktopICO")
-    # os.mkdir("desktopICO")
+
     if dir_path == "desktop":
         get_count = 2
         path_list = [desktop_path, public_desktop]
@@ -452,16 +318,11 @@ def update_inf(dir_path):
                     if ".exe" == extension:
                         # 针对米哈游游戏的适配
                         if "miHoYo" in target_path and "launcher" in target_path:
-                            if "原神" in item or "Genshin Impact" in item:
-                                exe_icon = "./resources/file_icos/ys.ico"
-                            elif "星穹铁道" in item or "Star Rail" in item:
-                                exe_icon = "./resources/file_icos/sr.ico"
-                            elif "绝区零" in item or "Zero" in item:
-                                exe_icon = "./resources/file_icos/zzz.ico"
-                            elif "崩坏3" in item or "Honkai Impact 3" in item:
-                                exe_icon = "./resources/file_icos/bh3.ico"
-                            else:
-                                exe_icon = "./resources/file_icos/mhy_lancher.ico"
+                            exe_icon = cfg.MIHOYO_GAMES["default"]  # 默认值
+                            for game_name, icon_path in cfg.MIHOYO_GAMES.items():
+                                if game_name != "default" and game_name in item:
+                                    exe_icon = icon_path
+                                    break
                             exe_data.append(
                                 {
                                     "fileName": filename,
@@ -560,33 +421,7 @@ def update_inf(dir_path):
         or dir_path == desktop_path
         or dir_path == public_desktop
     ):
-        sys_app_data = [
-            {
-                "fileName": "此电脑",
-                "fileType": "应用程序",
-                "file": "_.exe",
-                "filePath": "此电脑",
-                "ico": "./resources/file_icos/cdn.png",
-                "sysApp": True,
-            },
-            {
-                "fileName": "控制面板",
-                "fileType": "应用程序",
-                "file": "_.exe",
-                "filePath": "控制面板",
-                "ico": "./resources/file_icos/kzmb.png",
-                "sysApp": True,
-            },
-            {
-                "fileName": "回收站",
-                "fileType": "应用程序",
-                "file": "_.exe",
-                "filePath": "回收站",
-                "ico": "./resources/file_icos/rbs.png",
-                "sysApp": True,
-            },
-        ]
-        for item in sys_app_data:
+        for item in cfg.SYSTEM_APPS:
             out_data.append(item)
     for item in exe_data:
         if check_recover(out_data, item) == True:
@@ -603,16 +438,11 @@ def update_inf(dir_path):
     return out_data
 
 
-GWL_EXSTYLE = -20
-WS_EX_TOOLWINDOW = 0x00000080
-WS_EX_APPWINDOW = 0x00040000
-
-
 def hide_from_taskbar(window):
     hwnd = windll.user32.FindWindowW(None, window.title)
-    style = windll.user32.GetWindowLongW(hwnd, GWL_EXSTYLE)
-    style = (style | WS_EX_TOOLWINDOW) & ~WS_EX_APPWINDOW
-    windll.user32.SetWindowLongW(hwnd, GWL_EXSTYLE, style)
+    style = windll.user32.GetWindowLongW(hwnd, cfg.GWL_EXSTYLE)
+    style = (style | cfg.WS_EX_TOOLWINDOW) & ~cfg.WS_EX_APPWINDOW
+    windll.user32.SetWindowLongW(hwnd, cfg.GWL_EXSTYLE, style)
 
 
 def is_focused_window_fullscreen():
@@ -634,7 +464,7 @@ def is_focused_window_fullscreen():
         window_width, window_height = rect[2] - rect[0], rect[3] - rect[1]
         screen_width, screen_height = get_screen_size()
         # 检查窗口是否覆盖整个屏幕（允许几个像素的误差）
-        tolerance = TOLERANCE  # 像素容差
+        tolerance = cfg.TOLERANCE  # 像素容差
         return (
             abs(window_left) <= tolerance
             and abs(window_top) <= tolerance
@@ -652,14 +482,14 @@ def is_ed_focused():
     if not active_hwnd:
         return False
     window_title = win32gui.GetWindowText(active_hwnd)
-    return window_title == DEFAULT_WINDOW_TITLE
+    return window_title == cfg.DEFAULT_WINDOW_TITLE
 
 
 def is_desktop_and_mouse_in_corner():
     try:
-        screen_width = win32api.GetSystemMetrics(SM_CXSCREEN)
-        screen_height = win32api.GetSystemMetrics(SM_CYSCREEN)
-        corner_size = CORNER_SIZE  # 角落区域的边长
+        screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
+        screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+        corner_size = cfg.CORNER_SIZE  # 角落区域的边长
         corner_rect = (0, screen_height - corner_size, corner_size, screen_height)
         mouse_x, mouse_y = win32api.GetCursorPos()
         in_corner = corner_rect[0] <= mouse_x <= corner_rect[2] and corner_rect[1] <= mouse_y <= corner_rect[3]
@@ -670,7 +500,7 @@ def is_desktop_and_mouse_in_corner():
 
 
 def is_mouse_in_easyDesktop():
-    hwnd = win32gui.FindWindow(None, DEFAULT_WINDOW_TITLE)
+    hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
     if not hwnd:
         return False
     try:
@@ -688,7 +518,7 @@ def wait_open():
     start_wait_time = int(time.time())
     had_refresh = False
     while True:
-        if int(time.time()) - start_wait_time > WAIT_TIMEOUT:
+        if int(time.time()) - start_wait_time > cfg.WAIT_TIMEOUT:
             if had_refresh == False:
                 window.evaluate_js("document.getElementById('b2d').click()")
                 had_refresh = True
@@ -706,7 +536,7 @@ def wait_open():
                 break
         if window_state == True:
             break
-        time.sleep(SLEEP_INTERVAL)
+        time.sleep(cfg.SLEEP_INTERVAL)
 
 
 def ease_out_quad(t):
@@ -727,7 +557,7 @@ def get_window_rect(hwnd):
     }
 
 
-def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=ANIMATION_STEPS, delay=ANIMATION_DELAY):
+def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY):
     global window, config
     screen_width, screen_height = get_screen_size()
     for i in range(steps + 1):
@@ -738,7 +568,6 @@ def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=AN
         if config["full_screen"] == True:
             if start_x < end_x:
                 win32gui.MoveWindow(hwnd, int(current_x), int(current_y), screen_width, screen_height, True)
-                # win32gui.MoveWindow(hwnd, int(current_x), int(current_y), int(screen_width*eased_progress), int(screen_height*eased_progress), True)
             else:
                 win32gui.MoveWindow(
                     hwnd,
@@ -751,7 +580,6 @@ def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=AN
         else:
             if start_x < end_x:
                 win32gui.MoveWindow(hwnd, int(current_x), int(current_y), width, height, True)
-                # win32gui.MoveWindow(hwnd, int(current_x), int(current_y), int(0+(config["width"])*eased_progress), int(0+(config["height"])*eased_progress), True)
             else:
                 win32gui.MoveWindow(
                     hwnd,
@@ -774,10 +602,10 @@ def out_window():
     if config["full_screen"] == False:
         window.resize(config["width"], config["height"])
     window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
-    hwnd = win32gui.FindWindow(None, DEFAULT_WINDOW_TITLE)
+    hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
     hide_from_taskbar(window)
     if not hwnd:
-        print("未找到名为 'easyDesktop' 的窗口")
+        print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
         return False
     try:
         windll.user32.keybd_event(0x12, 0, 0, 0)
@@ -785,8 +613,8 @@ def out_window():
         windll.user32.keybd_event(0x12, 0, 0x0002, 0)
     except:
         pass
-    screen_width = win32api.GetSystemMetrics(SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(SM_CYSCREEN)
+    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
+    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
@@ -796,24 +624,21 @@ def out_window():
         end_x = 0
         end_y = 0
     else:
-        end_x = int(screen_width * WINDOW_POSITION_RATIO)
-        end_y = int(screen_height - ((screen_height * WINDOW_POSITION_RATIO) + height))
+        end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
+        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
     win32gui.MoveWindow(hwnd, start_x, start_y, width, height, True)
     win32gui.UpdateWindow(hwnd)
 
     time.sleep(0.1)
     window.show()
     animate_window(hwnd, start_x, start_y, end_x, end_y, width, height)
-    # if config["full_screen"]==True:
-    #     while True:
-    #         if is_desktop_and_mouse_in_corner()==False:
-    #             break
-    #         time.sleep(MOUSE_CHECK_INTERVAL)
+
     while True:
         if is_mouse_in_easyDesktop() == True:
             break
-        time.sleep(MOUSE_CHECK_INTERVAL)
+        time.sleep(cfg.MOUSE_CHECK_INTERVAL)
     moving = False
+    
     while True:
         if config["out_cf_type"] == "1":
             tj = is_mouse_in_easyDesktop() == False and ignore_action == False
@@ -823,11 +648,10 @@ def out_window():
             fullscreen_close = False
             moveIn_window()
             break
-        # if config["full_screen"] == True and is_desktop_and_mouse_in_corner()==True:
-        #     fullscreen_close = True
+
         if window_state == False:
             break
-        time.sleep(MOUSE_CHECK_INTERVAL)
+        time.sleep(cfg.MOUSE_CHECK_INTERVAL)
 
 
 def moveIn_window():
@@ -836,12 +660,12 @@ def moveIn_window():
         return
     moving = True
     window_state = False
-    hwnd = win32gui.FindWindow(None, DEFAULT_WINDOW_TITLE)
+    hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
     if not hwnd:
-        print("未找到名为 'easyDesktop' 的窗口")
+        print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
         return False
-    screen_width = win32api.GetSystemMetrics(SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(SM_CYSCREEN)
+    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
+    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
@@ -873,13 +697,13 @@ def check_update():
         print("无法访问更新服务器")
         return
     r = json.loads(str(r.content, "utf-8"))
-    if r["v"] != APP_VERSION:
+    if r["v"] != cfg.APP_VERSION:
         print("有新版本")
         if config["ign_update"] == r["v"]:
             return
         ask = buttonbox(
-            "EasyDesktop有新版本，是否前往更新？\n" + r["update_inf"],
-            "EasyDesktop更新检查",
+            f"{cfg.APP_NAME}有新版本，是否前往更新？\n" + r["update_inf"],
+            f"{cfg.APP_NAME}更新检查",
             choices=("前往更新", "忽略此版本", "取消"),
         )
         if ask == "前往更新":
@@ -904,9 +728,8 @@ def on_loaded():
         window.evaluate_js("list_view()")
     else:
         window.evaluate_js("grid_view()")
-    hwnd = win32gui.FindWindow(None, DEFAULT_WINDOW_TITLE)
+    hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
     moveIn_window()
-    # wait_open()
 
 
 def update_config(part, data):
@@ -939,28 +762,28 @@ def autoStart_registry():
     script_path = os.path.abspath(sys.argv[0])
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_path, 0, reg.KEY_SET_VALUE)
-    reg.SetValueEx(key, "easyDesktop", 0, reg.REG_SZ, f'"{python_exe}" "{script_path}"')
+    reg.SetValueEx(key, cfg.APP_NAME, 0, reg.REG_SZ, f'"{python_exe}" "{script_path}"')
     reg.CloseKey(key)
 
 
 def remove_autoStart_registry():
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_path, 0, reg.KEY_SET_VALUE)
-    reg.DeleteValue(key, "easyDesktop")
+    reg.DeleteValue(key, cfg.APP_NAME)
     reg.CloseKey(key)
     print("成功从开机启动项中移除")
 
 
-def get_window_inf(title=DEFAULT_WINDOW_TITLE):
+def get_window_inf(title=cfg.DEFAULT_WINDOW_TITLE):
     global config
     hwnd = win32gui.FindWindow(None, title)
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
-    screen_width = win32api.GetSystemMetrics(SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(SM_CYSCREEN)
-    end_x = int(screen_width * 0.1)
-    end_y = int(screen_height - ((screen_height * 0.1) + height))
+    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
+    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+    end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
+    end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
     return width, height, end_x, end_y
 
 
@@ -995,18 +818,13 @@ def stray():
 
 
 def open_windows_system_component(component_name):
-    commands = {
-        "此电脑": r"explorer.exe shell:MyComputerFolder",
-        "控制面板": r"explorer.exe shell:::{26EE0668-A00A-44D7-9371-BEB064C98683}",
-        "回收站": r"explorer.exe shell:RecycleBinFolder",
-    }
-    if component_name not in commands:
+    if component_name not in cfg.SYSTEM_COMMANDS:
         return False
     try:
         startupinfo = subprocess.STARTUPINFO()
         startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
         startupinfo.wShowWindow = 0
-        subprocess.Popen(commands[component_name], startupinfo=startupinfo, shell=True)
+        subprocess.Popen(cfg.SYSTEM_COMMANDS[component_name], startupinfo=startupinfo, shell=True)
         return True
     except Exception as e:
         print(f"打开 {component_name} 时出错: {str(e)}")
@@ -1015,9 +833,9 @@ def open_windows_system_component(component_name):
 
 class AppAPI:
     def bug_report(self, part, data):
-        if not os.path.exists(BUGS_REPORT_DIR):
-            os.mkdir(BUGS_REPORT_DIR)
-        bugs_report_file = BUGS_REPORT_DIR + "/" + str(int(time.time())) + ".txt"
+        if not os.path.exists(cfg.BUGS_REPORT_DIR):
+            os.mkdir(cfg.BUGS_REPORT_DIR)
+        bugs_report_file = cfg.BUGS_REPORT_DIR + "/" + str(int(time.time())) + ".txt"
         with open(bugs_report_file, "w") as f:
             f.write(
                 f"""
@@ -1028,7 +846,7 @@ error: {data}
             f.close()
             msgbox(
                 "程序运行出现严重错误，请反馈给开发者，谢谢！\n错误已保存至bugs_report文件夹中\n点击ok将打开错误报告",
-                "easydesktop",
+                cfg.APP_NAME,
             )
             os.startfile(os.path.abspath(bugs_report_file))
 
@@ -1103,7 +921,7 @@ error: {data}
                     break
             except:
                 break
-            time.sleep(MOUSE_CHECK_INTERVAL)
+            time.sleep(cfg.MOUSE_CHECK_INTERVAL)
         if has_cleared_fit == False:
             self.fit_window_end()
 
@@ -1217,7 +1035,7 @@ error: {data}
                     os.mkdir(file_path)
                 elif suffix == "xlsx":
                     print("创建表格：", file_path)
-                    shutil.copy(EMPTY_XLSX_TEMPLATE, file_path)
+                    shutil.copy(cfg.EMPTY_XLSX_TEMPLATE, file_path)
                 else:
                     with open(file_path, "w") as f:
                         f.write("")
@@ -1236,7 +1054,7 @@ error: {data}
                         os.mkdir(new_path)
                     elif suffix == "xlsx":
                         print("创建表格：", new_path)
-                        shutil.copy(EMPTY_XLSX_TEMPLATE, new_path)
+                        shutil.copy(cfg.EMPTY_XLSX_TEMPLATE, new_path)
                     else:
                         with open(new_path, "w") as f:
                             f.write("")
@@ -1309,7 +1127,7 @@ error: {data}
 
 webview.settings["ALLOW_FILE_URLS"] = True
 window = webview.create_window(
-    "easyDesktop",
+    cfg.APP_NAME,
     "easyFileDesk.html",
     width=config["width"],
     height=config["height"],
