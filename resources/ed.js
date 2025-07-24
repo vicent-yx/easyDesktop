@@ -175,7 +175,7 @@ const ApiHelper = {
     },
 
     async getFileInfo(path) {
-        return await this.call('get_inf', path);
+        return await this.call('get_fileinfo', path);
     },
 
     async openFile(filePath) {
@@ -265,13 +265,13 @@ const UIUtils = {
 
     disableScroll() {
         if (this._scrollDisabled) return; // 避免重复禁用
-        
+
         this._scrollDisabled = true;
-        
+
         // 保存当前滚动位置
         this._savedScrollPosition.top = window.pageYOffset || document.documentElement.scrollTop;
         this._savedScrollPosition.left = window.pageXOffset || document.documentElement.scrollLeft;
-        
+
         // 设置body样式 - 使用fixed定位完全阻止滚动
         const body = document.body;
         body.style.overflow = "hidden";
@@ -280,7 +280,7 @@ const UIUtils = {
         body.style.left = `-${this._savedScrollPosition.left}px`;
         body.style.width = "100%";
         body.style.height = "100%";
-        
+
         // 创建统一的事件处理函数
         this._preventScrollHandler = (e) => {
             const settingsBox = DOMCache.get('themeSettings_box');
@@ -291,36 +291,36 @@ const UIUtils = {
                 return false;
             }
         };
-        
+
         // 添加事件监听器
         const events = ['touchmove', 'mousewheel', 'wheel', 'DOMMouseScroll', 'keydown'];
         events.forEach(event => {
-            document.addEventListener(event, this._preventScrollHandler, { 
-                passive: false, 
-                capture: true 
+            document.addEventListener(event, this._preventScrollHandler, {
+                passive: false,
+                capture: true
             });
         });
-        
+
         console.log('滚动已禁用');
     },
 
     enableScroll() {
         if (!this._scrollDisabled) return; // 避免重复启用
-        
+
         this._scrollDisabled = false;
-        
+
         // 移除事件监听器
         if (this._preventScrollHandler) {
             const events = ['touchmove', 'mousewheel', 'wheel', 'DOMMouseScroll', 'keydown'];
             events.forEach(event => {
-                document.removeEventListener(event, this._preventScrollHandler, { 
-                    passive: false, 
-                    capture: true 
+                document.removeEventListener(event, this._preventScrollHandler, {
+                    passive: false,
+                    capture: true
                 });
             });
             this._preventScrollHandler = null;
         }
-        
+
         // 恢复body样式
         const body = document.body;
         body.style.overflow = "";
@@ -329,18 +329,18 @@ const UIUtils = {
         body.style.left = "";
         body.style.width = "";
         body.style.height = "";
-        
+
         // 恢复滚动位置
         window.scrollTo(this._savedScrollPosition.left, this._savedScrollPosition.top);
-        
+
         console.log('滚动已启用');
     },
-    
+
     // 获取滚动状态
     isScrollDisabled() {
         return this._scrollDisabled;
     },
-    
+
     // 调试函数：检查滚动状态
     debugScrollStatus() {
         console.log('=== 滚动状态调试信息 ===');
@@ -532,7 +532,7 @@ const NavigationManager = {
         const breadcrumb = DOMCache.get('breadcrumb');
         breadcrumb.innerHTML = '';
 
-        const desktopPath = await ApiHelper.call('where_d');
+        const desktopPath = await ApiHelper.call('search_desktop_path');
         const basePath = config.df_dir === "desktop" ? desktopPath : config.df_dir;
         const parts = path.replace(basePath, "").split('\\').filter(part => part.length > 0);
 
@@ -810,7 +810,7 @@ const EventManager = {
         });
 
         DOMCache.get('menuNew').addEventListener('click', () => {
-            ApiHelper.call('disable_autoshount');
+            ApiHelper.call('lock_window_visibility');
             DOMCache.get('newFileOverlay').style.display = 'flex';
             DOMCache.get('blankMenu').style.display = 'none';
         });
@@ -821,7 +821,7 @@ const EventManager = {
         DOMCache.get('renameCancel').addEventListener('click', () => {
             if (AppState.dealing) return;
             AppState.dealing = true;
-            ApiHelper.call('enable_autoshount');
+            ApiHelper.call('unlock_window_visibility');
             DOMCache.get('renameOverlay').style.display = 'none';
             AppState.dealing = false;
         });
@@ -829,7 +829,7 @@ const EventManager = {
         DOMCache.get('renameConfirm').addEventListener('click', async () => {
             if (AppState.dealing) return;
             AppState.dealing = true;
-            ApiHelper.call('enable_autoshount');
+            ApiHelper.call('unlock_window_visibility');
 
             const newName = DOMCache.get('renameInput').value.trim();
             if (newName) {
@@ -867,12 +867,12 @@ const EventManager = {
 
         // 新建文件对话框
         DOMCache.get('newFileCancel').addEventListener('click', () => {
-            ApiHelper.call('enable_autoshount');
+            ApiHelper.call('unlock_window_visibility');
             DOMCache.get('newFileOverlay').style.display = 'none';
         });
 
         DOMCache.get('newFileConfirm').addEventListener('click', async () => {
-            ApiHelper.call('enable_autoshount');
+            ApiHelper.call('unlock_window_visibility');
             const selectedType = DOMCache.get('newFileTypeSelect').value;
             if (selectedType) {
                 await FileOperationManager.createNewFile(selectedType);
@@ -882,7 +882,7 @@ const EventManager = {
 
         // 重命名输入框回车确认
         DOMCache.get('renameInput').addEventListener('keyup', (e) => {
-            ApiHelper.call('enable_autoshount');
+            ApiHelper.call('unlock_window_visibility');
             if (e.key === 'Enter') {
                 DOMCache.get('renameConfirm').click();
             }
@@ -925,7 +925,7 @@ const EventManager = {
             DOMCache.get(toggleId).addEventListener('change', function () {
                 ApiHelper.updateConfig(configKeys[index], this.checked);
                 if (toggleId === 'followSystemTheme') {
-                    this.updateThemeCardInteraction(this.checked);
+                    EventManager.updateThemeCardInteraction(this.checked);
                 }
             });
         });
@@ -1000,7 +1000,7 @@ const EventManager = {
 
         DOMCache.get('bgCustomBtn').addEventListener('click', async () => {
             try {
-                const bgUrl = await ApiHelper.call('set_bg');
+                const bgUrl = await ApiHelper.call('set_background');
                 if (bgUrl) {
                     await ApiHelper.updateConfig("use_bg", true);
                     await ApiHelper.updateConfig("bg", bgUrl);
@@ -1053,7 +1053,7 @@ const EventManager = {
             MenuManager.hideAllMenus();
 
             if (["content_box", "main"].includes(event.target.id)) {
-                ApiHelper.call('fullscreen_close');
+                ApiHelper.call('close_fullscreen_window');
             }
         });
 
@@ -1079,7 +1079,7 @@ const EventManager = {
     },
 
     showRenameDialog() {
-        ApiHelper.call('disable_autoshount');
+        ApiHelper.call('lock_window_visibility');
         const renameOverlay = DOMCache.get('renameOverlay');
         const renameInput = DOMCache.get('renameInput');
 
@@ -1101,7 +1101,7 @@ const EventManager = {
     }
 };
 
-// ========== 全局变量（向后兼容） ==========
+// ========== 全局变量 ==========
 let files_data = [];
 let selectedFile = null;
 let contextMenu = null;
@@ -1121,13 +1121,9 @@ const newFileConfirm = DOMCache.get('newFileConfirm');
 const menuPaste = DOMCache.get('menuPaste');
 const menuNew = DOMCache.get('menuNew');
 
-// ========== 全局函数（向后兼容） ==========
+// ========== 全局函数 ==========
 function getFileType(fileName, fileType) {
     return Utils.getFileType(fileName, fileType);
-}
-
-function updateTime() {
-    // 由EventManager处理
 }
 
 function open_file(filePath) {
@@ -1342,13 +1338,13 @@ async function remind_file(file_item) {
 // 调试函数：检查和测试滚动功能
 function debugScrollFunction() {
     UIUtils.debugScrollStatus();
-    
+
     // 提供手动测试接口
     console.log('测试滚动功能:');
     console.log('- 执行 UIUtils.disableScroll() 禁用滚动');
     console.log('- 执行 UIUtils.enableScroll() 启用滚动');
     console.log('- 执行 UIUtils.debugScrollStatus() 查看状态');
-    
+
     return {
         disable: () => UIUtils.disableScroll(),
         enable: () => UIUtils.enableScroll(),
@@ -1357,15 +1353,15 @@ function debugScrollFunction() {
     };
 }
 
-async function change_defeatDir(path = null) {
-    ApiHelper.call('disable_autoshount');
+async function change_default_dir(path = null) {
+    ApiHelper.call('lock_window_visibility');
     try {
         const oldPath = AppState.currentPath;
         const config = await ApiHelper.getConfig();
         const oldDfDir = config["df_dir"];
-        const result = await ApiHelper.call('change_defeatDir', path);
+        const result = await ApiHelper.call('change_default_dir', path);
 
-        ApiHelper.call('enable_autoshount');
+        ApiHelper.call('unlock_window_visibility');
 
         if (result["success"] === true) {
             DOMCache.get("b2d").dataset.path = result["data"];
@@ -1374,7 +1370,7 @@ async function change_defeatDir(path = null) {
             DOMCache.get("b2d").click();
         }
     } catch (error) {
-        ApiHelper.call('enable_autoshount');
+        ApiHelper.call('unlock_window_visibility');
         console.error('更改默认目录失败:', error);
     }
 }
