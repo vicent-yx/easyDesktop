@@ -84,8 +84,20 @@ def get_active_window():
     hwnd = win32gui.GetForegroundWindow()
     return hwnd if hwnd else None
 
+def get_sfb():
+    windll.user32.SetProcessDPIAware()
+    try:
+        # 获取系统DPI（Windows 10 1607+）
+        dpi = windll.user32.GetDpiForSystem()
+        scaling_percentage = round(dpi / 96)
+        return scaling_percentage
+    except AttributeError:
+        return 1.5
 
+sfb = get_sfb()
 screen_width, screen_height = get_screen_size()
+screen_width = int(screen_width*sfb) # 需要乘以缩放比以保持在不同缩放程度下都能正常显示
+screen_height = int(screen_height*sfb)
 print(screen_width, screen_height)
 width = int(screen_width * cfg.WINDOW_WIDTH_RATIO)
 height = int(screen_height * cfg.WINDOW_HEIGHT_RATIO)
@@ -120,18 +132,6 @@ def key_cf3():
 
 keyboard.add_hotkey("windows+shift", key_cf2)
 keyboard.add_hotkey("windows+`", key_cf3)
-
-
-def get_sfb():
-    windll.user32.SetProcessDPIAware()
-    try:
-        # 获取系统DPI（Windows 10 1607+）
-        dpi = windll.user32.GetDpiForSystem()
-        scaling_percentage = round(dpi / 96)
-        return scaling_percentage
-    except AttributeError:
-        return 1.5
-
 
 def turn_png(file_path):
     try:
@@ -1150,4 +1150,4 @@ window = webview.create_window(
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)

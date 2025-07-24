@@ -646,8 +646,9 @@ const ConfigManager = {
         const config = await ApiHelper.getConfig();
         const settingBtns = DOMCache.get("dir_btn_box");
 
-        DOMCache.get("b2d").dataset.path = config.df_dir;
-        DOMCache.get("b2d").innerText = config.df_dir_name;
+        document.getElementById("b2d").dataset.path = config.df_dir;// 此处DOM缓存项不起作用(似乎获取到的已经不是现在的b2d)，故用回getElementById
+        document.getElementById("b2d").innerText = config.df_dir_name;
+        navigateTo(config.df_dir);// 刷新主页
         DOMCache.get("defeat_dir_show").innerText = "当前选择：" + config.df_dir;
 
         if (config.df_dir === "desktop") {
@@ -1366,6 +1367,7 @@ async function change_default_dir(path = null) {
         if (result["success"] === true) {
             DOMCache.get("b2d").dataset.path = result["data"];
             DOMCache.get("b2d").innerText = result["name"];
+            
             await ConfigManager.updateDefaultDirectory();
             DOMCache.get("b2d").click();
         }
