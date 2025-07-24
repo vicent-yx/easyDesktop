@@ -147,11 +147,12 @@ def turn_png(file_path):
 
         # 打开ICO文件并抑制警告
         import warnings
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             with Image.open(file_path) as img:
                 # 获取最大尺寸的图标
-                if hasattr(img, 'size') and img.size[0] > 0:
+                if hasattr(img, "size") and img.size[0] > 0:
                     png_path = os.path.splitext(file_path)[0] + ".png"
                     img.save(png_path, "PNG")
                     return png_path
@@ -174,12 +175,12 @@ def get_icon(exe_path, name):
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
         output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
-        
+
         # 检查exe文件是否存在
         if not os.path.exists(exe_path):
             print(f"警告：EXE文件不存在 {exe_path}")
             return "./resources/file_icos/exe.png"
-            
+
         try:
             extractor = IconExtractor(exe_path)
             extractor.export_icon(output_path)
@@ -194,7 +195,7 @@ def get_icon(exe_path, name):
         except Exception as extract_error:
             print(f"图标提取失败: {extract_error} - {exe_path}")
             return "./resources/file_icos/exe.png"
-                
+
     except Exception as e:
         print(f"获取图标时发生未知错误: {e} - {exe_path}")
         return "./resources/file_icos/exe.png"
@@ -452,12 +453,12 @@ def is_focused_window_fullscreen():
 
         if not active_hwnd:
             return False
-        
+
         # 获取窗口标题
         window_title = win32gui.GetWindowText(active_hwnd)
         if window_title == "Program Manager" or window_title == "":
             return False
-        
+
         # 获取窗口尺寸和位置信息
         rect = win32gui.GetWindowRect(active_hwnd)
         window_left, window_top = rect[0], rect[1]
@@ -557,7 +558,9 @@ def get_window_rect(hwnd):
     }
 
 
-def animate_window(hwnd, start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY):
+def animate_window(
+    hwnd, start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY
+):
     global window, config
     screen_width, screen_height = get_screen_size()
     for i in range(steps + 1):
@@ -638,7 +641,7 @@ def out_window():
             break
         time.sleep(cfg.MOUSE_CHECK_INTERVAL)
     moving = False
-    
+
     while True:
         if config["out_cf_type"] == "1":
             tj = is_mouse_in_easyDesktop() == False and ignore_action == False
@@ -817,7 +820,7 @@ def stray():
     icon.run()
 
 
-def open_windows_system_component(component_name):
+def open_sysApp(component_name):
     if component_name not in cfg.SYSTEM_COMMANDS:
         return False
     try:
@@ -850,7 +853,7 @@ error: {data}
             )
             os.startfile(os.path.abspath(bugs_report_file))
 
-    def set_bg(self):
+    def set_background(self):
         global ignore_action
         file_types = ("Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)", "All files (*.*)")
         ignore_action = True
@@ -872,7 +875,7 @@ error: {data}
     def update_config(self, part, data):
         update_config(part, data)
 
-    def where_d(self):
+    def search_desktop_path(self):
         return desktop_path
 
     def get_parent(self, path):
@@ -961,13 +964,13 @@ error: {data}
             update_config("df_dir_name", "桌面")
             return {"success": True, "data": path, "name": "桌面"}
 
-    def get_inf(self, path):
+    def get_fileinfo(self, path):
         if path == "desktop" or path == "" or path == "\\":
             path = "desktop"
         data = update_inf(path)
         return {"success": True, "data": data}
 
-    def fullscreen_close(self):
+    def close_fullscreen_window(self):
         global fullscreen_close, config
         if config["full_screen"] == True:
             fullscreen_close = True
@@ -988,8 +991,13 @@ error: {data}
         fullscreen_close = True
         return {"success": True}
 
-    def open_sysApp(self, file_path):
-        open_windows_system_component(file_path)
+    def open_mhyGame(self, file_path, game):
+        """打开米哈游游戏"""
+        try:
+            os.startfile(file_path)
+            return {"success": True}
+        except Exception as e:
+            return {"success": False, "message": f"无法打开游戏: {str(e)}"}
 
     def copy_file(self, file_path):
         subprocess.run(
@@ -1065,11 +1073,13 @@ error: {data}
         except:
             return {"success": False, "message": "拒绝访问"}
 
-    def disable_autoshount(self):
+    def lock_window_visibility(self):
+        """锁定窗口可见性（不自动隐藏）"""
         global ignore_action
         ignore_action = True
 
-    def enable_autoshount(self):
+    def unlock_window_visibility(self):
+        """解锁窗口可见性（恢复自动隐藏）"""
         global ignore_action
         ignore_action = False
 
