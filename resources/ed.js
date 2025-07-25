@@ -262,6 +262,7 @@ const UIUtils = {
     _scrollDisabled: false,
     _preventScrollHandler: null,
     _savedScrollPosition: { top: 0, left: 0 },
+    _originalBodyStyles: null,
 
     disableScroll() {
         if (this._scrollDisabled) return; // 避免重复禁用
@@ -272,14 +273,22 @@ const UIUtils = {
         this._savedScrollPosition.top = window.pageYOffset || document.documentElement.scrollTop;
         this._savedScrollPosition.left = window.pageXOffset || document.documentElement.scrollLeft;
 
-        // 设置body样式 - 使用fixed定位完全阻止滚动
         const body = document.body;
+        const html = document.documentElement;
+
+        // 保存原始样式
+        this._originalBodyStyles = {
+            overflow: body.style.overflow,
+            paddingRight: body.style.paddingRight
+        };
+
+        // 计算滚动条宽度，避免页面跳动
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+        // 设置样式阻止滚动，但不改变定位
         body.style.overflow = "hidden";
-        body.style.position = "fixed";
-        body.style.top = `-${this._savedScrollPosition.top}px`;
-        body.style.left = `-${this._savedScrollPosition.left}px`;
-        body.style.width = "100%";
-        body.style.height = "100%";
+        body.style.paddingRight = `${scrollbarWidth}px`; // 补偿滚动条宽度
+        html.style.overflow = "hidden";
 
         // 创建统一的事件处理函数
         this._preventScrollHandler = (e) => {
@@ -309,7 +318,6 @@ const UIUtils = {
 
         this._scrollDisabled = false;
 
-        // 移除事件监听器
         if (this._preventScrollHandler) {
             const events = ['touchmove', 'mousewheel', 'wheel', 'DOMMouseScroll', 'keydown'];
             events.forEach(event => {
@@ -321,14 +329,19 @@ const UIUtils = {
             this._preventScrollHandler = null;
         }
 
-        // 恢复body样式
         const body = document.body;
-        body.style.overflow = "";
-        body.style.position = "";
-        body.style.top = "";
-        body.style.left = "";
-        body.style.width = "";
-        body.style.height = "";
+        const html = document.documentElement;
+
+        if (this._originalBodyStyles) {
+            body.style.overflow = this._originalBodyStyles.overflow;
+            body.style.paddingRight = this._originalBodyStyles.paddingRight;
+            this._originalBodyStyles = null;
+        } else {
+            // 如果没有保存的样式，则清空
+            body.style.overflow = "";
+            body.style.paddingRight = "";
+        }
+        html.style.overflow = "";
 
         // 恢复滚动位置
         window.scrollTo(this._savedScrollPosition.left, this._savedScrollPosition.top);
@@ -606,13 +619,6 @@ const SearchManager = {
 
 // ========== 主题管理器 ==========
 const ThemeManager = {
-    async loadTheme(theme) {
-        const themeCSS = DOMCache.get("theme_css");
-        if (themeCSS && CONSTANTS.THEME_PATHS[theme]) {
-            themeCSS.href = CONSTANTS.THEME_PATHS[theme];
-        }
-    },
-
     async applyBackgroundSettings(config) {
         const body = document.body;
         if (config.use_bg && config.bg) {
@@ -951,7 +957,7 @@ const EventManager = {
 
                 const theme = this.dataset.theme;
                 ApiHelper.updateConfig("theme", theme);
-                ThemeManager.loadTheme(theme);
+                load_theme(theme);
 
                 themeCards.forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
@@ -963,7 +969,7 @@ const EventManager = {
             const config = await ApiHelper.getConfig();
             if (config.follow_sys) {
                 const newTheme = e.matches ? 'dark' : 'light';
-                ThemeManager.loadTheme(newTheme);
+                load_theme(newTheme);
             }
         });
     },
@@ -1295,7 +1301,35 @@ async function load_search() {
 }
 
 async function load_theme(theme) {
-    await ThemeManager.loadTheme(theme);
+    try {
+        // 参数验证
+        if (!theme) {
+            console.warn('load_theme: 主题参数不能为空');
+            return false;
+        }
+
+        // 验证主题是否存在
+        if (!CONSTANTS.THEME_PATHS[theme]) {
+            console.warn(`load_theme: 不支持的主题 "${theme}"`);
+            return false;
+        }
+
+        // 获取主题CSS元素
+        const themeCSS = DOMCache.get("theme_css");
+        if (!themeCSS) {
+            console.error('load_theme: 找不到主题CSS元素');
+            return false;
+        }
+
+        // 加载主题
+        themeCSS.href = CONSTANTS.THEME_PATHS[theme];
+
+        console.log(`主题已切换到: ${theme}`);
+        return true;
+    } catch (error) {
+        console.error('load_theme: 加载主题时发生错误', error);
+        return false;
+    }
 }
 
 async function fit_window() {
@@ -1367,7 +1401,7 @@ async function change_default_dir(path = null) {
         if (result["success"] === true) {
             DOMCache.get("b2d").dataset.path = result["data"];
             DOMCache.get("b2d").innerText = result["name"];
-            
+
             await ConfigManager.updateDefaultDirectory();
             DOMCache.get("b2d").click();
         }
@@ -1444,9 +1478,9 @@ window.addEventListener('pywebviewready', async function () {
             // 加载主题
             if (followSystem) {
                 const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-                await ThemeManager.loadTheme(systemTheme);
+                await load_theme(systemTheme);
             } else {
-                await ThemeManager.loadTheme(currentTheme);
+                await load_theme(currentTheme);
             }
 
             // 更新背景设置
@@ -1481,6 +1515,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', asy
     const config = await ApiHelper.getConfig();
     if (config.follow_sys) {
         const newTheme = e.matches ? 'dark' : 'light';
-        await ThemeManager.loadTheme(newTheme);
+        await load_theme(newTheme);
     }
 });
