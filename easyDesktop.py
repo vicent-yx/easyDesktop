@@ -25,8 +25,9 @@ import send2trash
 import re
 import win32ui
 import config as cfg
-
-
+from pyautogui import size
+import traceback
+# sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 has_opened_window = False
 key_quick_start = False
 has_cleared_fit = False
@@ -40,19 +41,6 @@ icon = None
 hwnd = None
 os.environ["FUSION_LOG"] = "1"
 os.environ["FUSION_LOG_PATH"] = "/logs/"
-
-
-try:
-    json.dump("", open("test.json", "w", encoding="utf-8"))
-except PermissionError:
-    msgbox(
-        "遇到权限问题，请以管理员身份运行或将软件安装到非C盘目录，否则将无法使用自定义背景及设置保存功能。",
-        cfg.APP_NAME,
-    )
-finally:
-    if os.path.exists("test.json"):
-        os.remove("test.json")
-
 
 try:
     dll_path = os.environ.get("PYTHONNET_PYDLL")
@@ -71,12 +59,38 @@ def get_real_path():
 
 os.chdir(get_real_path())
 
-
+def bugs_report(part,data,note=True):
+    if not os.path.exists(cfg.BUGS_REPORT_DIR):
+        os.mkdir(cfg.BUGS_REPORT_DIR)
+    bugs_report_file = cfg.BUGS_REPORT_DIR + "/" + str(int(time.time())) + ".txt"
+    with open(bugs_report_file, "w") as f:
+        f.write(
+            f"""
+part: {part},
+error: {data}
+"""
+        )
+        f.close()
+        if note==True:
+            msgbox(
+                "程序运行出现严重错误，请反馈给开发者，谢谢！\n错误已保存至bugs_report文件夹中\n点击ok将打开错误报告",
+                cfg.APP_NAME+" 提示",
+            )
+            os.startfile(os.path.abspath(bugs_report_file))
 def get_screen_size():
-    # 使用原生 Windows API 获取屏幕尺寸
-    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
-    return screen_width, screen_height
+    r1_width = win32api.GetSystemMetrics(0)
+    r1_height = win32api.GetSystemMetrics(1)
+
+    r2_width,r2_height = size()
+    if r1_width==r2_width and r1_height==r2_height:
+        return r2_width,r2_height
+    else:
+        add_c_1 = r1_width+r1_width
+        add_c_2 = r2_height+r2_height
+        if add_c_1>add_c_2:
+            return r1_width,r1_height
+        else:
+            return r2_width,r2_height
 
 
 def get_active_window():
@@ -94,13 +108,13 @@ def get_sfb():
     except AttributeError:
         return 1.5
 
-sfb = get_sfb()
+sfb = 1
+print("sfb = ",sfb)
 screen_width, screen_height = get_screen_size()
-screen_width = int(screen_width*sfb) # 需要乘以缩放比以保持在不同缩放程度下都能正常显示
-screen_height = int(screen_height*sfb)
 print(screen_width, screen_height)
 width = int(screen_width * cfg.WINDOW_WIDTH_RATIO)
 height = int(screen_height * cfg.WINDOW_HEIGHT_RATIO)
+
 default_config = cfg.get_default_config(width, height)
 if os.path.exists(cfg.CONFIG_FILE):
     config = json.load(open(cfg.CONFIG_FILE))
@@ -111,6 +125,11 @@ if os.path.exists(cfg.CONFIG_FILE):
 else:
     config = default_config
     json.dump(config, open(cfg.CONFIG_FILE, "w"))
+
+if not os.path.exists(cfg.CL_DATA_FILE):
+    with open(cfg.CL_DATA_FILE, "w") as f:
+        json.dump({}, f)
+        f.close()
 
 
 def putOut_window(cf):
@@ -124,14 +143,15 @@ def putOut_window(cf):
 
 def key_cf2():
     putOut_window("2")
-
-
 def key_cf3():
     putOut_window("3")
-
+def key_cf4():
+    putOut_window("4")
 
 keyboard.add_hotkey("windows+shift", key_cf2)
 keyboard.add_hotkey("windows+`", key_cf3)
+if config["cf_type"]=="4" and config["cf_hotkey"]!="":
+    keyboard.add_hotkey(config["cf_hotkey"], key_cf4)
 
 def turn_png(file_path):
     try:
@@ -289,154 +309,191 @@ def check_recover(data, match):
             result = True
             break
     return result
-
+def is_cl(file_path):
+    try:
+        cl_data = json.load(open(cfg.CL_DATA_FILE, "r"))
+        if file_path in cl_data:
+            return cl_data[file_path]
+        else:
+            return False
+    except Exception as e:
+        print(f"读取收藏数据失败: {e}")
+        return False
 
 def update_inf(dir_path):
-    global config
-    out_data = []
-    exe_data = []
-    dir_data = []
-    file_data = []
+    try:
+        global config
+        out_data = []
+        exe_data = []
+        dir_data = []
+        file_data = []
 
-    if dir_path == "desktop":
-        get_count = 2
-        path_list = [desktop_path, public_desktop]
-    else:
-        get_count = 1
-        path_list = [dir_path]
-    for i in range(get_count):
-        current_dir = path_list[i]
-        for item in os.listdir(current_dir):
-            if "desktop.ini" in item:
-                continue
-            filename, _ = os.path.splitext(item)
-            full_path = os.path.join(current_dir, item)
-            if os.path.isfile(full_path):
-                extension = os.path.splitext(full_path)[1]
-                if ".lnk" == extension:
-                    target_path = get_shortcut_target(full_path)
-                    extension = os.path.splitext(target_path)[1]
-                    if ".exe" == extension:
-                        # 针对米哈游游戏的适配
-                        if "miHoYo" in target_path and "launcher" in target_path:
-                            exe_icon = cfg.MIHOYO_GAMES["default"]  # 默认值
-                            for game_name, icon_path in cfg.MIHOYO_GAMES.items():
-                                if game_name != "default" and game_name in item:
-                                    exe_icon = icon_path
-                                    break
+        if dir_path == "desktop":
+            get_count = 2
+            path_list = [desktop_path, public_desktop]
+        else:
+            get_count = 1
+            path_list = [dir_path]
+        for i in range(get_count):
+            current_dir = path_list[i]
+            for item in os.listdir(current_dir):
+                try:
+                    if "desktop.ini" in item:
+                        continue
+                    filename, _ = os.path.splitext(item)
+                    full_path = os.path.join(current_dir, item)
+                    if os.path.isfile(full_path):
+                        extension = os.path.splitext(full_path)[1]
+                        if ".lnk" == extension:
+                            target_path = get_shortcut_target(full_path)
+                            extension = os.path.splitext(target_path)[1]
+                            if ".exe" == extension:
+                                # 针对米哈游游戏的适配
+                                if "miHoYo" in target_path and "launcher" in target_path:
+                                    exe_icon = cfg.MIHOYO_GAMES["default"]  # 默认值
+                                    for game_name, icon_path in cfg.MIHOYO_GAMES.items():
+                                        if game_name != "default" and game_name in item:
+                                            exe_icon = icon_path
+                                            break
+                                    exe_data.append(
+                                        {
+                                            "fileName": filename,
+                                            "fileType": extension,
+                                            "file": os.path.basename(target_path),
+                                            "filePath": full_path,
+                                            "ico": exe_icon,
+                                            "cl": is_cl(full_path),
+                                        }
+                                    )
+                                else:
+                                    if not target_path in loaded_exe_cache:
+                                        exe_icon = get_icon(target_path, item)
+                                    else:
+                                        exe_icon = loaded_exe_cache[target_path]
+                                    exe_data.append(
+                                        {
+                                            "fileName": filename,
+                                            "fileType": extension,
+                                            "file": os.path.basename(target_path),
+                                            "filePath": full_path,
+                                            "ico": exe_icon,
+                                            "cl": is_cl(full_path),
+                                        }
+                                    )
+                                continue
+                            elif ".url" == extension:
+                                icon_image = get_url_icon(target_path)
+                                exe_data.append(
+                                    {
+                                        "fileName": filename,
+                                        "fileType": extension,
+                                        "file": os.path.basename(full_path),
+                                        "filePath": full_path,
+                                        "ico": icon_image,
+                                        "cl":is_cl(full_path),
+                                    }
+                                )
+                            else:
+                                if os.path.isfile(target_path):
+                                    file_data.append(
+                                        {
+                                            "fileName": filename,
+                                            "fileType": extension,
+                                            "file": item,
+                                            "filePath": target_path,
+                                            "ico": match_ico(item),
+                                            "cl": is_cl(target_path),
+                                        }
+                                    )
+                                else:
+                                    dir_data.append(
+                                        {
+                                            "fileName": os.path.basename(full_path),
+                                            "fileType": "文件夹",
+                                            "file": item,
+                                            "filePath": target_path,
+                                            "ico": "./resources/file_icos/dir.png",
+                                            "cl": is_cl(target_path),
+                                        }
+                                    )
+                                continue
+                        elif ".url" == extension:
+                            icon_image = get_url_icon(full_path)
                             exe_data.append(
                                 {
                                     "fileName": filename,
                                     "fileType": extension,
-                                    "file": os.path.basename(target_path),
+                                    "file": os.path.basename(full_path),
                                     "filePath": full_path,
-                                    "ico": exe_icon,
+                                    "ico": icon_image,
+                                    "cl": is_cl(full_path),
                                 }
                             )
                         else:
-                            if not target_path in loaded_exe_cache:
-                                exe_icon = get_icon(target_path, item)
-                            else:
-                                exe_icon = loaded_exe_cache[target_path]
-                            exe_data.append(
-                                {
-                                    "fileName": filename,
-                                    "fileType": extension,
-                                    "file": os.path.basename(target_path),
-                                    "filePath": full_path,
-                                    "ico": exe_icon,
-                                }
-                            )
-                        continue
-                    elif ".url" == extension:
-                        icon_image = get_url_icon(target_path)
-                        exe_data.append(
-                            {
-                                "fileName": filename,
-                                "fileType": extension,
-                                "file": os.path.basename(full_path),
-                                "filePath": full_path,
-                                "ico": icon_image,
-                            }
-                        )
-                    else:
-                        if os.path.isfile(target_path):
                             file_data.append(
                                 {
                                     "fileName": filename,
                                     "fileType": extension,
                                     "file": item,
-                                    "filePath": target_path,
+                                    "filePath": full_path,
                                     "ico": match_ico(item),
+                                    "cl": is_cl(full_path),
                                 }
                             )
-                        else:
-                            dir_data.append(
-                                {
-                                    "fileName": os.path.basename(full_path),
-                                    "fileType": "文件夹",
-                                    "file": item,
-                                    "filePath": target_path,
-                                    "ico": "./resources/file_icos/dir.png",
-                                    "mark": 1,
-                                }
-                            )
-                        continue
-                elif ".url" == extension:
-                    icon_image = get_url_icon(full_path)
-                    exe_data.append(
-                        {
-                            "fileName": filename,
-                            "fileType": extension,
-                            "file": os.path.basename(full_path),
-                            "filePath": full_path,
-                            "ico": icon_image,
-                        }
+                    else:
+                        dir_data.append(
+                            {
+                                "fileName": item,
+                                "fileType": "文件夹",
+                                "file": item,
+                                "filePath": full_path,
+                                "ico": "./resources/file_icos/dir.png",
+                                "cl": is_cl(full_path),
+                            }
+                        )
+                except:
+                    bugs_report(
+                        "python-update_inf_item",
+                        traceback.format_exc(),
+                        False
                     )
-                else:
-                    file_data.append(
-                        {
-                            "fileName": filename,
-                            "fileType": extension,
-                            "file": item,
-                            "filePath": full_path,
-                            "ico": match_ico(item),
-                        }
-                    )
-            else:
-                dir_data.append(
-                    {
-                        "fileName": item,
-                        "fileType": "文件夹",
-                        "file": item,
-                        "filePath": full_path,
-                        "ico": "./resources/file_icos/dir.png",
-                        "mark": 2,
-                    }
-                )
-    # if config["show_sysApp"]==True:
-    if config["show_sysApp"] == True and (
-        dir_path == "desktop"
-        or dir_path == ""
-        or dir_path == "/"
-        or dir_path == desktop_path
-        or dir_path == public_desktop
-    ):
-        for item in cfg.SYSTEM_APPS:
-            out_data.append(item)
-    for item in exe_data:
-        if check_recover(out_data, item) == True:
-            continue
-        out_data.append(item)
-    for item in dir_data:
-        if check_recover(out_data, item) == True:
-            continue
-        out_data.append(item)
-    for item in file_data:
-        if check_recover(out_data, item) == True:
-            continue
-        out_data.append(item)
-    return out_data
+        # if config["show_sysApp"]==True:
+        if config["show_sysApp"] == True and (
+            dir_path == "desktop"
+            or dir_path == ""
+            or dir_path == "/"
+            or dir_path == desktop_path
+            or dir_path == public_desktop
+        ):
+            for item in cfg.SYSTEM_APPS:
+                item["cl"]=False
+                out_data.append(item)
+        for i in range(2):
+            r = i==False
+            for item in exe_data:
+                if check_recover(out_data, item) == True:
+                    continue
+                if r==True and item["cl"]!=True:
+                    continue
+                out_data.append(item)
+            for item in dir_data:
+                if check_recover(out_data, item) == True:
+                    continue
+                if r==True and item["cl"]!=True:
+                    continue
+                out_data.append(item)
+            for item in file_data:
+                if check_recover(out_data, item) == True:
+                    continue
+                if r==True and item["cl"]!=True:
+                    continue
+                out_data.append(item)
+        return out_data
+    except:
+        bugs_report(
+            "python-update_inf",
+            traceback.format_exc()
+        )
 
 
 def hide_from_taskbar(window):
@@ -527,7 +584,7 @@ def wait_open():
             if is_focused_window_fullscreen() == True:
                 time.sleep(1)
                 continue
-        if config["cf_type"] == "2" or config["cf_type"] == "3":
+        if config["cf_type"] == "2" or config["cf_type"] == "3" or config["cf_type"]=="4":
             if key_quick_start == True:
                 out_window()
                 break
@@ -733,6 +790,7 @@ def on_loaded():
         window.evaluate_js("grid_view()")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
     moveIn_window()
+    # wait_open()
 
 
 def update_config(part, data):
@@ -758,6 +816,9 @@ def update_config(part, data):
             win32gui.MoveWindow(hwnd, 0, 0, screen_width, screen_height, True)
     if part == "show_sysApp":
         window.evaluate_js("document.getElementById('b2d').click();")
+    if part == "cf_hotkey":
+        keyboard.add_hotkey(data, key_cf4)
+        update_config("cf_type","4")
 
 
 def autoStart_registry():
@@ -836,23 +897,16 @@ def open_sysApp(component_name):
 
 class AppAPI:
     def bug_report(self, part, data):
-        if not os.path.exists(cfg.BUGS_REPORT_DIR):
-            os.mkdir(cfg.BUGS_REPORT_DIR)
-        bugs_report_file = cfg.BUGS_REPORT_DIR + "/" + str(int(time.time())) + ".txt"
-        with open(bugs_report_file, "w") as f:
-            f.write(
-                f"""
-part: {part},
-error: {data}
-"""
-            )
-            f.close()
-            msgbox(
-                "程序运行出现严重错误，请反馈给开发者，谢谢！\n错误已保存至bugs_report文件夹中\n点击ok将打开错误报告",
-                cfg.APP_NAME,
-            )
-            os.startfile(os.path.abspath(bugs_report_file))
-
+        bugs_report(
+            part,
+            data
+        )
+    def is_path_abs(self,path):
+        return os.path.isabs(path)
+    def change_cl_state(self,filePath, state):
+        cl_data = json.load(open(cfg.CL_DATA_FILE,"r"))
+        cl_data[filePath] = not state
+        json.dump(cl_data,open(cfg.CL_DATA_FILE,"w"))
     def set_background(self):
         global ignore_action
         file_types = ("Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)", "All files (*.*)")
@@ -905,6 +959,7 @@ error: {data}
             on_top=True,
             easy_drag=False,
             resizable=True,
+            draggable=False
         )
         has_cleared_fit = False
         resize_window.resize(config["width"], config["height"])
@@ -1047,7 +1102,6 @@ error: {data}
                 else:
                     with open(file_path, "w") as f:
                         f.write("")
-                        f.close()
                 print(f"已创建: {file_path}")
                 return {"success": True, "file": file_path}
             count = 1
@@ -1066,7 +1120,6 @@ error: {data}
                     else:
                         with open(new_path, "w") as f:
                             f.write("")
-                            f.close()
                     print(f"已创建: {new_path}")
                     return {"success": True, "file": new_path}
                 count += 1
@@ -1150,4 +1203,4 @@ window = webview.create_window(
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)

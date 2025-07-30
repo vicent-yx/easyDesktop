@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>快捷键记录器 - Promise封装版</title>
+    <style>
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 450px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        
+        .instructions {
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        
+        .key-display {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2c3e50;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border: 1px solid #ecf0f1;
+        }
+        
+        .key-limits {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 5px;
+            font-weight: 400;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .modal-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .confirm-btn {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .confirm-btn:hover {
+            background: #27ae60;
+        }
+        
+        .cancel-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .cancel-btn:hover {
+            background: #c0392b;
+        }
+        
+        .info-box {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        .info-box h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 22px;
+            text-align: center;
+        }
+        
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-top: 15px;
+            overflow-x: auto;
+            text-align: left;
+        }
+        
+        .highlight {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>快捷键记录器 - Promise封装版</h1>
+        <p class="description">
+            点击下方按钮记录键盘快捷键，最多可记录三个按键组合。<br>
+            使用Promise封装记录功能，确认后返回组合键字符串。
+        </p>
+        
+        <button class="record-btn" id="recordBtn">
+            记录快捷键
+        </button>
+        
+        <div class="recorded-shortcut">
+            <h3>已记录的快捷键：</h3>
+            <div class="shortcut-display" id="shortcutDisplay">
+                尚未记录
+            </div>
+        </div>
+    </div>
+    
+    <!-- 快捷键记录模态框 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2>记录快捷键</h2>
+            <p class="instructions">
+                请按下您想要设置的快捷键组合（最多三个键）
+            </p>
+            <div class="key-display" id="keyDisplay">
+                等待按键输入...
+            </div>
+            <p class="key-limits">已记录 <span id="currentKeys">0</span>/3 个按键</p>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn confirm-btn" id="confirmBtn">确认</button>
+                <button class="modal-btn cancel-btn" id="cancelBtn">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 获取DOM元素
+        const recordBtn = document.getElementById('recordBtn');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const keyDisplay = document.getElementById('keyDisplay');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const shortcutDisplay = document.getElementById('shortcutDisplay');
+        const currentKeysElement = document.getElementById('currentKeys');
+        
+        // 特殊键的映射
+        const keyMap = {
+            ' ': '空格',
+            'Control': 'Ctrl',
+            'ArrowUp': '↑',
+            'ArrowDown': '↓',
+            'ArrowLeft': '←',
+            'ArrowRight': '→',
+            'Escape': 'Esc',
+            'Enter': '回车',
+            'Shift': 'Shift',
+            'Alt': 'Alt',
+            'Meta': 'Cmd',
+            'Tab': 'Tab',
+            'CapsLock': '大写锁定',
+            'Backspace': '退格',
+            'Delete': '删除'
+        };
+        
+        // 封装记录快捷键的函数，返回Promise
+        function recordShortcut() {
+            return new Promise((resolve, reject) => {
+                // 显示模态框
+                modalOverlay.classList.add('active');
+                
+                // 初始化按键数组
+                const pressedKeys = [];
+                
+                // 更新按键显示
+                function updateKeyDisplay() {
+                    currentKeysElement.textContent = pressedKeys.length;
+                    
+                    if (pressedKeys.length === 0) {
+                        keyDisplay.textContent = '等待按键输入...';
+                    } else {
+                        keyDisplay.textContent = pressedKeys.join(' + ');
+                    }
+                }
+                
+                // 键盘事件处理
+                const handleKeyDown = (e) => {
+                    // 防止重复记录
+                    if (pressedKeys.includes(getKeyName(e))) return;
+                    
+                    // 最多记录3个键
+                    if (pressedKeys.length >= 3) return;
+                    
+                    // 获取键名
+                    const keyName = getKeyName(e);
+                    
+                    // 添加按键到数组
+                    pressedKeys.push(keyName);
+                    updateKeyDisplay();
+                    
+                    // 阻止默认行为
+                    e.preventDefault();
+                };
+                
+                // 添加键盘事件监听
+                document.addEventListener('keydown', handleKeyDown);
+                
+                // 确认按钮点击事件
+                const handleConfirm = () => {
+                    cleanup();
+                    resolve(pressedKeys.join('+'));
+                };
+                
+                // 取消按钮点击事件
+                const handleCancel = () => {
+                    cleanup();
+                    reject(null);
+                };
+                
+                // 模态框外部点击事件
+                const handleOverlayClick = (e) => {
+                    if (e.target === modalOverlay) {
+                        handleCancel();
+                    }
+                };
+                
+                // 清理函数
+                function cleanup() {
+                    modalOverlay.classList.remove('active');
+                    document.removeEventListener('keydown', handleKeyDown);
+                    confirmBtn.removeEventListener('click', handleConfirm);
+                    cancelBtn.removeEventListener('click', handleCancel);
+                    modalOverlay.removeEventListener('click', handleOverlayClick);
+                }
+                
+                // 添加事件监听
+                confirmBtn.addEventListener('click', handleConfirm);
+                cancelBtn.addEventListener('click', handleCancel);
+                modalOverlay.addEventListener('click', handleOverlayClick);
+                
+                // 初始化显示
+                updateKeyDisplay();
+            });
+        }
+        
+        // 获取标准键名
+        function getKeyName(event) {
+            // 特殊键优先处理
+            if (keyMap[event.key]) {
+                return keyMap[event.key];
+            }
+            
+            // 处理修饰键
+            if (event.key === 'Control' || event.key === 'Shift' || 
+                event.key === 'Alt' || event.key === 'Meta') {
+                return keyMap[event.key] || event.key;
+            }
+            
+            // 返回原键名（首字母大写）
+            return event.key.length === 1 ? event.key.toUpperCase() : event.key;
+        }
+        
+        // 主按钮点击事件
+        recordBtn.addEventListener('click', async function() {
+            try {
+                const shortcut = await recordShortcut();
+                shortcutDisplay.textContent = shortcut;
+            } catch (error) {
+                if (error === null) {
+                    console.log("用户取消了快捷键记录");
+                } else {
+                    console.error("记录快捷键时出错:", error);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

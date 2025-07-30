@@ -5,7 +5,7 @@ EasyDesktop 配置文件
 """
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "1.8.0"
+APP_VERSION = "1.9.0"
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop"
 
@@ -14,6 +14,7 @@ DESKTOP_ICO_PATH = "./desktopICO/"
 RESOURCES_PATH = "./resources/"
 FILE_ICO_PATH = "./resources/file_icos/"
 CONFIG_FILE = "config.json"
+CL_DATA_FILE = "cl_data.json"
 BUGS_REPORT_DIR = "bugs_report"
 EMPTY_XLSX_TEMPLATE = "resources/empty.xlsx"
 
@@ -147,6 +148,7 @@ def get_default_config(width, height):
         "full_screen": False,
         "fdr": True,
         "cf_type": "1",
+        "cf_hotkey":"",
         "out_cf_type": "1",
         "show_sysApp": False,
         "scale": 100,

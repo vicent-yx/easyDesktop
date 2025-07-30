@@ -415,6 +415,25 @@ class FileRenderer {
             <span class="${nameClass}">${file.fileName}</span>
             <span class="${typeClass}">${fileType}</span>
         `;
+        const cl_e = document.createElement("div")
+        
+        cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
+        if(file.cl==false){
+            if(document.getElementById("theme_css").href.includes("light")==true){
+                cl_e.innerHTML="<img src='./resources/imgs/cl.png'>"
+            }else{
+                cl_e.innerHTML="<img src='./resources/imgs/cl_w.png'>"
+            }
+            
+        }else{
+            cl_e.innerHTML="<img src='./resources/imgs/cl-active.png'>"
+            cl_e.style.display="block"
+        }
+        
+        cl_e.onclick=(event) => {event.stopPropagation();change_cl_state(file.filePath, file.cl)};
+        cl_e.ondblclick = (event) => {event.stopPropagation();}
+        element.insertBefore(cl_e, element.firstChild);
+        element.cl = cl_e;
 
         this.attachFileEvents(element, file);
         return element;
@@ -541,13 +560,16 @@ const NavigationManager = {
     },
 
     async updateBreadcrumb(path) {
+        console.log(path)
         const config = await ApiHelper.getConfig();
         const breadcrumb = DOMCache.get('breadcrumb');
         breadcrumb.innerHTML = '';
 
         const desktopPath = await ApiHelper.call('search_desktop_path');
         const basePath = config.df_dir === "desktop" ? desktopPath : config.df_dir;
+        console.log(basePath)
         const parts = path.replace(basePath, "").split('\\').filter(part => part.length > 0);
+        console.log(parts)
 
         // 添加根目录项
         const rootItem = document.createElement('span');
@@ -556,13 +578,16 @@ const NavigationManager = {
         rootItem.dataset.path = config.df_dir;
         rootItem.id = "b2d";
         breadcrumb.appendChild(rootItem);
-
-        if (path === config.df_dir) return;
-
-        // 添加路径各部分
-        let currentPath = basePath;
+        if (path.includes(basePath)){
+            var currentPath = basePath+"\\";
+        }else{
+            var currentPath = ""
+        }
+        if(parts.length == 1 && parts[0] == "desktop")return
         parts.forEach((part, index) => {
             currentPath += part + "\\";
+            
+            console.log(part)
 
             if (index < parts.length - 1) {
                 const separator = document.createElement('span');
@@ -577,6 +602,7 @@ const NavigationManager = {
             item.dataset.path = currentPath;
             breadcrumb.appendChild(item);
         });
+        console.log("______")
     }
 };
 
@@ -938,8 +964,25 @@ const EventManager = {
         });
 
         // 选择器设置
-        DOMCache.get('cf_type_toggle').addEventListener('change', function () {
-            ApiHelper.updateConfig('cf_type', this.value);
+        DOMCache.get('cf_type_toggle').addEventListener('change',async function () {
+            try{
+                if(this.value=="4"){
+                    rs = await recordShortcut()
+                    if(rs!=null){
+                        await ApiHelper.updateConfig('cf_hotkey',rs);
+                        ApiHelper.updateConfig('cf_type', this.value);
+                        DOMCache.get("hotkey_show").innerText = "自定义："+rs
+                        return
+                    }else{
+                        config = await ApiHelper.getConfig()
+                        this.value = config.cf_type
+                    }
+                }
+                ApiHelper.updateConfig('cf_type', this.value);
+            }catch(e){
+                config = await ApiHelper.getConfig()
+                this.value = config.cf_type
+            }
         });
 
         DOMCache.get('out_cf_type_toggle').addEventListener('change', function () {
@@ -1174,6 +1217,7 @@ function showDeleteConfirm() {
 }
 
 async function push(fData = null, useLoadDir = false, path = '') {
+    console.log("11")
     try {
         if (fData === null) {
             let result;
@@ -1196,11 +1240,14 @@ async function push(fData = null, useLoadDir = false, path = '') {
         AppState.contextMenu = DOMCache.get('contextMenu');
 
     } catch (error) {
-        window.pywebview.api.bug_report("push", error.toString());
+        window.pywebview.api.bug_report("push", error.toString()+"\n"+error.stack.toString());
         console.error(error);
     }
 }
-
+async function change_cl_state(filePath, cl){
+    await ApiHelper.call('change_cl_state', filePath, cl);
+    NavigationManager.refreshCurrentPath();
+}
 async function grid_view() {
     EventManager.switchToGridView();
 }
@@ -1323,7 +1370,7 @@ async function load_theme(theme) {
 
         // 加载主题
         themeCSS.href = CONSTANTS.THEME_PATHS[theme];
-
+        NavigationManager.refreshCurrentPath();
         console.log(`主题已切换到: ${theme}`);
         return true;
     } catch (error) {
@@ -1503,6 +1550,10 @@ window.addEventListener('pywebviewready', async function () {
         // 不在应用启动时禁用滚动，保持正常滚动状态
         // 滚动禁用只在打开设置面板时触发
         console.log('应用初始化完成，滚动状态：正常');
+
+        setTimeout(() => {
+            document.getElementById("b2d").click(); // 自动点击默认目录按钮
+        }, 100);
 
     } catch (error) {
         console.error('应用初始化失败:', error);

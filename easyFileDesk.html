@@ -35,6 +35,33 @@
             display: none;
             /* 隐藏滚动条 */
         }
+
+        /* .file-item{
+            position: absolute;
+        } */
+        .file-cl{
+            width: 10%;
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            display: none;
+        }
+        .file-list-cl{
+            width: 1.5%;
+            margin-right: 10px;
+        }
+        .file-item:hover .file-list-cl{
+            display: block;
+        }
+        .file-item:hover .file-cl{
+            display: block;
+        }
+        .file-cl img{
+            width: 100%;
+        }
+        .file-list-cl img{
+            width: 100%;
+        }
     </style>
     <div class="content_box" id="content_box">
         <div class="container" id="main" style="margin-top: 20px;">
@@ -352,9 +379,11 @@
                         <option value="1">鼠标移到左下角</option>
                         <option value="2">win+shift</option>
                         <option value="3">win+~</option>
+                        <option value="4">自定义</option>
                     </select>
                 </div>
             </div>
+            <p id="hotkey_show" class="setting_note" style="display: none;">自定义：</p>
             <div class="settings-section">
                 <div class="system-theme-toggle">
                     <span>收起触发方式</span>
@@ -425,11 +454,165 @@
                     <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
                 </div>
             </div>
-            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.8.0</p>
+            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.9.0</p>
         </div>
     </div>
     </div>
+    <style>
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 450px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .modal h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 22px;
+        }
+        
+        .instructions {
+            color: #7f8c8d;
+            margin-bottom: 25px;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+        
+        .key-display {
+            font-size: 24px;
+            font-weight: 600;
+            color: #2c3e50;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 20px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+            border: 1px solid #ecf0f1;
+        }
+        
+        .key-limits {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-top: 5px;
+            font-weight: 400;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+        
+        .modal-btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .confirm-btn {
+            background: #2ecc71;
+            color: white;
+        }
+        
+        .confirm-btn:hover {
+            background: #27ae60;
+        }
+        
+        .cancel-btn {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .cancel-btn:hover {
+            background: #c0392b;
+        }
+        
+        .info-box {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        
+        .info-box h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 22px;
+            text-align: center;
+        }
+        
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 15px;
+            line-height: 1.6;
+            margin-top: 15px;
+            overflow-x: auto;
+            text-align: left;
+        }
+        
+        .highlight {
+            color: #f1c40f;
+            font-weight: bold;
+        }
+    </style>
+    <!-- 快捷键记录模态框 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h2>记录快捷键</h2>
+            <p class="instructions">
+                请按下您想要设置的快捷键组合（最多三个键）
+            </p>
+            <div class="key-display" id="keyDisplay">
+                等待按键输入...
+            </div>
+            <p class="key-limits">已记录 <span id="currentKeys">0</span>/3 个按键</p>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn confirm-btn" id="confirmBtn">确认</button>
+                <button class="modal-btn cancel-btn" id="cancelBtn">取消</button>
+            </div>
+        </div>
+    </div>
 </body>
 <script src="/resources/ed.js"></script>
-
+<script src="resources/hotkey_record.js"></script>
 </html>

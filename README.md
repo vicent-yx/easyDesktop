@@ -2,13 +2,14 @@
 
 ✨ **让整洁桌面与高效操作完美共存** ✨  
 
-
 **隐藏桌面图标，但不隐藏便捷性！** EasyDesktop 是一款创新的桌面增强工具，让您在保持桌面整洁美观的同时，快速访问桌面文件。只需将鼠标移至屏幕左下角，即可呼出智能文件面板！
 
 ![主界面](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/main_show.jpg)
 
 ## 🔧 开发信息
  软件使用pywebview开发，界面使用html+css+js实现，实际操作（如打开文件、新建文件等）由python实现（js通过pywebview调用）
+ 
+ 特别感谢[@CassianVale](https://gitee.com/ALX4890)对代码进行了模块化重构，感谢大佬！
 
 
 ## ✨ 核心功能
