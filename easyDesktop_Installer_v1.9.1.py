@@ -12,7 +12,6 @@ import _thread
 import winreg
 from time import sleep
 import psutil
-from ctypes import windll
 import json
 import win32com
 progressbar=""

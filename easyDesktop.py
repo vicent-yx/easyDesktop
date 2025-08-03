@@ -16,7 +16,7 @@ from PIL import Image
 import winreg as reg
 import sys
 from easygui import msgbox, buttonbox
-from ctypes import windll
+from ctypes import windll,WinDLL,wintypes
 from threading import Thread
 from requests import get as requests_get
 import webbrowser
@@ -27,9 +27,16 @@ import win32ui
 import config as cfg
 from pyautogui import size
 import traceback
+import winerror
+import win32event
 # sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+mutex = win32event.CreateMutex(None, 1, 'easydesktop_mutex')
+if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+    os._exit(0)
+
 has_opened_window = False
 key_quick_start = False
+start_action = False
 has_cleared_fit = False
 fullscreen_close = False
 resize_window = None
@@ -41,6 +48,13 @@ icon = None
 hwnd = None
 os.environ["FUSION_LOG"] = "1"
 os.environ["FUSION_LOG_PATH"] = "/logs/"
+# 加载Windows API
+user32 = WinDLL('user32', use_last_error=True)
+WTS_CURRENT_SERVER_HANDLE = wintypes.HANDLE(0)
+
+# 定义Windows消息常量
+WM_WTSSESSION_CHANGE = 0x02B1
+WTS_SESSION_UNLOCK = 0x8
 
 try:
     dll_path = os.environ.get("PYTHONNET_PYDLL")
@@ -95,8 +109,8 @@ def get_screen_size():
 
 def get_active_window():
     """获取当前活动窗口的句柄，如果没有则返回 None"""
-    hwnd = win32gui.GetForegroundWindow()
-    return hwnd if hwnd else None
+    a_hwnd = win32gui.GetForegroundWindow()
+    return a_hwnd if a_hwnd else None
 
 def get_sfb():
     windll.user32.SetProcessDPIAware()
@@ -133,6 +147,7 @@ if not os.path.exists(cfg.CL_DATA_FILE):
 
 
 def putOut_window(cf):
+    print("hotkey_go")
     global key_quick_start, config, window_state, fullscreen_close
     if cf == config["cf_type"]:
         if window_state == False:
@@ -140,18 +155,22 @@ def putOut_window(cf):
         else:
             fullscreen_close = True
 
-
 def key_cf2():
     putOut_window("2")
 def key_cf3():
     putOut_window("3")
 def key_cf4():
     putOut_window("4")
-
-keyboard.add_hotkey("windows+shift", key_cf2)
-keyboard.add_hotkey("windows+`", key_cf3)
-if config["cf_type"]=="4" and config["cf_hotkey"]!="":
-    keyboard.add_hotkey(config["cf_hotkey"], key_cf4)
+def reg_hotkey():
+    try:
+        keyboard.unhook_all_hotkeys()
+    except Exception as e:
+        print(e)
+    keyboard.add_hotkey("windows+shift", key_cf2)
+    keyboard.add_hotkey("windows+`", key_cf3)
+    if config["cf_type"]=="4" and config["cf_hotkey"]!="":
+        keyboard.add_hotkey(config["cf_hotkey"], key_cf4)
+reg_hotkey()
 
 def turn_png(file_path):
     try:
@@ -222,7 +241,7 @@ def get_icon(exe_path, name):
 
 
 def get_url_icon(url_path):
-    print(url_path)
+    # print(url_path)
     dir_name = os.path.dirname(url_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
     # 解析 .url 文件
     icon_file = None
@@ -245,11 +264,11 @@ def get_url_icon(url_path):
         if index_match:
             icon_index = int(index_match.group(1))
     except Exception as e:
-        print(f"解析 .url 文件失败: {e}")
+        # print(f"解析 .url 文件失败: {e}")
         return "/resources/file_icos/exe.png"
 
     if not icon_file or not os.path.exists(icon_file):
-        print(f"图标文件不存在: {icon_file}")
+        # print(f"图标文件不存在: {icon_file}")
         return "/resources/file_icos/exe.png"
 
     # 从文件资源中提取图标
@@ -321,6 +340,7 @@ def is_cl(file_path):
         return False
 
 def update_inf(dir_path):
+    print("update")
     try:
         global config
         out_data = []
@@ -344,9 +364,13 @@ def update_inf(dir_path):
                     full_path = os.path.join(current_dir, item)
                     if os.path.isfile(full_path):
                         extension = os.path.splitext(full_path)[1]
-                        if ".lnk" == extension:
-                            target_path = get_shortcut_target(full_path)
-                            extension = os.path.splitext(target_path)[1]
+                        if ".lnk" == extension or ".exe" == extension:
+                            if ".lnk" == extension:
+                                target_path = get_shortcut_target(full_path)
+                                extension = os.path.splitext(target_path)[1]
+                            else:
+                                target_path = full_path
+                                extension = os.path.splitext(target_path)[1]
                             if ".exe" == extension:
                                 # 针对米哈游游戏的适配
                                 if "miHoYo" in target_path and "launcher" in target_path:
@@ -572,7 +596,7 @@ def is_mouse_in_easyDesktop():
 
 
 def wait_open():
-    global key_quick_start, config
+    global key_quick_start, config,window_state,start_action
     start_wait_time = int(time.time())
     had_refresh = False
     while True:
@@ -588,6 +612,10 @@ def wait_open():
             if key_quick_start == True:
                 out_window()
                 break
+        if start_action == True:
+            start_action = False
+            out_window()
+            break
         else:
             if is_desktop_and_mouse_in_corner():
                 out_window()
@@ -653,7 +681,7 @@ def animate_window(
 
 
 def out_window():
-    global moving, ignore_action, fullscreen_close, key_quick_start
+    global moving, ignore_action, fullscreen_close, key_quick_start,window_state,config
     key_quick_start = False
     if moving == True:
         return
@@ -661,7 +689,7 @@ def out_window():
     window_state = True
     if config["full_screen"] == False:
         window.resize(config["width"], config["height"])
-    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
+    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();NavigationManager.refreshCurrentPath();")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
     hide_from_taskbar(window)
     if not hwnd:
@@ -694,13 +722,17 @@ def out_window():
     animate_window(hwnd, start_x, start_y, end_x, end_y, width, height)
 
     while True:
+        if fullscreen_close == True:
+            break
+        if config["out_cf_type"] == "2" and is_ed_focused() == False:
+            break
         if is_mouse_in_easyDesktop() == True:
             break
         time.sleep(cfg.MOUSE_CHECK_INTERVAL)
     moving = False
 
     while True:
-        if config["out_cf_type"] == "1":
+        if config["out_cf_type"] == "1" or (config["out_cf_type"]=="3" and config["cf_type"]=="1"):
             tj = is_mouse_in_easyDesktop() == False and ignore_action == False
         else:
             tj = is_ed_focused() == False and ignore_action == False
@@ -715,7 +747,7 @@ def out_window():
 
 
 def moveIn_window():
-    global moving
+    global moving,window_state,hwnd,ignore_action
     if moving == True:
         return
     moving = True
@@ -794,7 +826,7 @@ def on_loaded():
 
 
 def update_config(part, data):
-    global config, ignore_action
+    global config, ignore_action,hwnd
     config[part] = data
     json.dump(config, open("config.json", "w"))
     if part == "follow_sys" and data == True:
@@ -870,13 +902,15 @@ def quit_ed():
     window.destroy()
     icon.stop()
     os._exit(0)
-
+def start_out():
+    global start_action
+    start_action=True
 
 def stray():
     global icon
     image = Image.open("ed_logo.png")
     icon = pystray.Icon("name", image, "title")
-    menu = (pystray.MenuItem("Exit", quit_ed),)
+    menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", quit_ed))
     icon.menu = menu
     icon.run()
 
@@ -894,7 +928,6 @@ def open_sysApp(component_name):
         print(f"打开 {component_name} 时出错: {str(e)}")
         return False
 
-
 class AppAPI:
     def bug_report(self, part, data):
         bugs_report(
@@ -908,19 +941,22 @@ class AppAPI:
         cl_data[filePath] = not state
         json.dump(cl_data,open(cfg.CL_DATA_FILE,"w"))
     def set_background(self):
-        global ignore_action
-        file_types = ("Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)", "All files (*.*)")
-        ignore_action = True
-        bg_file = window.create_file_dialog(file_types=file_types, allow_multiple=False)
-        ignore_action = False
-        bg_file = bg_file[0]
-        if bg_file:
-            file_path = "bg." + str(bg_file).split(".")[-1]
-            if os.path.exists(config["bg"]):
-                os.remove(config["bg"])
-            shutil.copy(bg_file, file_path)
-            return file_path
-        return ""
+        try:
+            global ignore_action
+            file_types = ("Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)", "All files (*.*)")
+            ignore_action = True
+            bg_file = window.create_file_dialog(file_types=file_types, allow_multiple=False)
+            ignore_action = False
+            bg_file = bg_file[0]
+            if bg_file:
+                file_path = "bg." + str(bg_file).split(".")[-1]
+                if os.path.exists(config["bg"]):
+                    os.remove(config["bg"])
+                shutil.copy(bg_file, file_path)
+                return file_path
+            return ""
+        except:
+            return ""
 
     def get_config(self):
         global config
@@ -997,7 +1033,8 @@ class AppAPI:
         resize_window.destroy()
         window.show()
         width, height, end_x, end_y = get_window_inf(window.title)
-        win32gui.MoveWindow(hwnd, int(end_x), int(end_y), width, height, True)
+        win32gui.MoveWindow(hwnd, int(end_x), int(end_y)
+                            , width, height, True)
         time.sleep(1)
         ignore_action = False
 

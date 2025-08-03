@@ -157,13 +157,7 @@ const DOMCache = {
 // ========== API调用封装 ==========
 const ApiHelper = {
     async call(method, ...args) {
-        try {
-            return await window.pywebview.api[method](...args);
-        } catch (error) {
-            console.error(`API调用失败: ${method}`, error);
-            window.pywebview.api.bug_report(method, error.toString());
-            throw error;
-        }
+        return await window.pywebview.api[method](...args);
     },
 
     async getConfig() {
@@ -1457,7 +1451,14 @@ async function change_default_dir(path = null) {
         console.error('更改默认目录失败:', error);
     }
 }
-
+async function check_dirChange(){
+    var now_data = JSON.stringify(files_data);
+    var new_data = await ApiHelper.getFileInfo(AppState.currentPath).data
+    var new_data = JSON.stringify(new_data.data)
+    if(now_data!=new_data){
+        NavigationManager.refreshCurrentPath()
+    }
+}
 // ========== 应用初始化 ==========
 const fileRenderer = new FileRenderer();
 
@@ -1554,6 +1555,7 @@ window.addEventListener('pywebviewready', async function () {
         setTimeout(() => {
             document.getElementById("b2d").click(); // 自动点击默认目录按钮
         }, 100);
+        // setInterval(check_dirChange,1000);
 
     } catch (error) {
         console.error('应用初始化失败:', error);
@@ -1569,3 +1571,10 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', asy
         await load_theme(newTheme);
     }
 });
+
+// 监听鼠标侧键
+document.onmousedown = function(event){
+    if(event.button == 3){
+        DOMCache.get("pathBackBtn").click();
+    }
+}
