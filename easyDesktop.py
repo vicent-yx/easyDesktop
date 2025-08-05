@@ -145,32 +145,33 @@ if not os.path.exists(cfg.CL_DATA_FILE):
         json.dump({}, f)
         f.close()
 
-
-def putOut_window(cf):
+def hotKey_outAction():
     print("hotkey_go")
-    global key_quick_start, config, window_state, fullscreen_close
-    if cf == config["cf_type"]:
-        if window_state == False:
-            key_quick_start = True
-        else:
-            fullscreen_close = True
-
-def key_cf2():
-    putOut_window("2")
-def key_cf3():
-    putOut_window("3")
-def key_cf4():
-    putOut_window("4")
-def reg_hotkey():
-    try:
-        keyboard.unhook_all_hotkeys()
-    except Exception as e:
-        print(e)
-    keyboard.add_hotkey("windows+shift", key_cf2)
-    keyboard.add_hotkey("windows+`", key_cf3)
-    if config["cf_type"]=="4" and config["cf_hotkey"]!="":
-        keyboard.add_hotkey(config["cf_hotkey"], key_cf4)
-reg_hotkey()
+    global key_quick_start,window_state, fullscreen_close
+    if window_state == False:
+        key_quick_start = True
+    else:
+        fullscreen_close = True
+def hotkey_detect():
+    while True:
+        time.sleep(0.1)
+        if config["cf_type"]=="2":
+            if keyboard.is_pressed('left windows') and keyboard.is_pressed('shift'):
+                hotKey_outAction()
+                keyboard.read_key()
+        if config["cf_type"]=="3":
+            if keyboard.is_pressed('left windows') and keyboard.is_pressed('`'):
+                hotKey_outAction()
+                keyboard.read_key()
+        if config["cf_type"]=="4":
+            hk = config["cf_hotkey"].split("+")
+            ok = 0
+            for i in range(len(hk)):
+                if keyboard.is_pressed(hk[i]):
+                    ok += 1
+            if ok == len(hk):
+                hotKey_outAction()
+                keyboard.read_key()
 
 def turn_png(file_path):
     try:
@@ -815,6 +816,7 @@ def on_loaded():
     window.hide()
     Thread(target=check_update).start()
     Thread(target=stray).start()
+    Thread(target=hotkey_detect).start()
     sys_theme()
     if config["view"] == "list":
         window.evaluate_js("list_view()")
@@ -849,9 +851,7 @@ def update_config(part, data):
     if part == "show_sysApp":
         window.evaluate_js("document.getElementById('b2d').click();")
     if part == "cf_hotkey":
-        keyboard.add_hotkey(data, key_cf4)
         update_config("cf_type","4")
-
 
 def autoStart_registry():
     python_exe = sys.executable
