@@ -343,6 +343,9 @@ def is_cl(file_path):
 def update_inf(dir_path):
     print("update")
     try:
+        if dir_path == "/\\":
+            dir_path = "desktop"
+
         global config
         out_data = []
         exe_data = []
@@ -618,7 +621,7 @@ def wait_open():
             out_window()
             break
         else:
-            if is_desktop_and_mouse_in_corner():
+            if is_desktop_and_mouse_in_corner() and config["cf_type"] == "1":
                 out_window()
                 break
         if window_state == True:
