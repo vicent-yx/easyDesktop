@@ -29,9 +29,71 @@ from pyautogui import size
 import traceback
 import winerror
 import win32event
+import win32file
+import win32pipe
 # sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+def activate_existing_instance():
+    """激活已存在的实例"""
+    try:
+        # 连接到命名管道
+        handle = win32file.CreateFile(
+            r'\\.\pipe\easydesktop_pipe',
+            win32file.GENERIC_WRITE,
+            0, None,
+            win32file.OPEN_EXISTING,
+            0, None
+        )
+        
+        # 发送激活命令
+        win32file.WriteFile(handle, b'activate')
+        win32file.CloseHandle(handle)
+        return True
+    except:
+        return False
+
+# 在 mutex 检查后添加管道服务端
+def start_pipe_server():
+    """启动管道服务端，监听激活命令"""
+    def pipe_thread():
+        while True:
+            try:
+                # 创建命名管道
+                pipe = win32pipe.CreateNamedPipe(
+                    r'\\.\pipe\easydesktop_pipe',
+                    win32pipe.PIPE_ACCESS_INBOUND,
+                    win32pipe.PIPE_TYPE_MESSAGE | win32pipe.PIPE_WAIT,
+                    1, 65536, 65536,
+                    0, None
+                )
+                
+                # 等待客户端连接
+                win32pipe.ConnectNamedPipe(pipe, None)
+                
+                # 读取数据
+                result, data = win32file.ReadFile(pipe, 64*1024)
+                if data == b'activate':
+                    # 在主线程中执行呼出操作
+                    window.evaluate_js("document.getElementById('b2d').click()")
+                    if window_state == False:
+                        global key_quick_start
+                        key_quick_start = True
+                    else:
+                        global fullscreen_close
+                        fullscreen_close = True
+                
+                win32file.CloseHandle(pipe)
+            except Exception as e:
+                print(f"管道服务异常: {e}")
+                break
+    
+    # 在新线程中运行管道服务
+    tube_thread = Thread(target=pipe_thread,daemon=True)
+    tube_thread.start()
+
 mutex = win32event.CreateMutex(None, 1, 'easydesktop_mutex')
 if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
+    activate_existing_instance()
     os._exit(0)
 
 has_opened_window = False
@@ -820,6 +882,7 @@ def on_loaded():
     Thread(target=check_update).start()
     Thread(target=stray).start()
     Thread(target=hotkey_detect).start()
+    start_pipe_server()
     sys_theme()
     if config["view"] == "list":
         window.evaluate_js("list_view()")
@@ -918,7 +981,7 @@ def stray():
     icon.run()
 
 
-def open_sysApp(component_name):
+def open_sysApp_action(component_name):
     if component_name not in cfg.SYSTEM_COMMANDS:
         return False
     try:
@@ -1176,6 +1239,8 @@ class AppAPI:
         global ignore_action
         ignore_action = False
 
+    def open_sysApp(self,app_name):
+        open_sysApp_action(app_name)
     def put_file(self, target_path):
         saved_files = []
         try:
@@ -1243,4 +1308,4 @@ window = webview.create_window(
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)
