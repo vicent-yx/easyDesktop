@@ -208,10 +208,10 @@ if not os.path.exists(cfg.CL_DATA_FILE):
         f.close()
 
 if not os.path.exists(cfg.USER_CLASS_FILE):
+    itemClass = {config["df_dir"]:{}}
     with open(cfg.USER_CLASS_FILE, "w",encoding="utf-8") as f:
-        json.dump({}, f)
+        json.dump(itemClass, f)
         f.close()
-    itemClass = {}
 else:
     with open(cfg.USER_CLASS_FILE, "r",encoding="utf-8") as f:
         itemClass = json.load(f)
@@ -1304,23 +1304,23 @@ class AppAPI:
         finally:
             return {"success": True, "files": saved_files}
     def add_class(self,files,key):
-        global itemClass
-        itemClass[key] = files
+        global itemClass,config
+        itemClass[config["df_dir"]][key] = files
         with open(cfg.USER_CLASS_FILE,"w",encoding="utf-8") as f:
             json.dump(itemClass,f,ensure_ascii=False)
         return {"success":True}
     def read_class(self,key):
         global itemClass
         if key=="" or key=="all" or key=="全部":
-            return {"success":True,"data":itemClass}
-        if key in itemClass:
-            return {"success":True,"files":itemClass[key]}
+            return {"success":True,"data":itemClass[config["df_dir"]]}
+        if key in itemClass[config["df_dir"]]:
+            return {"success":True,"files":itemClass[config["df_dir"]][key]}
         else:
             return {"success":False,"files":[],"message":"没有找到该分类的文件"}
     def remove_class(self,key):
         global itemClass
-        if key in itemClass:
-            del itemClass[key]
+        if key in itemClass[config["df_dir"]]:
+            del itemClass[config["df_dir"]][key]
             with open(cfg.USER_CLASS_FILE,"w",encoding="utf-8") as f:
                 json.dump(itemClass,f,ensure_ascii=False)
         return {"success":True}

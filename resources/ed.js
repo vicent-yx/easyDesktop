@@ -531,6 +531,12 @@ const MenuManager = {
 const NavigationManager = {
     async navigateTo(path) {
         DOMCache.get("content_box").scrollTo(0, 0);
+        if(path=="/" || path=="" || path=="desktop"){
+            document.getElementById("box1").style.display="block"
+        }else{
+            document.getElementById("box1").style.display="none"
+        }
+        fit_btnBar()
 
         if (path === AppState.currentPath) {
             await this.refreshCurrentPath();
@@ -1415,6 +1421,12 @@ async function push(fData = null, useLoadDir = false, path = '') {
     try {
         if (fData === null) {
             let result;
+            if((useLoadDir==true && (path=="" || path=="desktop")) || fData==null){
+                document.getElementById("box1").style.display = "block"
+            }else{
+                document.getElementById("box1").style.display = "none"
+            }
+            fit_btnBar()
             if (useLoadDir && path) {
                 result = await ApiHelper.getFileInfo(path);
                 AppState.currentPath = path;
@@ -1883,7 +1895,12 @@ async function fit_btnBar() {
     box1.style.width = (box2.offsetHeight+20)+"px"
     box2.style.marginLeft = box2.offsetHeight+"px"
     box3.style.marginTop = box3.offsetHeight+"px"
-    document.getElementById("filesContainer").style.marginTop = -(main.offsetWidth-(box2.offsetHeight-20))+"px"
-    document.getElementById("filesListContainer").style.marginTop = -(main.offsetWidth-(box2.offsetHeight-20))+"px"
+    if(box1.style.display == "none"){
+        document.getElementById("filesContainer").style.marginTop = "0px"
+        document.getElementById("filesListContainer").style.marginTop = "0px"
+    }else{
+        document.getElementById("filesContainer").style.marginTop = -(main.offsetWidth-(box2.offsetHeight-20))+"px"
+        document.getElementById("filesListContainer").style.marginTop = -(main.offsetWidth-(box2.offsetHeight-20))+"px"
+    }
 }
 document.getElementById("class_bar_btn").addEventListener("click", add_class);
