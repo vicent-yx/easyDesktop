@@ -207,6 +207,16 @@ if not os.path.exists(cfg.CL_DATA_FILE):
         json.dump({}, f)
         f.close()
 
+if not os.path.exists(cfg.USER_CLASS_FILE):
+    with open(cfg.USER_CLASS_FILE, "w",encoding="utf-8") as f:
+        json.dump({}, f)
+        f.close()
+    itemClass = {}
+else:
+    with open(cfg.USER_CLASS_FILE, "r",encoding="utf-8") as f:
+        itemClass = json.load(f)
+        f.close()
+
 def hotKey_outAction():
     print("hotkey_go")
     global key_quick_start,window_state, fullscreen_close
@@ -587,6 +597,7 @@ def update_inf(dir_path):
 
 
 def hide_from_taskbar(window):
+    return
     hwnd = windll.user32.FindWindowW(None, window.title)
     style = windll.user32.GetWindowLongW(hwnd, cfg.GWL_EXSTYLE)
     style = (style | cfg.WS_EX_TOOLWINDOW) & ~cfg.WS_EX_APPWINDOW
@@ -814,6 +825,7 @@ def out_window():
 
 def moveIn_window():
     global moving,window_state,hwnd,ignore_action
+    return
     if moving == True:
         return
     moving = True
@@ -889,8 +901,8 @@ def on_loaded():
     else:
         window.evaluate_js("grid_view()")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-    moveIn_window()
-    # wait_open()
+    # moveIn_window()
+    wait_open()
 
 
 def update_config(part, data):
@@ -1291,7 +1303,27 @@ class AppAPI:
             return {"success": False, "message": f"粘贴失败: {str(e)}"}
         finally:
             return {"success": True, "files": saved_files}
-
+    def add_class(self,files,key):
+        global itemClass
+        itemClass[key] = files
+        with open(cfg.USER_CLASS_FILE,"w",encoding="utf-8") as f:
+            json.dump(itemClass,f,ensure_ascii=False)
+        return {"success":True}
+    def read_class(self,key):
+        global itemClass
+        if key=="" or key=="all" or key=="全部":
+            return {"success":True,"data":itemClass}
+        if key in itemClass:
+            return {"success":True,"files":itemClass[key]}
+        else:
+            return {"success":False,"files":[],"message":"没有找到该分类的文件"}
+    def remove_class(self,key):
+        global itemClass
+        if key in itemClass:
+            del itemClass[key]
+            with open(cfg.USER_CLASS_FILE,"w",encoding="utf-8") as f:
+                json.dump(itemClass,f,ensure_ascii=False)
+        return {"success":True}
 
 webview.settings["ALLOW_FILE_URLS"] = True
 window = webview.create_window(
@@ -1303,7 +1335,7 @@ window = webview.create_window(
     confirm_close=False,
     frameless=True,
     shadow=True,
-    on_top=True,
+    # on_top=True,
     hidden=True,
     easy_drag=False,
     resizable=False,

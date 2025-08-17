@@ -14,7 +14,7 @@ body {
 
 .container {
     width: 100%;
-    margin: 0 auto;
+    /* margin: 0 auto; */
     padding: 20px;
     padding-top: 0px;
 }
@@ -23,11 +23,12 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
+    margin-bottom: 15px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
-
+.file-selection-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);background-color: #fff;
+}
 .time-display {
     font-size: 1rem;
     font-weight: 300;
@@ -743,4 +744,18 @@ input:checked + .slider:before {
     .context-menu {
         min-width: 160px;
     }
+}
+
+.class_bar_btn {
+    background-color: unset;
+    color:#a9a9a9;
+}
+.class_bar_btn:hover {
+    background:rgba(60, 60, 80, 0.9);
+    color: white;
+}
+
+.class_bar_btn.active {
+    background: unset;
+    color: #667eea;
 }

@@ -19,6 +19,171 @@
             display: none;
             /* 隐藏滚动条 */
         }
+
+        /* 文件选择对话框样式 */
+        .file-selection-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            backdrop-filter: blur(5px);
+        }
+
+        .file-selection-container {
+            background-color: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 600px;
+            height: 90%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .file-selection-header {
+            padding: 16px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .file-selection-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .category-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .category-input-container label {
+            font-size: 14px;
+            color: var(--text-color);
+        }
+
+        .category-input {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-size: 14px;
+            background-color: #fff;
+            color: var(--text-color);
+            outline: none;
+        }
+
+        .error-msg {
+            color: #e53e3e;
+            font-size: 14px;
+            height: 20px;
+            margin-top: 4px;
+        }
+
+        .file-selection-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .file-selection-item {
+            display: flex;
+            alignItems: center;
+            padding: 10px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .file-selection-item:hover {
+            background-color: #f7fafc;
+        }
+
+        .file-selection-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .file-selection-item img {
+            width: 24px;
+            height: 24px;
+            margin-right: 12px;
+        }
+
+        .file-selection-item .file-name {
+            flex-grow: 1;
+            font-size: 14px;
+        }
+
+        .file-selection-item .file-type {
+            font-size: 12px;
+            color: #718096;
+        }
+
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            color: #718096;
+        }
+
+        .file-selection-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .file-selection-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            fontSize: 14px;
+        }
+
+        .file-selection-btn.cancel {
+            background-color: #e2e8f0;
+        }
+
+        .file-selection-btn.confirm {
+            background-color: #3182ce;
+            color: white;
+        }
+        .file-selection-btn.delete{
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        /* 暗色主题适配 */
+        [data-theme="dark"] .file-selection-container,
+        [data-theme="dark"] .category-input,
+        [data-theme="dark"] .file-selection-btn.cancel {
+            background-color: #2d3748;
+            color: #fff;
+        }
+
+        [data-theme="dark"] .file-selection-header,
+        [data-theme="dark"] .file-selection-footer {
+            border-color: #4a5568;
+        }
+
+        [data-theme="dark"] .file-selection-item:hover {
+            background-color: #4a5568;
+        }
+
+        [data-theme="dark"] .file-selection-item .file-type,
+        [data-theme="dark"] .loading-indicator {
+            color: #a0aec0;
+        }
     </style>
 </head>
 
@@ -70,6 +235,57 @@
         .file-list-cl img{
             width: 100%;
         }
+        
+        .class_bar{
+            width: auto;
+            height: 30px;
+            display: flex;
+            /* transform: rotate(-90deg); */
+        }
+        .class_bar_btn {
+            padding: 8px 16px;
+            margin-right: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap
+        }
+
+        .class_bar_btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .class_bar_btn.active {
+            font-weight: bold;
+            transform: translateY(-2px);
+        }
+
+        .class_bar_btn i {
+            margin-right: 6px;
+            font-size: 12px;
+        }
+
+        .class_bar_btn.active i {
+            color: white;
+        }
+
+        .box2{
+            transform: rotate(90deg);
+            transform-origin: 0 0;
+        }
+        .box1{
+            overflow: scroll;
+            transform-origin: 0 0;
+            transform: rotate(-90deg);
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+            margin-top: 40px;
+        }
     </style>
     <div class="content_box" id="content_box">
         <div class="container" id="main" style="margin-top: 20px;">
@@ -94,7 +310,16 @@
                 </div>
                 <button id="settingsBtn" class="settings-btn"><i class="fas fa-cog"></i></button>
             </div>
-
+            <div class="box1" id="box1">
+                <div class="box2" id="box2">
+                    <div class="class_bar" id="class_bar">
+                        <button id="classbar_btn" class="class_bar_btn active" class="class_bar_btn">
+                            <span id="class_title">全部</span>
+                        </button>
+                        <button class="class_bar_btn" id="class_bar_btn">+新建分类</button>
+                    </div>
+                </div>
+            </div>
             <div class="files-grid" id="filesContainer">
                 <!-- 网格视图内容 -->
             </div>
@@ -173,6 +398,30 @@
                 <div class="rename-buttons">
                     <button class="rename-btn cancel" id="newFileCancel">取消</button>
                     <button class="rename-btn confirm" id="newFileConfirm">确认</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件选择对话框 -->
+        <div class="file-selection-overlay" id="fileSelectionDialog" style="display: none;">
+            <div class="file-selection-container">
+                <div class="file-selection-header">
+                    <h4 style="margin-bottom: 10px;">分类组设置</h4>
+                    <div class="category-input-container">
+                        <label for="categoryInput" style="color: #a0aec0;">分类名</label>
+                        <input type="text" id="categoryInput" class="category-input">
+                        <div id="categoryErrorMsg" class="error-msg"></div>
+                    </div>
+                </div>
+                <div class="file-selection-body">
+                    <div class="file-selection-list" id="fileSelectionList">
+                        <div class="loading-indicator">加载中...</div>
+                    </div>
+                </div>
+                <div class="file-selection-footer">
+                    <button class="file-selection-btn cancel" id="fileSelectionCancel">取消</button>
+                    <button class="file-selection-btn delete" id="fileSelectionDelete" style="display: none;">删除</button>
+                    <button class="file-selection-btn confirm" id="fileSelectionConfirm">确认</button>
                 </div>
             </div>
         </div>

@@ -33,8 +33,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
+    margin-bottom: 15px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
@@ -761,4 +760,18 @@ input:checked + .slider:before {
     .context-menu {
         min-width: 160px;
     }
+}
+
+.class_bar_btn {
+    background-color: unset;
+    color:#a9a9a9;
+}
+.class_bar_btn:hover {
+    background:rgba(125, 125, 125, 0.9);
+    color: white;
+}
+
+.class_bar_btn.active {
+    background: unset;
+    color: white;
 }

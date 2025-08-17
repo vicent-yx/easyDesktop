@@ -23,11 +23,12 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 15px;
+    margin-bottom: 15px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
-
+.file-selection-container {
+    background-color: #fff;
+}
 .time-display {
     font-size: 1rem;
     font-weight: 300;
@@ -833,4 +834,18 @@ input:checked + .slider:before {
     .context-menu {
         min-width: 160px;
     }
+}
+
+.class_bar_btn {
+    background-color: unset;
+    color:#a9a9a9;
+}
+.class_bar_btn:hover {
+    background:rgba(222, 222, 222, 0.9);
+    color:#34495e;
+}
+
+.class_bar_btn.active {
+    background: unset;
+    color: #3498db;
 }

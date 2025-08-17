@@ -551,6 +551,9 @@ const NavigationManager = {
         const result = await ApiHelper.getFileInfo(AppState.currentPath);
         AppState.setFiles(result.data);
         await fileRenderer.render(result.data);
+        if(last_group!="" || last_group!="全部"){
+            change_class(last_group)
+        }
     },
 
     async updateBreadcrumb(path) {
@@ -1084,6 +1087,7 @@ const EventManager = {
             if (document.activeElement.id !== 'search_input') {
                 const searchInput = DOMCache.get('search_input');
                 if (DOMCache.get("renameOverlay").style.display === "flex") return;
+                if(document.activeElement.id == "categoryInput") return
 
                 if (searchInput && !event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1) {
                     searchInput.focus();
@@ -1168,6 +1172,202 @@ const menuNew = DOMCache.get('menuNew');
 // ========== 全局函数 ==========
 function getFileType(fileName, fileType) {
     return Utils.getFileType(fileName, fileType);
+}
+
+/**
+ * 显示文件选择对话框
+ * @returns {Promise<Object>} 包含选中文件列表和分类名的对象
+ */
+async function showFileSelectionDialog(class_name=null) {
+    return new Promise(async (resolve) => {
+        setTimeout(enableScroll,200)
+        let del_btn = document.getElementById("fileSelectionDelete")
+        let list_data = []
+        if(class_name!=null){
+            let class_data = await ApiHelper.call('read_class', class_name)
+            for(item of class_data.files){
+                list_data.push(Utils.generateFileId(item.filePath))
+            }
+            del_btn.style.display="block"
+            del_btn.dataset.cid = class_name
+        }else{
+            document.getElementById("fileSelectionDelete").style.display="none"
+        }
+        // 获取对话框元素
+        const dialogContainer = document.getElementById('fileSelectionDialog');
+        const overlay = document.querySelector('.file-selection-overlay');
+        const dialogContent = dialogContainer.querySelector('.file-selection-content');
+        const fileSelectionList = document.getElementById('fileSelectionList');
+        const categoryInput = document.getElementById('categoryInput');
+        const categoryErrorMsg = document.getElementById('categoryErrorMsg');
+        const cancelBtn = dialogContainer.querySelector('.file-selection-btn');
+        const confirmBtn =document.getElementById("fileSelectionConfirm")
+        const del_action = async function del_this_class(){
+            delete_class(del_btn.dataset.cid)
+            handleCancel()
+        }
+        // 重置对话框状态
+        fileSelectionList.innerHTML = '<div class="loading-indicator">加载中...</div>';
+        if(class_name!=null){
+            categoryInput.value = class_name;
+            del_btn.removeEventListener("click",del_action,false)
+            del_btn.addEventListener("click",del_action,false)
+        }else{
+            categoryInput.value = '';
+        }
+        categoryErrorMsg.style.display = 'none';
+        categoryErrorMsg.textContent = '';
+
+        // 显示对话框
+        dialogContainer.style.display = 'flex';
+
+        // 禁用背景滚动
+        UIUtils.disableScroll();
+
+        // 初始化变量
+        let selections = [];
+        const checkedState = new Map();
+
+        try {
+            // 获取文件信息
+            const result = await ApiHelper.getFileInfo(AppState.currentPath);
+            selections = result.data;
+
+            // 清空加载提示
+            fileSelectionList.innerHTML = '';
+
+            // 渲染每个项目
+            selections.forEach(item => {
+                const listItem = document.createElement('div');
+                listItem.className = 'file-selection-item';
+
+                // 复选框
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.value = item.filePath;
+                checkbox.dataset.filePath = item.filePath;
+
+                // 初始状态为未选中
+                if(list_data.includes(Utils.generateFileId(item.filePath))){
+                    checkedState.set(item.filePath, true);
+                    checkbox.checked = true;
+                }else{
+                    checkedState.set(item.filePath, false);
+                }
+
+                // 监听勾选状态变化
+                checkbox.addEventListener('change', () => {
+                    checkedState.set(item.filePath, checkbox.checked);
+                });
+
+                // 图标
+                const icon = document.createElement('img');
+                icon.src = item.ico;
+                icon.className = 'file-icon';
+
+                // 文件名
+                const fileName = document.createElement('div');
+                fileName.className = 'file-name';
+                fileName.textContent = item.fileName;
+
+                // 文件类型
+                const fileType = document.createElement('div');
+                fileType.className = 'file-type';
+                fileType.textContent = item.fileType === '文件夹' ? '文件夹' : item.fileType;
+
+                // 组装列表项
+                listItem.appendChild(checkbox);
+                listItem.appendChild(icon);
+                listItem.appendChild(fileName);
+                listItem.appendChild(fileType);
+                fileSelectionList.appendChild(listItem);
+            });
+
+        } catch (error) {
+            console.error('获取文件信息失败:', error);
+            fileSelectionList.innerHTML = '';
+
+            const errorMsg = document.createElement('div');
+            errorMsg.textContent = '获取文件信息失败: ' + error.message;
+            errorMsg.className = 'error-message';
+
+            fileSelectionList.appendChild(errorMsg);
+        }
+
+        // 取消按钮事件
+        function handleCancel() {
+            dialogContainer.style.display = 'none';
+            UIUtils.enableScroll();
+            resolve({files_data: [], title: ''});
+        }
+
+        // 确定按钮事件
+        function handleConfirm() {
+            const selectedItems = [];
+            checkedState.forEach((isChecked, filePath) => {
+                if (isChecked) {
+                    const item = selections.find(item => item.filePath === filePath);
+                    if (item) {
+                        selectedItems.push(item);
+                    }
+                }
+            });
+
+            // 获取分类名
+            const categoryTitle = categoryInput.value.trim();
+
+            // 验证输入
+            if (!categoryTitle) {
+                categoryErrorMsg.textContent = '分类名不能为空';
+                categoryErrorMsg.style.display = 'block';
+                return;
+            }
+
+            if (selectedItems.length === 0) {
+                categoryErrorMsg.textContent = '请选择至少一个文件或文件夹';
+                categoryErrorMsg.style.display = 'block';
+                return;
+            }
+
+            categoryErrorMsg.style.display = 'none';
+            dialogContainer.style.display = 'none';
+            UIUtils.enableScroll();
+            resolve({files_data: selectedItems, title: categoryTitle});
+        }
+
+        // 点击对话框外部关闭
+        function handleOverlayClick(e) {
+            if (e.target === overlay) {
+                dialogContainer.style.display = 'none';
+                UIUtils.enableScroll();
+                resolve({files_data: [], title: ''});
+            }
+        }
+
+        // 绑定事件
+        cancelBtn.addEventListener('click', handleCancel);
+        confirmBtn.addEventListener('click', handleConfirm);
+        overlay.addEventListener('click', handleOverlayClick);
+
+        // 清理事件监听器
+        function cleanup() {
+            cancelBtn.removeEventListener('click', handleCancel);
+            confirmBtn.removeEventListener('click', handleConfirm);
+            overlay.removeEventListener('click', handleOverlayClick);
+        }
+
+        // 确保在对话框关闭时清理事件
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach(mutation => {
+                if (mutation.attributeName === 'style' && dialogContainer.style.display === 'none') {
+                    cleanup();
+                    observer.disconnect();
+                }
+            });
+        });
+
+        observer.observe(dialogContainer, { attributes: true });
+    });
 }
 
 function open_file(filePath) {
@@ -1561,6 +1761,7 @@ window.addEventListener('pywebviewready', async function () {
         console.error('应用初始化失败:', error);
         ApiHelper.call('bug_report', 'init', error.toString());
     }
+    render_class_btn()
 });
 
 // 监听系统主题变化
@@ -1578,3 +1779,111 @@ document.onmousedown = function(event){
         DOMCache.get("pathBackBtn").click();
     }
 }
+
+// 分类相关
+const class_btn_bar =  document.getElementById("class_bar")
+async function add_class(){
+    setTimeout(function () {
+        enableScroll()
+    }, 100);
+    var rs = await showFileSelectionDialog()
+    if(rs && rs.files_data.length > 0){
+        await ApiHelper.call('add_class', rs.files_data ,rs.title);
+    }
+    render_class_btn()
+}
+async function class_filter(path){
+    var ctn = document.getElementById("filesContainer")
+    var list_ctn = document.getElementById("filesListContainer")
+    if(path == "" || path == "全部"){
+        for(file_item of [...ctn.children,...list_ctn.children]){
+            file_item.style.display = "flex"
+        }
+        return
+    }
+    var classData =  await ApiHelper.call('read_class', path);
+    var list_data = []
+    for(item of classData.files){
+        list_data.push(Utils.generateFileId(item.filePath))
+    }
+    console.log(list_data)
+    for(file_item of [...ctn.children,...list_ctn.children]){
+        console.log(file_item.id)
+        if(list_data.includes(file_item.id)){
+            file_item.style.display = "flex"
+        }else{
+            file_item.style.display = "none"
+        }
+    }
+}
+let last_group = "全部"
+async function render_class_btn(){
+    var classData =  await ApiHelper.call('read_class', '');
+    class_btn_bar.innerHTML = '';
+    var class_names = ["全部"]
+    for(item in classData.data){
+        class_names.push(item)
+    }
+    for(let index of class_names){
+        let btn = document.createElement("button")
+        btn.classList.add("class_bar_btn")
+        if(index == last_group){
+            btn.classList.add("active")
+        }
+        btn.innerHTML = `<span id="class_title">${index}</span>`
+        btn.onclick = function(){ 
+            change_class(index)
+        }
+        btn.addEventListener("contextmenu",async function(e) {
+            e.preventDefault();
+            var rs = await showFileSelectionDialog(index)
+            if(rs && rs.files_data.length > 0){
+                if(index!=rs.title){
+                    await ApiHelper.call("remove_class",index)
+                }
+                await ApiHelper.call('add_class', rs.files_data ,rs.title);
+            }
+            render_class_btn()
+            change_class(index)
+        });
+        btn.id = index;
+        class_btn_bar.appendChild(btn);
+    }
+    let add_btn = document.createElement("button")
+    add_btn.classList.add("class_bar_btn")
+    add_btn.onclick = function(){ 
+        add_class()
+    }
+    add_btn.innerHTML = `<span id="class_title">+新建分类</span>`
+    add_btn.id = "class_bar_btn"
+    class_btn_bar.appendChild(add_btn);
+    fit_btnBar()
+}
+async function change_class(title){
+    for(let e of class_btn_bar.children){
+        if(e.id==title){
+            e.className = "class_bar_btn active";
+        }else{
+            e.className = "class_bar_btn"
+        }
+    }
+    class_filter(title);
+    last_group = title;
+}
+async function delete_class(cid){
+    await ApiHelper.call("remove_class",cid)
+    render_class_btn()
+}
+async function fit_btnBar() {
+    const main = document.getElementById("main")
+    const box1 = document.getElementById("box1")
+    const box2 = document.getElementById("box2")
+    const box3 = document.getElementById("class_bar")
+    box1.style.height=main.offsetWidth+"px"
+    box1.style.width = (box2.offsetHeight+20)+"px"
+    box2.style.marginLeft = box2.offsetHeight+"px"
+    box3.style.marginTop = box3.offsetHeight+"px"
+    document.getElementById("filesContainer").style.marginTop = -(main.offsetWidth-(box2.offsetHeight-20))+"px"
+    document.getElementById("filesListContainer").style.marginTop = -(main.offsetWidth-(box2.offsetHeight-20))+"px"
+}
+document.getElementById("class_bar_btn").addEventListener("click", add_class);
