@@ -1683,6 +1683,7 @@ async function change_default_dir(path = null) {
 
             await ConfigManager.updateDefaultDirectory();
             DOMCache.get("b2d").click();
+            render_class_btn()
         }
     } catch (error) {
         ApiHelper.call('unlock_window_visibility');

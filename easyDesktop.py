@@ -597,7 +597,6 @@ def update_inf(dir_path):
 
 
 def hide_from_taskbar(window):
-    return
     hwnd = windll.user32.FindWindowW(None, window.title)
     style = windll.user32.GetWindowLongW(hwnd, cfg.GWL_EXSTYLE)
     style = (style | cfg.WS_EX_TOOLWINDOW) & ~cfg.WS_EX_APPWINDOW
