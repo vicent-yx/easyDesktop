@@ -849,3 +849,21 @@ input:checked + .slider:before {
     background: unset;
     color: #3498db;
 }
+
+.category-input{
+    background-color: white;
+}
+
+.file-selection-item:hover {
+    background-color:#f5f5f5;
+}
+
+.file-selection-item.active {
+    background-color:#e6f8ff;
+}
+
+.file-selection-item .file-type {
+    font-size: 12px;
+    color: #718096;
+}
+

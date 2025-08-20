@@ -759,3 +759,41 @@ input:checked + .slider:before {
     background: unset;
     color: #667eea;
 }
+
+.file-selection-item:hover {
+    background-color: #43549d;
+}
+
+.file-selection-item.active {
+    background-color: #5b6dbe;
+}
+
+.category-input{
+    background-color: #1a1a2e;
+}
+
+.file-selection-item .file-type {
+    font-size: 12px;
+    color: white;
+}
+
+ .file-selection-container,
+ .category-input,
+ .file-selection-btn.cancel {
+    background-color: #2d3748;
+    color: #fff;
+}
+
+ .file-selection-header,
+ .file-selection-footer {
+    border-color: #4a5568;
+}
+
+ .file-selection-item:hover {
+    background-color: #4a5568;
+}
+
+ .file-selection-item .file-type,
+ .loading-indicator {
+    color: #a0aec0;
+}

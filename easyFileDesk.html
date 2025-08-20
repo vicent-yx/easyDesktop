@@ -36,7 +36,6 @@
         }
 
         .file-selection-container {
-            background-color: #fff;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
             width: 90%;
@@ -75,7 +74,6 @@
             border-radius: 6px;
             border: 1px solid #e2e8f0;
             font-size: 14px;
-            background-color: #fff;
             color: var(--text-color);
             outline: none;
         }
@@ -99,19 +97,12 @@
             padding: 10px;
             border-radius: 8px;
             transition: background-color 0.2s;
-        }
-
-        .file-selection-item:hover {
-            background-color: #f7fafc;
-        }
-
-        .file-selection-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            margin-right: 12px;
             cursor: pointer;
         }
 
+        .file-selection-item input[type="checkbox"] {
+            display: none;
+        }
         .file-selection-item img {
             width: 24px;
             height: 24px;
@@ -121,11 +112,6 @@
         .file-selection-item .file-name {
             flex-grow: 1;
             font-size: 14px;
-        }
-
-        .file-selection-item .file-type {
-            font-size: 12px;
-            color: #718096;
         }
 
         .loading-indicator {
@@ -150,10 +136,6 @@
             fontSize: 14px;
         }
 
-        .file-selection-btn.cancel {
-            background-color: #e2e8f0;
-        }
-
         .file-selection-btn.confirm {
             background-color: #3182ce;
             color: white;
@@ -164,26 +146,7 @@
         }
 
         /* 暗色主题适配 */
-        [data-theme="dark"] .file-selection-container,
-        [data-theme="dark"] .category-input,
-        [data-theme="dark"] .file-selection-btn.cancel {
-            background-color: #2d3748;
-            color: #fff;
-        }
-
-        [data-theme="dark"] .file-selection-header,
-        [data-theme="dark"] .file-selection-footer {
-            border-color: #4a5568;
-        }
-
-        [data-theme="dark"] .file-selection-item:hover {
-            background-color: #4a5568;
-        }
-
-        [data-theme="dark"] .file-selection-item .file-type,
-        [data-theme="dark"] .loading-indicator {
-            color: #a0aec0;
-        }
+        
     </style>
 </head>
 
@@ -711,7 +674,7 @@
                     <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
                 </div>
             </div>
-            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.9.0</p>
+            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.10.0</p>
         </div>
     </div>
     </div>

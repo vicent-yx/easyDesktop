@@ -531,7 +531,7 @@ const MenuManager = {
 const NavigationManager = {
     async navigateTo(path) {
         DOMCache.get("content_box").scrollTo(0, 0);
-        if(path=="/" || path=="" || path=="desktop"){
+        if(path=="/" || path=="" || path=="desktop" || path==document.getElementById("b2d").dataset.path){
             document.getElementById("box1").style.display="block"
         }else{
             document.getElementById("box1").style.display="none"
@@ -933,11 +933,13 @@ const EventManager = {
         settingsBtn.addEventListener('click', () => {
             UIUtils.disableScroll();
             themePanel.style.display = themePanel.style.display === 'flex' ? 'none' : 'flex';
+            ApiHelper.call("disable_autoClose")
         });
 
         closeBtn.addEventListener('click', () => {
             UIUtils.enableScroll();
             themePanel.style.display = 'none';
+            ApiHelper.call("enable_autoClose")
         });
 
         this.initToggleSettings();
@@ -1078,6 +1080,9 @@ const EventManager = {
         DOMCache.get('pathBackBtn').addEventListener('click', async () => {
             const parentPath = await ApiHelper.call('get_parent', AppState.currentPath);
             NavigationManager.navigateTo(parentPath);
+            if(parentPath=="/" || parentPath=="" || parentPath=="desktop" || parentPath==document.getElementById("b2d").dataset.path){
+                class_filter(last_group)
+            }
         });
 
         DOMCache.get('breadcrumb').addEventListener('click', (e) => {
@@ -1187,6 +1192,7 @@ function getFileType(fileName, fileType) {
 async function showFileSelectionDialog(class_name=null) {
     return new Promise(async (resolve) => {
         setTimeout(enableScroll,200)
+        ApiHelper.call("disable_autoClose")
         let del_btn = document.getElementById("fileSelectionDelete")
         let list_data = []
         if(class_name!=null){
@@ -1257,12 +1263,25 @@ async function showFileSelectionDialog(class_name=null) {
                 if(list_data.includes(Utils.generateFileId(item.filePath))){
                     checkedState.set(item.filePath, true);
                     checkbox.checked = true;
+                    listItem.className = 'file-selection-item active';
                 }else{
                     checkedState.set(item.filePath, false);
                 }
 
                 // 监听勾选状态变化
                 checkbox.addEventListener('change', () => {
+                    checkedState.set(item.filePath, checkbox.checked);
+                });
+
+                // 元素点击监听
+                listItem.addEventListener('click', () => {
+                    if (checkbox.checked==true) {
+                        checkbox.checked = false;
+                        listItem.classList.remove('active');
+                    } else {
+                        checkbox.checked = true;
+                        listItem.classList.add('active');
+                    }
                     checkedState.set(item.filePath, checkbox.checked);
                 });
 
@@ -1305,6 +1324,7 @@ async function showFileSelectionDialog(class_name=null) {
             dialogContainer.style.display = 'none';
             UIUtils.enableScroll();
             resolve({files_data: [], title: ''});
+            ApiHelper.call("enable_autoClose")
         }
 
         // 确定按钮事件
@@ -1312,6 +1332,7 @@ async function showFileSelectionDialog(class_name=null) {
             const selectedItems = [];
             checkedState.forEach((isChecked, filePath) => {
                 if (isChecked) {
+                    console.log("checked！")
                     const item = selections.find(item => item.filePath === filePath);
                     if (item) {
                         selectedItems.push(item);
@@ -1339,6 +1360,7 @@ async function showFileSelectionDialog(class_name=null) {
             dialogContainer.style.display = 'none';
             UIUtils.enableScroll();
             resolve({files_data: selectedItems, title: categoryTitle});
+            ApiHelper.call("enable_autoClose")
         }
 
         // 点击对话框外部关闭
@@ -1347,6 +1369,7 @@ async function showFileSelectionDialog(class_name=null) {
                 dialogContainer.style.display = 'none';
                 UIUtils.enableScroll();
                 resolve({files_data: [], title: ''});
+                ApiHelper.call("enable_autoClose")
             }
         }
 
@@ -1423,9 +1446,11 @@ async function push(fData = null, useLoadDir = false, path = '') {
             let result;
             if((useLoadDir==true && (path=="" || path=="desktop")) || fData==null){
                 document.getElementById("box1").style.display = "block"
+                class_filter(last_group)
             }else{
                 document.getElementById("box1").style.display = "none"
             }
+            render_class_btn()
             fit_btnBar()
             if (useLoadDir && path) {
                 result = await ApiHelper.getFileInfo(path);
@@ -1577,6 +1602,7 @@ async function load_theme(theme) {
         // 加载主题
         themeCSS.href = CONSTANTS.THEME_PATHS[theme];
         NavigationManager.refreshCurrentPath();
+        render_class_btn()
         console.log(`主题已切换到: ${theme}`);
         return true;
     } catch (error) {
@@ -1854,9 +1880,9 @@ async function render_class_btn(){
                     await ApiHelper.call("remove_class",index)
                 }
                 await ApiHelper.call('add_class', rs.files_data ,rs.title);
+                change_class(index)
             }
             render_class_btn()
-            change_class(index)
         });
         btn.id = index;
         class_btn_bar.appendChild(btn);
@@ -1885,6 +1911,8 @@ async function change_class(title){
 async function delete_class(cid){
     await ApiHelper.call("remove_class",cid)
     render_class_btn()
+    last_group = "全部"
+    class_filter(last_group)
 }
 async function fit_btnBar() {
     const main = document.getElementById("main")

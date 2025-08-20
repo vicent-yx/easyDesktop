@@ -176,6 +176,14 @@ def install():
         user_config = json.load(open(os.path.join(install_path,"config.json"),"r",encoding="utf-8"))
     else:
         user_config = None
+    if os.path.exists(os.path.join(install_path,"cl_data.json")):
+        cl_data = json.load(open(os.path.join(install_path,"cl_data.json"),"r",encoding="utf-8"))
+    else:
+        cl_data = None
+    copy_bg=False
+    if os.path.exists(os.path.join(install_path,user_config["bg"])):
+        shutil.copy2(os.path.join(install_path,user_config["bg"]),user_config["bg"])
+        copy_bg=True
     # try:
     progressbar["mode"]="indeterminate"
     progressbar["orient"]=tkinter.HORIZONTAL
@@ -246,6 +254,11 @@ def install():
 
     if user_config!=None:
         json.dump(user_config, open(os.path.join(install_path,"config.json"),"w",encoding="utf-8"))
+    if cl_data!=None:
+        json.dump(cl_data, open(os.path.join(install_path,"cl_data.json"),"w",encoding="utf-8"))
+    if copy_bg==True:
+        shutil.copy2(user_config["bg"],os.path.join(install_path,user_config["bg"]))
+        os.remove(user_config["bg"])
 
     download_inf_var.set("完成")
     install_started=False

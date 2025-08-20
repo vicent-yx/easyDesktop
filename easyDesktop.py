@@ -815,7 +815,8 @@ def out_window():
             tj = is_ed_focused() == False and ignore_action == False
         if (tj == True and config["full_screen"] == False) or fullscreen_close == True:
             fullscreen_close = False
-            moveIn_window()
+            if ignore_action == False:
+                moveIn_window()
             break
 
         if window_state == False:
@@ -825,7 +826,6 @@ def out_window():
 
 def moveIn_window():
     global moving,window_state,hwnd,ignore_action
-    return
     if moving == True:
         return
     moving = True
@@ -901,8 +901,8 @@ def on_loaded():
     else:
         window.evaluate_js("grid_view()")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-    # moveIn_window()
-    wait_open()
+    moveIn_window()
+    # wait_open()
 
 
 def update_config(part, data):
@@ -1047,7 +1047,10 @@ class AppAPI:
         return desktop_path
 
     def get_parent(self, path):
-        return os.path.dirname(path)
+        pr_path = os.path.dirname(path)
+        if pr_path == desktop_path or pr_path == public_desktop:
+            return "desktop"
+        return pr_path
 
     def load_search_index(self, data):
         outData = {}
@@ -1312,6 +1315,8 @@ class AppAPI:
     def read_class(self,key):
         global itemClass
         if key=="" or key=="all" or key=="全部":
+            if not config["df_dir"] in itemClass:
+                itemClass[config["df_dir"]]={}
             return {"success":True,"data":itemClass[config["df_dir"]]}
         if key in itemClass[config["df_dir"]]:
             return {"success":True,"files":itemClass[config["df_dir"]][key]}
@@ -1324,6 +1329,13 @@ class AppAPI:
             with open(cfg.USER_CLASS_FILE,"w",encoding="utf-8") as f:
                 json.dump(itemClass,f,ensure_ascii=False)
         return {"success":True}
+    
+    def disable_autoClose(self):
+        global ignore_action
+        ignore_action = True
+    def enable_autoClose(self):
+        global ignore_action
+        ignore_action = False
 
 webview.settings["ALLOW_FILE_URLS"] = True
 window = webview.create_window(
@@ -1335,9 +1347,9 @@ window = webview.create_window(
     confirm_close=False,
     frameless=True,
     shadow=True,
-    # on_top=True,
+    on_top=True,
     hidden=True,
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)
