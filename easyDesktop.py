@@ -224,6 +224,7 @@ def hotKey_outAction():
         key_quick_start = True
     else:
         fullscreen_close = True
+    window.evaluate_js("document.body.focus()")
 def hotkey_detect():
     while True:
         time.sleep(0.1)
@@ -440,14 +441,14 @@ def update_inf(dir_path):
                     full_path = os.path.join(current_dir, item)
                     if os.path.isfile(full_path):
                         extension = os.path.splitext(full_path)[1]
-                        if ".lnk" == extension or ".exe" == extension:
+                        if ".lnk" == extension or ".exe" == extension or ".EXE" == extension:
                             if ".lnk" == extension:
                                 target_path = get_shortcut_target(full_path)
                                 extension = os.path.splitext(target_path)[1]
                             else:
                                 target_path = full_path
                                 extension = os.path.splitext(target_path)[1]
-                            if ".exe" == extension:
+                            if ".exe" == extension or ".EXE" == extension:
                                 # 针对米哈游游戏的适配
                                 if "miHoYo" in target_path and "launcher" in target_path:
                                     exe_icon = cfg.MIHOYO_GAMES["default"]  # 默认值
@@ -796,6 +797,7 @@ def out_window():
     time.sleep(0.1)
     window.show()
     animate_window(hwnd, start_x, start_y, end_x, end_y, width, height)
+    window.evaluate_js("window_state=true;")
 
     while True:
         if fullscreen_close == True:
@@ -842,6 +844,7 @@ def moveIn_window():
     current_y = rect["top"]
     start_x = -width
     start_y = screen_height - height // 2
+    window.evaluate_js("window_state=false;")
     animate_window(hwnd, current_x, current_y, start_x, start_y + 500, width, height)
     window.hide()
     moving = False

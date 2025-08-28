@@ -1099,6 +1099,7 @@ const EventManager = {
                 const searchInput = DOMCache.get('search_input');
                 if (DOMCache.get("renameOverlay").style.display === "flex") return;
                 if(document.activeElement.id == "categoryInput") return
+                if(window_state==false)return
 
                 if (searchInput && !event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1) {
                     searchInput.focus();
@@ -1171,6 +1172,7 @@ let currentHistoryIndex = -1;
 let timer = null;
 let db_click_action = false;
 let in_edit = false;
+let window_state = false
 const scripts_type = CONSTANTS.SCRIPT_TYPES;
 const blankMenu = DOMCache.get('blankMenu');
 const newFileOverlay = DOMCache.get('newFileOverlay');
@@ -1933,3 +1935,19 @@ async function fit_btnBar() {
     }
 }
 document.getElementById("class_bar_btn").addEventListener("click", add_class);
+
+let enter_click = false;
+window.addEventListener("keydown", function(event) {
+    if (event.key === 'Enter') {
+        for(let e of [...document.getElementById("filesContainer").children,...document.getElementById("filesListContainer").children]){
+            if(e.style.display != "none" && enter_click==false){
+                enter_click = true
+                e.click()
+                setTimeout(function () {
+                    enter_click = false
+                }, 3000);
+                break
+            }
+        }
+    }
+});
