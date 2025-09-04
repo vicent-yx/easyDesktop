@@ -1,8 +1,16 @@
+@font-face {
+    font-family: 'df';
+    src: url('/resources/MiSans-Semibold.woff') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'df';
 }
 
 body {
@@ -745,7 +753,9 @@ input:checked + .slider:before {
         min-width: 160px;
     }
 }
-
+.breadcrumb-item{
+    color: #667eea;
+}
 .class_bar_btn {
     background-color: unset;
     color:#a9a9a9;

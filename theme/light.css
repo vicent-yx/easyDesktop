@@ -1,8 +1,15 @@
+@font-face {
+    font-family: 'df';
+    src: url('/resources/MiSans-Semibold.woff') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'df';
 }
 
 body {
@@ -114,6 +121,7 @@ body {
     border: 1px solid transparent;
     opacity: 0.9;
     position: relative;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .file-item:hover {

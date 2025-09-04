@@ -57,6 +57,10 @@
             overflow-y: auto;
             flex-grow: 1;
         }
+        .file-selection-body::-webkit-scrollbar {
+            display: none;
+            /* 隐藏滚动条 */
+        }
 
         .category-input-container {
             display: flex;
@@ -191,6 +195,12 @@
         }
         .file-item:hover .file-cl{
             display: block;
+        }
+        .file-item span{
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .file-cl img{
             width: 100%;
@@ -823,7 +833,7 @@
             </p>
             <div class="key-display" id="keyDisplay">
                 等待按键输入...
-            </div>
+            </div>.breadcrumb-item
             <p class="key-limits">已记录 <span id="currentKeys">0</span>/3 个按键</p>
             
             <div class="modal-buttons">

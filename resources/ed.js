@@ -1934,6 +1934,7 @@ async function fit_btnBar() {
         document.getElementById("filesListContainer").style.marginTop = -(main.offsetWidth-(box2.offsetHeight-20))+"px"
     }
 }
+setInterval(fit_btnBar,200)
 document.getElementById("class_bar_btn").addEventListener("click", add_class);
 
 let enter_click = false;

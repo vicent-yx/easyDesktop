@@ -74,7 +74,7 @@ def start_pipe_server():
                 result, data = win32file.ReadFile(pipe, 64*1024)
                 if data == b'activate':
                     # 在主线程中执行呼出操作
-                    window.evaluate_js("document.getElementById('b2d').click()")
+                    window.evaluate_js("document.getElementById('b2d').click();fit_btnBar();")
                     if window_state == False:
                         global key_quick_start
                         key_quick_start = True
@@ -507,16 +507,28 @@ def update_inf(dir_path):
                                         }
                                     )
                                 else:
-                                    dir_data.append(
-                                        {
-                                            "fileName": os.path.basename(full_path),
-                                            "fileType": "文件夹",
-                                            "file": item,
-                                            "filePath": target_path,
-                                            "ico": "./resources/file_icos/dir.png",
-                                            "cl": is_cl(target_path),
-                                        }
-                                    )
+                                    if target_path=="" or target_path==None:
+                                        exe_data.append(
+                                            {
+                                                "fileName": os.path.basename(full_path),
+                                                "fileType": extension,
+                                                "file": item,
+                                                "filePath": full_path,
+                                                "ico":  get_url_icon(full_path),
+                                                "cl": is_cl(target_path),
+                                            }
+                                        )
+                                    else:
+                                        dir_data.append(
+                                            {
+                                                "fileName": os.path.basename(full_path),
+                                                "fileType": "文件夹",
+                                                "file": item,
+                                                "filePath": target_path,
+                                                "ico": "./resources/file_icos/dir.png",
+                                                "cl": is_cl(target_path),
+                                            }
+                                        )
                                 continue
                         elif ".url" == extension:
                             icon_image = get_url_icon(full_path)
@@ -679,7 +691,7 @@ def wait_open():
     while True:
         if int(time.time()) - start_wait_time > cfg.WAIT_TIMEOUT:
             if had_refresh == False:
-                window.evaluate_js("document.getElementById('b2d').click()")
+                window.evaluate_js("document.getElementById('b2d').click();fit_btnBar();")
                 had_refresh = True
         if config["fdr"] == True:
             if is_focused_window_fullscreen() == True:
@@ -766,7 +778,7 @@ def out_window():
     window_state = True
     if config["full_screen"] == False:
         window.resize(config["width"], config["height"])
-    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();NavigationManager.refreshCurrentPath();")
+    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();NavigationManager.refreshCurrentPath();fit_btnBar();")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
     hide_from_taskbar(window)
     if not hwnd:
@@ -929,7 +941,7 @@ def update_config(part, data):
         else:
             win32gui.MoveWindow(hwnd, 0, 0, screen_width, screen_height, True)
     if part == "show_sysApp":
-        window.evaluate_js("document.getElementById('b2d').click();")
+        window.evaluate_js("document.getElementById('b2d').click();fit_btnBar();")
     if part == "cf_hotkey":
         update_config("cf_type","4")
 
@@ -1354,4 +1366,4 @@ window = webview.create_window(
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)
