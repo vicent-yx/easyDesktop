@@ -624,6 +624,17 @@
                 </div>
             </div>
             <div class="settings-section">
+                <div class="system-theme-toggle">
+                    <span>窗口呼出位置</span>
+                    <select class="cf_type_toggle" id="outPos_toggle">
+                        <option value="1">左下角</option>
+                        <option value="2">左上角</option>
+                        <option value="3">正下方</option>
+                        <option value="4">正上方</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-section">
                 <label id="sc_input">缩放比例：</label>
                 <input type="range" style="width: 100%;" id="sc_slider" class="sc-slider" min="40" max="120"
                     value="100">
@@ -640,6 +651,7 @@
                 </div>
             </div>
             <p id="defeat_dir_show" class="setting_note">当前选择：桌面</p>
+            
             <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
             <div class="settings-section">
                 <div class="system-theme-toggle">

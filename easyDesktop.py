@@ -657,11 +657,21 @@ def is_ed_focused():
 
 
 def is_desktop_and_mouse_in_corner():
+    global config
     try:
         screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
         screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
         corner_size = cfg.CORNER_SIZE  # 角落区域的边长
-        corner_rect = (0, screen_height - corner_size, corner_size, screen_height)
+        if config["outPos"]=="1":
+            corner_rect = (0, screen_height - corner_size, corner_size, screen_height)
+        elif config["outPos"]=="2":
+            corner_rect = (0, 0, corner_size, corner_size)
+        elif config["outPos"]=="3":
+            cw = int(screen_width//3)
+            corner_rect = (cw,screen_height-corner_size,screen_width-cw,screen_height)
+        elif config["outPos"]=="4":
+            cw = int(screen_width//3)
+            corner_rect = (cw,0,screen_width-cw,corner_size)
         mouse_x, mouse_y = win32api.GetCursorPos()
         in_corner = corner_rect[0] <= mouse_x <= corner_rect[2] and corner_rect[1] <= mouse_y <= corner_rect[3]
         return in_corner
@@ -750,20 +760,26 @@ def animate_window(
                     hwnd,
                     int(current_x),
                     int(current_y),
-                    int(screen_width - (screen_width * eased_progress)),
-                    int(screen_height - (screen_height * eased_progress)),
+                    int(screen_width),
+                    int(screen_height),
+                    # int(screen_width - (screen_width * eased_progress)),
+                    # int(screen_height - (screen_height * eased_progress)),
                     True,
                 )
         else:
-            if start_x < end_x:
+            if (
+                ((config["outPos"] in ["1","2"]) and (start_x < end_x)) or (config["outPos"]=="3" and start_y>end_y) or (config["outPos"]=="4" and end_y>start_y)
+            ):
                 win32gui.MoveWindow(hwnd, int(current_x), int(current_y), width, height, True)
             else:
                 win32gui.MoveWindow(
                     hwnd,
                     int(current_x),
                     int(current_y),
-                    int(config["width"] - (config["width"] * eased_progress)),
-                    int(config["height"] - (config["height"] * eased_progress)),
+                    int(config["width"]),
+                    int(config["height"]),
+                    # int(config["width"] - (config["width"] * eased_progress)),
+                    # int(config["height"] - (config["height"] * eased_progress)),
                     True,
                 )
         time.sleep(delay)
@@ -795,20 +811,41 @@ def out_window():
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
-    start_x = -width
-    start_y = screen_height - height // 2
+    if config["outPos"]=="1":
+        start_x = -width
+        start_y = screen_height - height // 2
+    elif config["outPos"]=="2":
+        start_x = -width
+        start_y = 0 - (height // 2)
+    elif config["outPos"]=="3":
+        start_x = int((screen_width-width)//2)
+        start_y = screen_height + height
+    elif config["outPos"]=="4":
+        start_x = (screen_width-width)//2
+        start_y = -height
     if config["full_screen"] == True:
         end_x = 0
         end_y = 0
     else:
-        end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
-        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
-    win32gui.MoveWindow(hwnd, start_x, start_y, width, height, True)
+        if config["outPos"]=="1":
+            end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
+            end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
+        elif config["outPos"]=="2":
+            end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
+            end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
+        elif config["outPos"]=="3":
+            end_x = int((screen_width-width)//2)
+            end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
+        elif config["outPos"]=="4":
+            end_x = int((screen_width-width)//2)
+            end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
+    print(end_y)
+    win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
     win32gui.UpdateWindow(hwnd)
 
     time.sleep(0.1)
     window.show()
-    animate_window(hwnd, start_x, start_y, end_x, end_y, width, height)
+    animate_window(hwnd, start_x, start_y, end_x, end_y, rect["width"], rect["height"])
     window.evaluate_js("window_state=true;")
 
     while True:
@@ -854,10 +891,20 @@ def moveIn_window():
     height = rect["height"]
     current_x = rect["left"]
     current_y = rect["top"]
-    start_x = -width
-    start_y = screen_height - height // 2
+    if config["outPos"]=="1":
+        start_x = -width
+        start_y = screen_height - height // 2
+    elif config["outPos"]=="2":
+        start_x = -width
+        start_y = 0 - (height // 2)
+    elif config["outPos"]=="3":
+        start_x = int((screen_width-width)//2)
+        start_y = screen_height + height
+    elif config["outPos"]=="4":
+        start_x = (screen_width-width)//2
+        start_y = -height
     window.evaluate_js("window_state=false;")
-    animate_window(hwnd, current_x, current_y, start_x, start_y + 500, width, height)
+    animate_window(hwnd, current_x, current_y, start_x, start_y, width, height)
     window.hide()
     moving = False
     wait_open()
@@ -1366,4 +1413,4 @@ window = webview.create_window(
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)

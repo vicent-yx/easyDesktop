@@ -156,6 +156,7 @@ def get_default_config(width, height):
         "df_dir": "desktop",
         "df_dir_name": "桌面",
         "of_s": True,
+        "outPos":"1"
     }
 
 # ===== 系统应用程序配置 =====

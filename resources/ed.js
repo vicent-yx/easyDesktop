@@ -993,6 +993,10 @@ const EventManager = {
         DOMCache.get('out_cf_type_toggle').addEventListener('change', function () {
             ApiHelper.updateConfig('out_cf_type', this.value);
         });
+
+        DOMCache.get("outPos_toggle").addEventListener('change', function () {
+            ApiHelper.updateConfig('outPos', this.value);
+        });
     },
 
     initThemeSettings() {
@@ -1744,6 +1748,7 @@ window.addEventListener('pywebviewready', async function () {
             // 更新选择器状态
             DOMCache.get('cf_type_toggle').value = config.cf_type;
             DOMCache.get('out_cf_type_toggle').value = config.out_cf_type;
+            DOMCache.get('outPos_toggle').value = config.outPos;
 
             // 更新缩放
             const scSlider = DOMCache.get('sc_slider');
