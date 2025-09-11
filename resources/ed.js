@@ -1093,6 +1093,7 @@ const EventManager = {
             if (e.target.classList.contains('breadcrumb-item')) {
                 const path = e.target.dataset.path;
                 NavigationManager.navigateTo(path);
+                DOMCache.get("search_input").value = "";
             }
         });
     },

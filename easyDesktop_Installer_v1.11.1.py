@@ -138,7 +138,7 @@ def un_install():
     # try:
     progressbar["mode"]="indeterminate"
     progressbar["orient"]=tkinter.HORIZONTAL
-    download_inf_var.set("正在删除文件")
+    download_inf_var.set("检测进程...")
     exe_list = ["easyDesktop.exe"]
     for exe in exe_list:
         if judgeprocess(exe)==True:
@@ -194,104 +194,112 @@ def install():
                         copy_bg=True
                     except:
                         pass
+        progressbar["mode"]="indeterminate"
+        progressbar["orient"]=tkinter.HORIZONTAL
+        if os.listdir(install_path)!=[]:
+            download_inf_var.set("正在删除文件")
+            exe_list = ["easyDesktop.exe"]
+            for exe in exe_list:
+                if judgeprocess(exe)==True:
+                    os.popen("taskkill /F /im "+exe)
+                    download_inf_var.set("正在删除文件 停止进程"+exe)
+                    while True:
+                        if judgeprocess(exe)==False:
+                            break
+                        sleep(0.5)
+                
+            download_inf_var.set("正在删除文件")
+            un_delDir_list=["wallpaper","plug","char"]
+            for filename in os.listdir(install_path):
+                file_path = os.path.join(install_path, filename)
+                if os.path.isfile(file_path):
+                    if not ".json" in file_path:
+                        os.remove(file_path)
+                        download_inf_var.set("正在删除: "+file_path)
+                else:
+                    can_del_s = False
+                    for dir in un_delDir_list:
+                        if dir in file_path:
+                            can_del_s=True
+                            break
+                    if can_del_s==True:
+                        shutil.rmtree(file_path)
+                        download_inf_var.set("正在删除文件夹: "+file_path)
+            # shutil.rmtree(install_path)
+            # print("正在删除目录："+install_path)
+            # os.makedirs(install_path)
+
+        progressbar["mode"]="determinate"
+        filename = resource_path(os.path.join("res","easydesktop.zip"))
+        download_inf_var.set("正在解压文件")
+        with zipfile.ZipFile(filename, 'r') as zip_ref:
+            total_files = len(zip_ref.infolist())
+            extracted_files = 0
+            for file in zip_ref.infolist():
+                extracted_files += 1
+                if not os.path.exists(file.filename):
+                    zip_ref.extract(file, install_path)
+                progress = (extracted_files / total_files) * 100
+                progress_num = int(progress)
+                progressbar['value']=int(progress_num)
+                download_inf_var.set("正在解压文件 "+str('[解压进度]: '+str(progress_num)+"%"))
+                # print(f"Extracting: {file.filename} - Progress: {progress:.2f}%")
+            # zip_ref.extractall(install_path)
+
+        download_inf_var.set("正在写入注册表")
+        # Windows 注册表
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\easydesktop") as key:
+            winreg.SetValueEx(key, "InstallPath", 0, winreg.REG_SZ, install_path)
+        download_inf_var.set("正在创建快捷方式")
+
+        pythoncom.CoInitialize()
+        if os.path.exists(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk")):
+            os.remove(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk"))
+        desktop_path = get_desktop_path()
+        target_path = os.path.join(install_path,"easyDesktop.exe")
+        shortcut_path = os.path.join(desktop_path, 'EasyDesktop.lnk')
+        create_shortcut(target_path, shortcut_path,install_path)
+        pythoncom.CoUninitialize()
+
+        try:
+            if user_config!=None:
+                json.dump(user_config, open(os.path.join(install_path,"config.json"),"w",encoding="utf-8"))
+            if cl_data!=None:
+                json.dump(cl_data, open(os.path.join(install_path,"cl_data.json"),"w",encoding="utf-8"))
+            if user_class!=None:
+                json.dump(user_class, open(os.path.join(install_path,"user_class.json"),"w",encoding="utf-8"))
+            if copy_bg==True:
+                shutil.copy2(user_config["bg"],os.path.join(install_path,user_config["bg"]))
+                os.remove(user_config["bg"])
+        except Exception as e:
+            print(e)
+
+        download_inf_var.set("完成")
+        install_started=False
+        show_finish()
+    except PermissionError:
+        messagebox.showerror("EasyDesktop - 安装时出现错误","权限不足，无法在当前位置安装")
+        install_started=False
     except Exception as e:
-        print(e)
-    # try:
-    progressbar["mode"]="indeterminate"
-    progressbar["orient"]=tkinter.HORIZONTAL
-    if os.listdir(install_path)!=[]:
-        download_inf_var.set("正在删除文件")
-        exe_list = ["easyDesktop.exe"]
-        for exe in exe_list:
-            if judgeprocess(exe)==True:
-                os.popen("taskkill /F /im "+exe)
-                download_inf_var.set("正在删除文件 停止进程"+exe)
-                while True:
-                    if judgeprocess(exe)==False:
-                        break
-                    sleep(0.5)
-            
-        download_inf_var.set("正在删除文件")
-        un_delDir_list=["wallpaper","plug","char"]
-        for filename in os.listdir(install_path):
-            file_path = os.path.join(install_path, filename)
-            if os.path.isfile(file_path):
-                if not ".json" in file_path:
-                    os.remove(file_path)
-                    download_inf_var.set("正在删除: "+file_path)
-            else:
-                can_del_s = False
-                for dir in un_delDir_list:
-                    if dir in file_path:
-                        can_del_s=True
-                        break
-                if can_del_s==True:
-                    shutil.rmtree(file_path)
-                    download_inf_var.set("正在删除文件夹: "+file_path)
-        # shutil.rmtree(install_path)
-        # print("正在删除目录："+install_path)
-        # os.makedirs(install_path)
-
-    progressbar["mode"]="determinate"
-    filename = resource_path(os.path.join("res","easydesktop.zip"))
-    download_inf_var.set("正在解压文件")
-    with zipfile.ZipFile(filename, 'r') as zip_ref:
-        total_files = len(zip_ref.infolist())
-        extracted_files = 0
-        for file in zip_ref.infolist():
-            extracted_files += 1
-            if not os.path.exists(file.filename):
-                zip_ref.extract(file, install_path)
-            progress = (extracted_files / total_files) * 100
-            progress_num = int(progress)
-            progressbar['value']=int(progress_num)
-            download_inf_var.set("正在解压文件 "+str('[解压进度]: '+str(progress_num)+"%"))
-            # print(f"Extracting: {file.filename} - Progress: {progress:.2f}%")
-        # zip_ref.extractall(install_path)
-
-    download_inf_var.set("正在写入注册表")
-    # Windows 注册表
-    with winreg.CreateKey(winreg.HKEY_CURRENT_USER, r"Software\easydesktop") as key:
-        winreg.SetValueEx(key, "InstallPath", 0, winreg.REG_SZ, install_path)
-    download_inf_var.set("正在创建快捷方式")
-
-    pythoncom.CoInitialize()
-    if os.path.exists(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk")):
-        os.remove(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk"))
-    desktop_path = get_desktop_path()
-    target_path = os.path.join(install_path,"easyDesktop.exe")
-    shortcut_path = os.path.join(desktop_path, 'EasyDesktop.lnk')
-    create_shortcut(target_path, shortcut_path,install_path)
-    pythoncom.CoUninitialize()
-
-    try:
-        if user_config!=None:
-            json.dump(user_config, open(os.path.join(install_path,"config.json"),"w",encoding="utf-8"))
-        if cl_data!=None:
-            json.dump(cl_data, open(os.path.join(install_path,"cl_data.json"),"w",encoding="utf-8"))
-        if user_class!=None:
-            json.dump(user_class, open(os.path.join(install_path,"user_class.json"),"w",encoding="utf-8"))
-        if copy_bg==True:
-            shutil.copy2(user_config["bg"],os.path.join(install_path,user_config["bg"]))
-            os.remove(user_config["bg"])
-    except Exception as e:
-        print(e)
-
-    download_inf_var.set("完成")
-    install_started=False
-    show_finish()
-    # except PermissionError:
-    #     messagebox.showerror("EasyDesktop - 安装时出现错误","此窗口无权限，如果你已经点击允许给了权限，请在新窗口进行安装")
-    #     install_started=False
-    # except Exception as e:
-    #     messagebox.showerror("EasyDesktop - 安装时出现错误",e)
+        messagebox.showerror("EasyDesktop - 安装时出现错误",e)
     install_started=False
 def out():
     window.quit()
+def out_and_open():
+    os.startfile(os.path.join(install_path,"easyDesktop.exe"))
+    while True:
+        if judgeprocess("easyDesktop.exe")==True:
+            break
+        sleep(0.5)
+    os.startfile(os.path.join(install_path,"easyDesktop.exe"))
+    window.quit()
 def show_finish():
+    global install_path
     progressbar.pack_forget()
     download_inf_bar.place_forget()
     tkinter.Button(window,text="完成",width=20,height=2,font=("微软雅黑", 20),command=out).pack()
+    if os.path.exists(install_path):
+        tkinter.Button(window,text="完成并打开",width=20,height=2,font=("微软雅黑", 20),command=out_and_open).pack()
 def closeWindow():
     if install_started == True:
         messagebox.showerror("警告","正在进行安装，请不要退出")

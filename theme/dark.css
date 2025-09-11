@@ -1,79 +1,36 @@
-@font-face {
-    font-family: 'df';
-    src: url('/resources/MiSans-Semibold.woff') format('truetype');
-    font-weight: normal;
-    font-style: normal;
-}
+/* 引入基础框架样式 */
+@import url('frame.css');
 
+/* dark.css - 仅包含颜色相关样式 */
 
 * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
     font-family: 'df';
 }
 
 body {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     color: #e0e0e0;
-    min-height: 100vh;
-    padding: 20px;
 }
 
-.container {
-    width: 100%;
-    /* margin: 0 auto; */
-    padding: 20px;
-    padding-top: 0px;
-}
-
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
 .file-selection-container {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);background-color: #fff;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 }
+
 .time-display {
-    font-size: 1rem;
-    font-weight: 300;
     color: #e0e0e0;
-    display: flex;
-    align-items: center;
 }
 
 .time-display i {
-    margin-right: 12px;
-    font-size: 1.5rem;
     color: #5dade2;
 }
 
-.files-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 25px;
-    justify-items: center;
-}
-
-/* 列表视图样式 */
 .files-list {
-    width: 100%;
-    border-radius: 12px;
     background: rgba(40, 40, 60, 0.7);
-    overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .file-list-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    cursor: pointer;
-    transition: all 0.2s;
     color: #e0e0e0;
 }
 
@@ -82,125 +39,49 @@ body {
 }
 
 .file-list-icon {
-    width: 32px;
-    height: 32px;
-    margin-right: 15px;
-    object-fit: contain;
     filter: brightness(0.8);
 }
 
 .file-list-name {
-    flex: 1;
-    font-size: 14px;
     color: #e0e0e0;
-    font-weight: 500;
 }
 
 .file-list-type {
-    font-size: 12px;
     color: #8a9ba8;
-    width: 150px;
-    text-align: right;
-}
-
-@media (max-width: 768px) {
-    .file-list-type {
-        display: none;
-    }
 }
 
 .file-item {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 20px 15px;
-    border-radius: 15px;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    text-decoration: none;
     color: #e0e0e0;
-    opacity: 0.9;
-    position: relative;
 }
 
 .file-item:hover {
     background: rgba(40, 40, 60, 0.8);
-    transform: translateY(-5px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    opacity: 1;
-    z-index: 10;
 }
+
 .file-item_hover {
     background: rgba(40, 40, 60, 0.8);
-    transform: translateY(-5px);
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    opacity: 1;
-    z-index: 10;
-}
-
-.file-icon {
-    width: 64px;
-    height: 64px;
-    margin-bottom: 15px;
-    object-fit: contain;
-    transition: transform 0.3s;
-}
-
-.file-item:hover .file-icon {
-    transform: scale(1.1);
 }
 
 .file-name {
-    text-align: center;
-    font-size: 14px;
-    word-break: break-word;
-    max-width: 100%;
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    font-weight: 500;
     color: #e0e0e0;
 }
 
 .file-type {
-    font-size: 12px;
     color: #8a9ba8;
-    margin-top: 5px;
-    font-weight: 400;
 }
 
 .info-bar {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 25px;
-    padding: 15px 20px;
     background: rgba(40, 40, 60, 0.7);
-    border-radius: 12px;
-    font-size: 14px;
     color: #b0b0b0;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/* 路径导航样式 */
-.path-navigation {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex: 1;
-    margin: 0 20px;
-}
-
 .path-btn {
-    background: none;
-    border: none;
-    padding: 8px;
-    border-radius: 8px;
-    cursor: pointer;
     color: #8a9ba8;
-    transition: all 0.2s;
 }
 
 .path-btn:hover {
@@ -208,128 +89,44 @@ body {
     color: #5dade2;
 }
 
-.path-btn i {
-    font-size: 16px;
-}
-
 .breadcrumb {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
     background: rgba(40, 40, 60, 0.7);
-    border-radius: 8px;
-    font-size: 14px;
     color: #e0e0e0;
-    white-space: nowrap;
-    overflow-x: auto;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.breadcrumb::-webkit-scrollbar {
-    display: none;
-}
-
 .breadcrumb-item {
-    color: #3498db;
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    transition: all 0.2s;
+    color: #667eea;
 }
 
 .breadcrumb-item:hover {
-    background: rgba(52, 152, 219, 0.1);
+    background: rgba(102, 126, 234, 0.1);
 }
 
 .breadcrumb-item:after {
-    content: '›';
-    margin: 0 8px;
     color: #7f8c8d;
-}
-
-.breadcrumb-item:last-child:after {
-    content: '';
-    margin: 0;
-}
-
-@media (max-width: 768px) {
-    .breadcrumb {
-        padding: 6px 8px;
-        font-size: 13px;
-    }
-    
-    .breadcrumb-item:after {
-        margin: 0 4px;
-    }
-}
-
-/* 视图切换按钮样式 */
-.view-toggle {
-    display: flex;
-    gap: 10px;
-}
-
-@media (max-width: 768px) {
-    .path-navigation {
-        margin: 10px 0;
-        order: 3;
-        width: 100%;
-    }
-    
-    .header {
-        flex-wrap: wrap;
-    }
 }
 
 .view-btn {
-    background: none;
-    border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
-    cursor: pointer;
     color: #7f8c8d;
-    transition: all 0.2s;
 }
 
 .view-btn:hover {
     background: rgba(0, 0, 0, 0.05);
-    color: #3498db;
+    color: #667eea;
 }
 
 .view-btn.active {
     background: rgba(52, 152, 219, 0.1);
-    color: #3498db;
+    color: #667eea;
 }
 
-.view-btn i {
-    font-size: 16px;
-}
-
-/* 右键菜单样式 */
 .context-menu {
-    position: absolute;
     background: #1E2022;
-    border-radius: 8px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    min-width: 180px;
-    overflow: hidden;
-    display: none;
-}
-
-.context-menu-item {
-    padding: 12px 20px;
-    display: flex;
-    align-items: center;
-    transition: all 0.2s;
-    cursor: pointer;
 }
 
 .context-menu-item i {
-    margin-right: 10px;
-    width: 20px;
-    color: #3498db;
+    color: #667eea;
 }
 
 .context-menu-item:hover {
@@ -345,69 +142,29 @@ body {
     color: #e74c3c;
 }
 
-/* 重命名输入框 */
 .rename-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-    display: none;
 }
 
 .rename-container {
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-    padding: 30px;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 .rename-container h3 {
-    margin-bottom: 20px;
     color: #bfc7d1;
-    font-weight: 500;
 }
 
 .rename-input {
-    width: 100%;
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 16px;
-    margin-bottom: 20px;
     background-color: #e1e4e6;
 }
 
 .rename-input:focus {
-    outline: none;
-    border-color: #3498db;
+    border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
 }
 
-.rename-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.rename-btn {
-    padding: 10px 20px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: none;
-    font-weight: 500;
-    transition: all 0.2s;
-}
-
 .rename-btn.confirm {
-    background: #3498db;
+    background: #667eea;
     color: white;
 }
 
@@ -424,56 +181,20 @@ body {
     background: #e0e0e0;
 }
 
-/* 删除确认对话框 */
 .delete-confirm {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
-    display: none;
 }
 
 .delete-container {
     background: #34373b;
-    padding: 30px;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    text-align: center;
 }
 
 .delete-container h3 {
-    margin-bottom: 15px;
     color: #e74c3c;
-    font-weight: 500;
 }
 
 .delete-container p {
-    margin-bottom: 25px;
     color: #ffffff;
-    line-height: 1.5;
-}
-
-.delete-buttons {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-}
-
-.delete-btn {
-    padding: 10px 25px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: none;
-    font-weight: 500;
-    transition: all 0.2s;
 }
 
 .delete-btn.confirm {
@@ -493,22 +214,13 @@ body {
 .delete-btn.cancel:hover {
     background: #e0e0e0;
 }
+
 .search_box{
-    width: 30%;
-    padding: 8px 12px;
     background: rgba(40, 40, 60, 0.7);
-    border-radius: 8px;
-    font-size: 14px;
-    white-space: nowrap;
-    overflow-x: auto;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
 .search_box input{
-    width: 100%;
-    height: 100%;
-    border: none;
-    outline: none;
-    background: unset;
     color: #e0e0e0;
 }
 
@@ -516,137 +228,46 @@ body {
     color: #8a9ba8;
 }
 
-/* 设置按钮样式 */
 .settings-btn {
-    padding: 8px 12px;
     background: rgba(40, 40, 60, 0.7);
-    border-radius: 8px;
-    font-size: 14px;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
     color: #e0e0e0;
-    margin-left: 8px;
 }
 
 .settings-btn:hover {
     background: rgba(60, 60, 80, 0.9);
 }
 
-/* 主题设置面板 */
 .theme-settings-panel {
-    margin: auto;
-    width: 400px;
-    max-width: 90%;
     background: rgb(30, 30, 40);
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.settings-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-}
-
 .settings-header h3 {
-    margin: 0;
     color: #e0e0e0;
 }
 
 .close-btn {
-    background: none;
-    border: none;
     color: #8a9ba8;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 5px;
 }
 
 .settings-section h4 {
     color: #e0e0e0;
-    margin-bottom: 15px;
-    font-weight: 500;
 }
 
 .system-theme-toggle {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 0;
     color: #e0e0e0;
 }
 
-/* 开关控件 */
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 24px;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
 .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
     background-color: #4a4a4a;
-    transition: .4s;
-    border-radius: 24px;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 16px;
-    width: 16px;
-    left: 4px;
-    bottom: 4px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
 }
 
 input:checked + .slider {
     background-color: #5dade2;
 }
 
-input:checked + .slider:before {
-    transform: translateX(26px);
-}
-
-/* 主题卡片 */
-.theme-cards {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 15px;
-    justify-content: flex-start;
-}
-
 .theme-card {
-    width: calc(33.33% - 7px); /* 3列布局，减去gap */
-    min-width: 100px;
-    box-sizing: border-box;
-    position: relative;
-    padding-bottom: calc(33.33% * 3/4); /* 保持4:3比例 */
-    height: 0;
     background: rgba(50, 50, 70, 0.5);
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
     border: 1px solid transparent;
 }
 
@@ -660,113 +281,20 @@ input:checked + .slider:before {
     box-shadow: 0 0 0 2px rgba(93, 173, 226, 0.3);
 }
 
-.theme-card-content {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    flex-direction: column;
-    padding: 10px;
-}
-
-.theme-preview {
-    flex: 1;
-    overflow: hidden;
-    position: relative;
-    border-radius: 6px;
-}
-
-.theme-preview img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
 .theme-card span {
-    text-align: center;
-    padding: 5px 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     color: #e0e0e0;
-    font-size: 13px;
 }
 
-@media (max-width: 600px) {
-    .theme-card {
-        width: calc(50% - 5px); /* 在小屏幕上显示2列 */
-        padding-bottom: calc(50% * 3/4);
-    }
-}
-
-@media (max-width: 400px) {
-    .theme-card {
-        width: 100%; /* 在非常小的屏幕上显示1列 */
-        padding-bottom: calc(100% * 3/4);
-    }
-}
-
-@media (max-width: 768px) {
-    .header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 20px;
-    }
-    
-    .files-grid {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 20px;
-    }
-    
-    .file-icon {
-        width: 56px;
-        height: 56px;
-    }
-}
-
-@media (max-width: 480px) {
-    .time-display {
-        font-size: 1.4rem;
-    }
-    
-    .files-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 15px;
-    }
-    
-    .file-item {
-        padding: 15px 10px;
-    }
-    
-    .file-icon {
-        width: 48px;
-        height: 48px;
-    }
-    
-    .file-name {
-        font-size: 13px;
-    }
-    
-    .context-menu {
-        min-width: 160px;
-    }
-}
-.breadcrumb-item{
-    color: #667eea;
-}
 .class_bar_btn {
-    background-color: unset;
-    color:#a9a9a9;
+    color: #a9a9a9;
 }
+
 .class_bar_btn:hover {
-    background:rgba(60, 60, 80, 0.9);
+    background: rgba(60, 60, 80, 0.9);
     color: white;
 }
 
 .class_bar_btn.active {
-    background: unset;
     color: #667eea;
 }
 
@@ -778,32 +306,23 @@ input:checked + .slider:before {
     background-color: #5b6dbe;
 }
 
-.category-input{
-    background-color: #1a1a2e;
-}
-
 .file-selection-item .file-type {
-    font-size: 12px;
     color: white;
 }
 
- .file-selection-container,
- .category-input,
- .file-selection-btn.cancel {
+.category-input, .file-selection-btn.cancel {
     background-color: #2d3748;
     color: #fff;
 }
 
- .file-selection-header,
- .file-selection-footer {
+.file-selection-header, .file-selection-footer {
     border-color: #4a5568;
 }
 
- .file-selection-item:hover {
+.file-selection-item:hover {
     background-color: #4a5568;
 }
 
- .file-selection-item .file-type,
- .loading-indicator {
+.file-selection-item .file-type, .loading-indicator {
     color: #a0aec0;
 }

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>easyDesktop</title>
     <link rel="stylesheet" href="/resources/all.min.css">
+    <link rel="stylesheet" href="/theme/frame.css">
     <link rel="stylesheet" id="theme_css" href="/theme/dark.css">
     <style>
         body {
@@ -229,13 +230,8 @@
             white-space: nowrap
         }
 
-        .class_bar_btn:hover {
-            transform: translateY(-2px);
-        }
-
         .class_bar_btn.active {
             font-weight: bold;
-            transform: translateY(-2px);
         }
 
         .class_bar_btn i {
@@ -606,7 +602,7 @@
                 <div class="system-theme-toggle">
                     <span>呼出触发方式</span>
                     <select class="cf_type_toggle" id="cf_type_toggle">
-                        <option value="1">鼠标移到左下角</option>
+                        <option value="1">鼠标移到指定位置</option>
                         <option value="2">win+shift</option>
                         <option value="3">win+~</option>
                         <option value="4">自定义</option>
@@ -696,7 +692,7 @@
                     <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
                 </div>
             </div>
-            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.10.1</p>
+            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.11.1</p>
         </div>
     </div>
     </div>
@@ -845,7 +841,7 @@
             </p>
             <div class="key-display" id="keyDisplay">
                 等待按键输入...
-            </div>.breadcrumb-item
+            </div>
             <p class="key-limits">已记录 <span id="currentKeys">0</span>/3 个按键</p>
             
             <div class="modal-buttons">

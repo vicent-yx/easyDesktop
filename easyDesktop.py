@@ -784,7 +784,23 @@ def animate_window(
                 )
         time.sleep(delay)
 
-
+def get_targetPos():
+    global config
+    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
+    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+    if config["outPos"]=="1":
+        end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
+        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
+    elif config["outPos"]=="2":
+        end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
+        end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
+    elif config["outPos"]=="3":
+        end_x = int((screen_width-width)//2)
+        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
+    elif config["outPos"]=="4":
+        end_x = int((screen_width-width)//2)
+        end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
+    return end_x,end_y
 def out_window():
     global moving, ignore_action, fullscreen_close, key_quick_start,window_state,config
     key_quick_start = False
@@ -827,18 +843,7 @@ def out_window():
         end_x = 0
         end_y = 0
     else:
-        if config["outPos"]=="1":
-            end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
-            end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
-        elif config["outPos"]=="2":
-            end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
-            end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
-        elif config["outPos"]=="3":
-            end_x = int((screen_width-width)//2)
-            end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
-        elif config["outPos"]=="4":
-            end_x = int((screen_width-width)//2)
-            end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
+        end_x,end_y = get_targetPos()
     print(end_y)
     win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
     win32gui.UpdateWindow(hwnd)
@@ -991,6 +996,14 @@ def update_config(part, data):
         window.evaluate_js("document.getElementById('b2d').click();fit_btnBar();")
     if part == "cf_hotkey":
         update_config("cf_type","4")
+    if part == "outPos":
+        rect = get_window_rect(hwnd)
+        width = rect["width"]
+        height = rect["height"]
+        current_x = rect["left"]
+        current_y = rect["top"]
+        go_x,go_y = get_targetPos()
+        animate_window(hwnd, current_x, current_y, go_x, go_y, width, height)
 
 def autoStart_registry():
     python_exe = sys.executable
@@ -1015,10 +1028,7 @@ def get_window_inf(title=cfg.DEFAULT_WINDOW_TITLE):
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
-    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
-    end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
-    end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
+    end_x, end_y = get_targetPos()
     return width, height, end_x, end_y
 
 
@@ -1318,55 +1328,51 @@ class AppAPI:
     def open_sysApp(self,app_name):
         open_sysApp_action(app_name)
     def put_file(self, target_path):
+        if target_path == "desktop" or target_path == "" or target_path == "\\":
+            target_path = desktop_path
         saved_files = []
-        try:
-            command = [
-                "powershell",
-                "-Command",
-                "$files = Get-Clipboard -Format FileDropList; "
-                "if ($files) { $files | ForEach-Object { $_.FullName } }",
-            ]
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=True,
-                shell=False,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-            )
-            output = result.stdout.strip()
-            if not output:
-                return {"success": True}
-            file_paths = [path.strip() for path in output.splitlines() if path.strip()]
+        command = [
+            "powershell",
+            "-Command",
+            "$files = Get-Clipboard -Format FileDropList; "
+            "if ($files) { $files | ForEach-Object { $_.FullName } }",
+        ]
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+            shell=False,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+        )
+        output = result.stdout.strip()
+        if not output:
+            return {"success": True}
+        file_paths = [path.strip() for path in output.splitlines() if path.strip()]
 
-            # 验证所有文件路径是否有效
-            valid_paths = []
-            for file_path in file_paths:
-                if os.path.exists(file_path):
-                    valid_paths.append(file_path)
-                else:
-                    return {"success": False, "message": "剪切板中没有有效的文件"}
-
-            if not valid_paths:
+        # 验证所有文件路径是否有效
+        valid_paths = []
+        for file_path in file_paths:
+            if os.path.exists(file_path):
+                valid_paths.append(file_path)
+            else:
                 return {"success": False, "message": "剪切板中没有有效的文件"}
-            for src_path in valid_paths:
-                filename = os.path.basename(src_path)
-                dest_path = os.path.join(target_path, filename)
-                # 处理文件名冲突
-                counter = 1
-                base_name, extension = os.path.splitext(filename)
-                while os.path.exists(dest_path):
-                    new_filename = f"{base_name}_{counter}{extension}"
-                    dest_path = os.path.join(desktop_path, new_filename)
-                    counter += 1
-                shutil.copy2(src_path, dest_path)
-                saved_files.append(os.path.abspath(dest_path))
-        except subprocess.CalledProcessError as e:
-            return {"success": False, "message": f"粘贴失败: {e.stderr}"}
-        except Exception as e:
-            return {"success": False, "message": f"粘贴失败: {str(e)}"}
-        finally:
-            return {"success": True, "files": saved_files}
+
+        if not valid_paths:
+            return {"success": False, "message": "剪切板中没有有效的文件"}
+        for src_path in valid_paths:
+            filename = os.path.basename(src_path)
+            dest_path = os.path.join(target_path, filename)
+            # 处理文件名冲突
+            counter = 1
+            base_name, extension = os.path.splitext(filename)
+            while os.path.exists(dest_path):
+                new_filename = f"{base_name}_{counter}{extension}"
+                dest_path = os.path.join(desktop_path, new_filename)
+                counter += 1
+            shutil.copy2(src_path, dest_path)
+            saved_files.append(os.path.abspath(dest_path))
+        return {"success": True, "files": saved_files}
     def add_class(self,files,key):
         global itemClass,config
         itemClass[config["df_dir"]][key] = files

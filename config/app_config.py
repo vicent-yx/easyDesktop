@@ -5,7 +5,7 @@ EasyDesktop 配置文件
 """
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "1.10.1"
+APP_VERSION = "1.11.1"
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop"
 
