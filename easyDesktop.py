@@ -31,6 +31,8 @@ import winerror
 import win32event
 import win32file
 import win32pipe
+import base64
+import io
 # sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def activate_existing_instance():
@@ -908,7 +910,7 @@ def moveIn_window():
     elif config["outPos"]=="4":
         start_x = (screen_width-width)//2
         start_y = -height
-    window.evaluate_js("window_state=false;")
+    window.evaluate_js("window_state=false;preview_runing = false;")
     animate_window(hwnd, current_x, current_y, start_x, start_y, width, height)
     window.hide()
     moving = False
@@ -1061,6 +1063,7 @@ def stray():
     icon = pystray.Icon("name", image, "title")
     menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", quit_ed))
     icon.menu = menu
+    icon.title = "EasyDesktop"
     icon.run()
 
 
@@ -1396,6 +1399,67 @@ class AppAPI:
             with open(cfg.USER_CLASS_FILE,"w",encoding="utf-8") as f:
                 json.dump(itemClass,f,ensure_ascii=False)
         return {"success":True}
+
+    def get_imageBase64(self,file_path):
+        max_size_kb = 200
+        quality=85
+        step=5
+        # try:
+        img = Image.open(file_path)
+        
+        # 保持原比例
+        original_width, original_height = img.size
+        
+        # 转换为RGB模式（如果是RGBA或其他模式）
+        if img.mode in ('RGBA', 'LA'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[3] if img.mode == 'RGBA' else None)
+            img = background
+        elif img.mode != 'RGB':
+            img = img.convert('RGB')
+        
+        # 逐步降低质量直到满足大小要求
+        output_buffer = io.BytesIO()
+        current_quality = quality
+        
+        while current_quality > 10:  # 设置最低质量限制
+            output_buffer.seek(0)
+            output_buffer.truncate(0)
+            
+            # 保存图片到内存缓冲区
+            img.save(output_buffer, format='JPEG', quality=current_quality, optimize=True)
+            
+            # 检查文件大小
+            file_size_kb = len(output_buffer.getvalue()) / 1024
+            
+            if file_size_kb <= max_size_kb:
+                break
+            
+            # 如果仍然太大，降低质量
+            current_quality -= step
+        
+        # 如果仍然太大，尝试调整尺寸（保持比例）
+        if len(output_buffer.getvalue()) / 1024 > max_size_kb:
+            # 计算需要缩小的比例
+            scale_factor = (max_size_kb * 1024 / len(output_buffer.getvalue())) ** 0.5
+            new_width = int(original_width * scale_factor)
+            new_height = int(original_height * scale_factor)
+            
+            # 调整尺寸
+            img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            # 重新压缩
+            output_buffer.seek(0)
+            output_buffer.truncate(0)
+            img_resized.save(output_buffer, format='JPEG', quality=80, optimize=True)
+        
+        # 转换为base64字符串
+        base64_string = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
+        blob_string = f"data:image/jpeg;base64,{base64_string}"
+        
+        return blob_string
+        # except:
+        #     return None
     
     def disable_autoClose(self):
         global ignore_action

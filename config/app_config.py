@@ -5,7 +5,7 @@ EasyDesktop 配置文件
 """
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "1.11.1"
+APP_VERSION = "1.12.0"
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop"
 
@@ -116,6 +116,7 @@ FILE_ICO = {
     ".gif": "./resources/file_icos/image.png",
     ".txt": "./resources/file_icos/txt.png",
     ".html": "./resources/file_icos/html.png",
+    ".htm": "./resources/file_icos/htm.png",
     ".css": "./resources/file_icos/css.png",
     ".js": "./resources/file_icos/js.png",
     ".bat": "./resources/file_icos/bat.png",
@@ -156,7 +157,8 @@ def get_default_config(width, height):
         "df_dir": "desktop",
         "df_dir_name": "桌面",
         "of_s": True,
-        "outPos":"1"
+        "outPos":"1",
+        "imgpre": True,
     }
 
 # ===== 系统应用程序配置 =====

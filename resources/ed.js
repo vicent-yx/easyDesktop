@@ -382,6 +382,9 @@ class FileRenderer {
             this.renderGridItem(file);
             this.renderListItem(file);
         });
+        setTimeout(() => { 
+            image_preview()
+        }, 1000);
     }
 
     clearContainers() {
@@ -394,7 +397,7 @@ class FileRenderer {
         this.listContainer.style.minHeight = "75vh";
     }
 
-    createFileElement(file, isGrid = true) {
+    createFileElement = async function(file, isGrid = true) {
         const element = document.createElement('div');
         element.className = isGrid ? 'file-item' : 'file-list-item';
         element.id = Utils.generateFileId(file.filePath);
@@ -433,13 +436,13 @@ class FileRenderer {
         return element;
     }
 
-    renderGridItem(file) {
-        const element = this.createFileElement(file, true);
+    async renderGridItem(file) {
+        const element = await this.createFileElement(file, true);
         this.gridContainer.appendChild(element);
     }
 
-    renderListItem(file) {
-        const element = this.createFileElement(file, false);
+    async renderListItem(file) {
+        const element = await this.createFileElement(file, false);
         this.listContainer.appendChild(element);
     }
 
@@ -951,12 +954,12 @@ const EventManager = {
     initToggleSettings() {
         const toggles = [
             'autoStartToggle', 'fullScreenToggle', 'fdrToggle',
-            'of_sToggle', 'sysappToggle', 'followSystemTheme'
+            'of_sToggle', 'sysappToggle', 'followSystemTheme','imgpreToggle'
         ];
 
         const configKeys = [
             'auto_start', 'full_screen', 'fdr',
-            'of_s', 'show_sysApp', 'follow_sys'
+            'of_s', 'show_sysApp', 'follow_sys','imgpre'
         ];
 
         toggles.forEach((toggleId, index) => {
@@ -964,6 +967,13 @@ const EventManager = {
                 ApiHelper.updateConfig(configKeys[index], this.checked);
                 if (toggleId === 'followSystemTheme') {
                     EventManager.updateThemeCardInteraction(this.checked);
+                }
+                if(toggleId === "imgpreToggle"){
+                    if(this.checked==true){
+                        image_preview()
+                    }else{
+                        preview_runing = false
+                    }
                 }
             });
         });
@@ -1482,6 +1492,29 @@ async function push(fData = null, useLoadDir = false, path = '') {
         console.error(error);
     }
 }
+let preview_runing = false
+async function image_preview() {
+    try{
+        if(preview_runing) return;
+        let config = await ApiHelper.getConfig()
+        if(config["imgpre"]==false)return
+        preview_runing = true;
+        for(let file of AppState.files_data){
+            if([".png",".jpg",".jpeg",".bmp",".gif"].includes(file.fileType)){
+                var view_img = await ApiHelper.call("get_imageBase64", file.filePath);
+                if(view_img){
+                    console.log("预览图片："+file.fileName)
+                    te = document.getElementById(Utils.generateFileId(file.filePath))
+                    te.children[1].src = view_img
+                }
+            }
+            if(preview_runing==false) break;
+        }
+        preview_runing = false;
+    }catch{
+        preview_runing = false
+    }
+}
 async function change_cl_state(filePath, cl){
     await ApiHelper.call('change_cl_state', filePath, cl);
     NavigationManager.refreshCurrentPath();
@@ -1736,7 +1769,8 @@ window.addEventListener('pywebviewready', async function () {
                 ['fullScreenToggle', 'full_screen'],
                 ['fdrToggle', 'fdr'],
                 ['of_sToggle', 'of_s'],
-                ['sysappToggle', 'show_sysApp']
+                ['sysappToggle', 'show_sysApp'],
+                ['imgpreToggle', 'imgpre']
             ];
 
             toggleConfigs.forEach(([elementId, configKey]) => {
