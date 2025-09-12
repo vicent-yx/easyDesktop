@@ -786,21 +786,25 @@ def animate_window(
                 )
         time.sleep(delay)
 
-def get_targetPos():
+def get_targetPos(win_width=None,win_height=None):
+    if win_width==None:
+        win_width = width
+    if win_height==None:
+        win_height = height
     global config
     screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
     screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
     if config["outPos"]=="1":
         end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
-        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
+        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + win_height))
     elif config["outPos"]=="2":
         end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
         end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
     elif config["outPos"]=="3":
-        end_x = int((screen_width-width)//2)
-        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + height))
+        end_x = int((screen_width-win_width)//2)
+        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + win_height))
     elif config["outPos"]=="4":
-        end_x = int((screen_width-width)//2)
+        end_x = int((screen_width-win_width)//2)
         end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
     return end_x,end_y
 def out_window():
@@ -845,7 +849,7 @@ def out_window():
         end_x = 0
         end_y = 0
     else:
-        end_x,end_y = get_targetPos()
+        end_x,end_y = get_targetPos(width,height)
     print(end_y)
     win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
     win32gui.UpdateWindow(hwnd)
@@ -1004,7 +1008,7 @@ def update_config(part, data):
         height = rect["height"]
         current_x = rect["left"]
         current_y = rect["top"]
-        go_x,go_y = get_targetPos()
+        go_x,go_y = get_targetPos(width,height)
         animate_window(hwnd, current_x, current_y, go_x, go_y, width, height)
 
 def autoStart_registry():
@@ -1030,7 +1034,7 @@ def get_window_inf(title=cfg.DEFAULT_WINDOW_TITLE):
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
-    end_x, end_y = get_targetPos()
+    end_x, end_y = get_targetPos(width, height)
     return width, height, end_x, end_y
 
 
