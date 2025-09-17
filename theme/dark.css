@@ -21,7 +21,7 @@ body {
 }
 
 .time-display i {
-    color: #5dade2;
+    color: #667eea;
 }
 
 .files-list {
@@ -86,7 +86,7 @@ body {
 
 .path-btn:hover {
     background: rgba(255, 255, 255, 0.1);
-    color: #5dade2;
+    color: #667eea;
 }
 
 .breadcrumb {
@@ -263,7 +263,7 @@ body {
 }
 
 input:checked + .slider {
-    background-color: #5dade2;
+    background-color: #667eea;
 }
 
 .theme-card {
@@ -277,7 +277,7 @@ input:checked + .slider {
 }
 
 .theme-card.active {
-    border-color: #5dade2;
+    border-color: #667eea;
     box-shadow: 0 0 0 2px rgba(93, 173, 226, 0.3);
 }
 

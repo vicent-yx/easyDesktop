@@ -464,6 +464,7 @@ def update_inf(dir_path):
                                             "fileType": extension,
                                             "file": os.path.basename(target_path),
                                             "filePath": full_path,
+                                            "realPath": target_path,
                                             "ico": exe_icon,
                                             "cl": is_cl(full_path),
                                         }
@@ -479,6 +480,7 @@ def update_inf(dir_path):
                                             "fileType": extension,
                                             "file": os.path.basename(target_path),
                                             "filePath": full_path,
+                                            "realPath": target_path,
                                             "ico": exe_icon,
                                             "cl": is_cl(full_path),
                                         }
@@ -1487,4 +1489,4 @@ window = webview.create_window(
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)

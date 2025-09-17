@@ -314,3 +314,8 @@ input:checked + .slider {
     color: #718096;
 }
 
+.dir_btn_active {
+    background-color: #5dade2;
+    color: white;
+    box-shadow: 0 0 5px rgba(93, 173, 226, 0.5);
+}

@@ -281,7 +281,6 @@ const UIUtils = {
 
         // 设置样式阻止滚动，但不改变定位
         body.style.overflow = "hidden";
-        body.style.paddingRight = `${scrollbarWidth}px`; // 补偿滚动条宽度
         html.style.overflow = "hidden";
 
         // 创建统一的事件处理函数
@@ -384,7 +383,7 @@ class FileRenderer {
         });
         setTimeout(() => { 
             image_preview()
-        }, 1000);
+        }, 500);
     }
 
     clearContainers() {
@@ -468,6 +467,8 @@ class FileRenderer {
 
         // 右键菜单事件
         element.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if(file.sysApp!=undefined)return
             MenuManager.showContextMenu(e, file);
         });
     }
@@ -502,10 +503,22 @@ const MenuManager = {
 
         const contextMenu = DOMCache.get('contextMenu');
         contextMenu.style.display = 'block';
-        contextMenu.style.left = `${e.pageX / (config["scale"] / 100)}px`;
-        contextMenu.style.top = `${e.pageY / (config["scale"] / 100)}px`;
+        var scale_rate = config["scale"] / 100
+        console.log(e.pageX / scale_rate)
+        console.log((window.innerWidth-contextMenu.offsetWidth)/scale_rate)
+        if((e.pageX / scale_rate)>((window.innerWidth-contextMenu.offsetWidth)/scale_rate)){
+            contextMenu.style.left = `${(window.innerWidth - contextMenu.offsetWidth) / scale_rate}px`;
+        }else{
+            contextMenu.style.left = `${e.pageX / scale_rate}px`;
+        }
+        if((e.pageY / scale_rate)>((window.innerHeight-contextMenu.offsetHeight)/scale_rate)){
+            contextMenu.style.top = `${(window.innerHeight - contextMenu.offsetHeight) / scale_rate}px`;
+        }else{
+            contextMenu.style.top = `${e.pageY / scale_rate}px`;
+        }
 
         this.adjustMenuPosition(contextMenu, e);
+        disableScroll();
     },
 
     adjustMenuPosition(menu, e) {
@@ -522,11 +535,13 @@ const MenuManager = {
         if (contextMenu) {
             contextMenu.style.display = 'none';
         }
+        enableScroll();
     },
 
     hideAllMenus() {
         this.hideContextMenu();
         DOMCache.get('blankMenu').style.display = 'none';
+        enableScroll();
     }
 };
 
@@ -826,6 +841,14 @@ const EventManager = {
             }
             MenuManager.hideContextMenu();
         });
+        DOMCache.get('menuOpenLocation').addEventListener('click',async () => {
+            if (AppState.selectedFile.realPath!== undefined) {
+                ApiHelper.showFile(AppState.selectedFile.realPath);
+            } else {
+                ApiHelper.showFile(AppState.selectedFile.filePath);
+            }
+            MenuManager.hideContextMenu();
+        });
 
         DOMCache.get('menuCopy').addEventListener('click', () => {
             ApiHelper.copyFile(AppState.selectedFile.filePath);
@@ -934,7 +957,7 @@ const EventManager = {
         const closeBtn = DOMCache.get('closeThemePanel');
 
         settingsBtn.addEventListener('click', () => {
-            UIUtils.disableScroll();
+
             themePanel.style.display = themePanel.style.display === 'flex' ? 'none' : 'flex';
             ApiHelper.call("disable_autoClose")
         });
