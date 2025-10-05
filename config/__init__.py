@@ -23,7 +23,7 @@ __all__=[
     SCRIPTS_TYPE, FILE_ICO,
 
     # 系统应用程序和命令配置
-    SYSTEM_APPS, SYSTEM_COMMANDS, MIHOYO_GAMES,
+    SYSTEM_APPS, SYSTEM_COMMANDS,
 
     # 默认配置函数
     get_default_config

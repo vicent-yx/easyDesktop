@@ -5,7 +5,7 @@ EasyDesktop 配置文件
 """
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "1.12.0"
+APP_VERSION = "1.12.2"
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop"
 
@@ -194,17 +194,4 @@ SYSTEM_COMMANDS = {
     "此电脑": r"explorer.exe shell:MyComputerFolder",
     "控制面板": r"explorer.exe shell:::{26EE0668-A00A-44D7-9371-BEB064C98683}",
     "回收站": r"explorer.exe shell:RecycleBinFolder",
-}
-
-# ===== 米哈游游戏图标映射 =====
-MIHOYO_GAMES = {
-    "原神": "./resources/file_icos/ys.ico",
-    "Genshin Impact": "./resources/file_icos/ys.ico",
-    "星穹铁道": "./resources/file_icos/sr.ico",
-    "Star Rail": "./resources/file_icos/sr.ico",
-    "绝区零": "./resources/file_icos/zzz.ico",
-    "Zero": "./resources/file_icos/zzz.ico",
-    "崩坏3": "./resources/file_icos/bh3.ico",
-    "Honkai Impact 3": "./resources/file_icos/bh3.ico",
-    "default": "./resources/file_icos/mhy_lancher.ico",
 }

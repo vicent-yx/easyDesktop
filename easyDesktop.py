@@ -283,6 +283,40 @@ def get_desktop_path():
     shell = win32com.client.Dispatch("WScript.Shell")
     return shell.SpecialFolders("Desktop")
 
+def get_shortcut_icon_win32(lnk_path,name):
+    try:
+        shell = win32com.client.Dispatch("WScript.Shell")
+        shortcut = shell.CreateShortCut(lnk_path)
+        result = ""
+        # 获取图标位置
+        icon_location = shortcut.IconLocation
+        if icon_location:
+            if ',' in icon_location:
+                path_part, index_part = icon_location.rsplit(',', 1)
+                result = path_part.strip()
+            else:
+                result = icon_location.strip()
+        
+        if result:
+            if result.split(".")[-1] in ["ico","png","jpg","jpeg"]:
+                dir_name = os.path.dirname(lnk_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
+                if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
+                    os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
+                output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
+                shutil.copyfile(result, output_path)
+                output_path = turn_png(output_path)
+                loaded_exe_cache[lnk_path] = output_path
+                return {"success":True,"ico":output_path}
+            elif result.split(".")[-1] in ["exe",".EXE"]:
+                print(result)
+                return get_icon(result,name)
+            else:
+                return {"success":False,"ico":"./resources/file_icos/exe.png"}
+        
+        return {"success":False,"ico":"./resources/file_icos/exe.png"}
+    except Exception as e:
+        print(f"处理快捷方式 {lnk_path} 时出错: {e}")
+        return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
 def get_icon(exe_path, name):
     try:
@@ -302,18 +336,18 @@ def get_icon(exe_path, name):
             output_path = turn_png(output_path)
             if output_path and output_path != "./resources/file_icos/exe.png":
                 loaded_exe_cache[exe_path] = output_path
-                return output_path
+                return {"success":True,"ico":output_path}
             else:
                 # 如果转换失败，使用默认图标
                 print(f"图标转换失败，使用默认图标: {exe_path}")
-                return "./resources/file_icos/exe.png"
+                return {"success":False,"ico":"./resources/file_icos/exe.png"}
         except Exception as extract_error:
             print(f"图标提取失败: {extract_error} - {exe_path}")
-            return "./resources/file_icos/exe.png"
+            return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
     except Exception as e:
         print(f"获取图标时发生未知错误: {e} - {exe_path}")
-        return "./resources/file_icos/exe.png"
+        return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
 
 def get_url_icon(url_path):
@@ -340,12 +374,10 @@ def get_url_icon(url_path):
         if index_match:
             icon_index = int(index_match.group(1))
     except Exception as e:
-        # print(f"解析 .url 文件失败: {e}")
-        return "/resources/file_icos/exe.png"
+        return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
     if not icon_file or not os.path.exists(icon_file):
-        # print(f"图标文件不存在: {icon_file}")
-        return "/resources/file_icos/exe.png"
+        return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
     # 从文件资源中提取图标
     try:
@@ -372,10 +404,10 @@ def get_url_icon(url_path):
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
         image.save(cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png")
-        return cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png"
+        return {"success":True,"ico":cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png"}
     except Exception as e:
         print(f"提取图标失败: {e}")
-        return "/resources/file_icos/exe.png"
+        return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
 
 def get_shortcut_target(shortcut_path):
@@ -451,43 +483,39 @@ def update_inf(dir_path):
                                 target_path = full_path
                                 extension = os.path.splitext(target_path)[1]
                             if ".exe" == extension or ".EXE" == extension:
-                                # 针对米哈游游戏的适配
-                                if "miHoYo" in target_path and "launcher" in target_path:
-                                    exe_icon = cfg.MIHOYO_GAMES["default"]  # 默认值
-                                    for game_name, icon_path in cfg.MIHOYO_GAMES.items():
-                                        if game_name != "default" and game_name in item:
-                                            exe_icon = icon_path
-                                            break
-                                    exe_data.append(
-                                        {
-                                            "fileName": filename,
-                                            "fileType": extension,
-                                            "file": os.path.basename(target_path),
-                                            "filePath": full_path,
-                                            "realPath": target_path,
-                                            "ico": exe_icon,
-                                            "cl": is_cl(full_path),
-                                        }
-                                    )
+                                if full_path in loaded_exe_cache:
+                                    exe_icon = loaded_exe_cache[full_path]
                                 else:
                                     if not target_path in loaded_exe_cache:
-                                        exe_icon = get_icon(target_path, item)
+                                        exe_icon = get_shortcut_icon_win32(full_path,item)
+                                        if exe_icon["success"]==False:
+                                            exe_icon = get_url_icon(full_path)
+                                            if exe_icon["success"]==False:
+                                                exe_icon = get_icon(target_path, item)["ico"]
+                                            else:
+                                                exe_icon = exe_icon["ico"]
+                                        else:
+                                            exe_icon = exe_icon["ico"]
                                     else:
-                                        exe_icon = loaded_exe_cache[target_path]
-                                    exe_data.append(
-                                        {
-                                            "fileName": filename,
-                                            "fileType": extension,
-                                            "file": os.path.basename(target_path),
-                                            "filePath": full_path,
-                                            "realPath": target_path,
-                                            "ico": exe_icon,
-                                            "cl": is_cl(full_path),
-                                        }
-                                    )
+                                        try_icon = get_shortcut_icon_win32(full_path,item)
+                                        if try_icon["success"]!=False:
+                                            exe_icon = try_icon["ico"]
+                                        else:
+                                            exe_icon = loaded_exe_cache[target_path]
+                                exe_data.append(
+                                    {
+                                        "fileName": filename,
+                                        "fileType": extension,
+                                        "file": os.path.basename(target_path),
+                                        "filePath": full_path,
+                                        "realPath": target_path,
+                                        "ico": exe_icon,
+                                        "cl": is_cl(full_path),
+                                    }
+                                )
                                 continue
                             elif ".url" == extension:
-                                icon_image = get_url_icon(target_path)
+                                icon_image = get_url_icon(target_path)["ico"]
                                 exe_data.append(
                                     {
                                         "fileName": filename,
@@ -518,7 +546,7 @@ def update_inf(dir_path):
                                                 "fileType": extension,
                                                 "file": item,
                                                 "filePath": full_path,
-                                                "ico":  get_url_icon(full_path),
+                                                "ico":  get_url_icon(full_path)["ico"],
                                                 "cl": is_cl(target_path),
                                             }
                                         )
@@ -535,7 +563,7 @@ def update_inf(dir_path):
                                         )
                                 continue
                         elif ".url" == extension:
-                            icon_image = get_url_icon(full_path)
+                            icon_image = get_url_icon(full_path)["ico"]
                             exe_data.append(
                                 {
                                     "fileName": filename,
@@ -1489,4 +1517,4 @@ window = webview.create_window(
     easy_drag=False,
     resizable=False,
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)
