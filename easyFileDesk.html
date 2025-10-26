@@ -14,6 +14,7 @@
             padding-top: 0px;
             padding-bottom: 0px;
             overflow: hidden;
+            background-color: rgba(0, 0, 0, 0);
         }
 
         body::-webkit-scrollbar {
@@ -254,6 +255,12 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
             margin-top: 40px;
+        }
+        .files-grid{
+            transition: 0.2s;
+        }
+        .file-item.moving{
+            visibility: hidden;
         }
     </style>
     <div class="content_box" id="content_box">
@@ -666,11 +673,31 @@
             <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
             <div class="settings-section">
                 <div class="system-theme-toggle">
+                    <span>主题自动切换</span>
+                    <select class="cf_type_toggle" id="themeChangeType_toggle">
+                        <option value="0">关闭</option>
+                        <option value="1">跟随系统主题</option>
+                        <option value="2">跟随当前屏幕</option>
+                    </select>
+                </div>
+            </div>
+            <!-- <div class="settings-section">
+                <div class="system-theme-toggle">
                     <span>跟随系统主题</span>
                     <label class="switch">
                         <input type="checkbox" id="followSystemTheme">
                         <span class="slider round"></span>
                     </label>
+                </div>
+            </div> -->
+            <div class="settings-section">
+                <div class="system-theme-toggle">
+                    <span>背景模式</span>
+                    <select class="cf_type_toggle" id="bgType_toggle">
+                        <option value="1">正常</option>
+                        <option value="2">毛玻璃</option>
+                        <option value="3">透明</option>
+                    </select>
                 </div>
             </div>
             <div class="settings-section">
@@ -697,7 +724,7 @@
                 </div>
             </div>
             <div class="settings-section" style="margin-top: 20px;">
-                <h4>背景设置</h4>
+                <h4>自定义背景设置</h4>
                 <div class="bg-settings">
                     <div class="bg-buttons">
                         <button id="bgResetBtn" class="bg-btn bg-reset">恢复默认</button>

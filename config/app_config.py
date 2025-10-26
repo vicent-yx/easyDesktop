@@ -5,7 +5,7 @@ EasyDesktop 配置文件
 """
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "1.12.2"
+APP_VERSION = "1.12.1"
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop"
 
@@ -138,7 +138,7 @@ def get_default_config(width, height):
     return {
         "theme": "light",
         "language": "zh-CN",
-        "follow_sys": True,
+        "themeChangeType": "1",
         "view": "block",
         "auto_start": False,
         "use_bg": False,
@@ -159,6 +159,8 @@ def get_default_config(width, height):
         "of_s": True,
         "outPos":"1",
         "imgpre": True,
+        "bgType":"1",
+        "dir_order":{}
     }
 
 # ===== 系统应用程序配置 =====

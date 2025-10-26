@@ -12,7 +12,7 @@ from pypinyin import pinyin, Style, lazy_pinyin
 import shutil
 import darkdetect
 import json
-from PIL import Image
+from PIL import Image,ImageGrab
 import winreg as reg
 import sys
 from easygui import msgbox, buttonbox
@@ -33,6 +33,7 @@ import win32file
 import win32pipe
 import base64
 import io
+from window_effect import WindowEffect
 # sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def activate_existing_instance():
@@ -308,7 +309,6 @@ def get_shortcut_icon_win32(lnk_path,name):
                 loaded_exe_cache[lnk_path] = output_path
                 return {"success":True,"ico":output_path}
             elif result.split(".")[-1] in ["exe",".EXE"]:
-                print(result)
                 return get_icon(result,name)
             else:
                 return {"success":False,"ico":"./resources/file_icos/exe.png"}
@@ -446,9 +446,40 @@ def is_cl(file_path):
     except Exception as e:
         print(f"读取收藏数据失败: {e}")
         return False
-
+def merge_lists(a, b):
+    # 插入排序
+    a_filepaths = {item['filePath'] for item in a}
+    items_to_insert = [item for item in b if item['filePath'] not in a_filepaths]
+    
+    if not items_to_insert:
+        for i, item in enumerate(a):
+            item['index'] = i
+        return a
+    index_mapping = {item['index']: item for item in a}
+    a_indices = sorted(index_mapping.keys())
+    
+    for item in items_to_insert:
+        target_index = item['index']
+        if target_index in index_mapping:
+            insert_pos = a.index(index_mapping[target_index]) + 1
+            a.insert(insert_pos, item)
+        else:
+            smaller_indices = [idx for idx in a_indices if idx < target_index]
+            if smaller_indices:
+                max_smaller_index = max(smaller_indices)
+                insert_pos = a.index(index_mapping[max_smaller_index]) + 1
+                a.insert(insert_pos, item)
+            else:
+                a.insert(0, item)
+        
+        index_mapping[item['index']] = item
+        a_indices = sorted(index_mapping.keys())
+    
+    for i, item in enumerate(a):
+        item['index'] = i
+    
+    return a
 def update_inf(dir_path):
-    print("update")
     try:
         if dir_path == "/\\":
             dir_path = "desktop"
@@ -603,6 +634,7 @@ def update_inf(dir_path):
                         False
                     )
         # if config["show_sysApp"]==True:
+        index = 0
         if config["show_sysApp"] == True and (
             dir_path == "desktop"
             or dir_path == ""
@@ -612,7 +644,10 @@ def update_inf(dir_path):
         ):
             for item in cfg.SYSTEM_APPS:
                 item["cl"]=False
+                item["index"]= index
+                index+=1
                 out_data.append(item)
+        
         for i in range(2):
             r = i==False
             for item in exe_data:
@@ -620,19 +655,48 @@ def update_inf(dir_path):
                     continue
                 if r==True and item["cl"]!=True:
                     continue
+                item["index"]=index
+                item["f_type"] = "exe"
+                index+=1
                 out_data.append(item)
             for item in dir_data:
                 if check_recover(out_data, item) == True:
                     continue
                 if r==True and item["cl"]!=True:
                     continue
+                item["index"]=index
+                item["f_type"] = "dir"
+                index+=1
                 out_data.append(item)
             for item in file_data:
                 if check_recover(out_data, item) == True:
                     continue
                 if r==True and item["cl"]!=True:
                     continue
+                item["index"]=index
+                item["f_type"] = "file"
+                index+=1
                 out_data.append(item)
+        
+        order_data = []
+        if dir_path in config["dir_order"]:
+            this_order = config["dir_order"][dir_path]
+            # 先去从排序列表中删除无效项目
+            r_index = 0
+            while r_index < len(this_order):
+                this_path = this_order[r_index]["filePath"]
+                had_found = False
+                for item in out_data:
+                    if item["filePath"] == this_path:
+                        had_found = True
+                        break
+                if had_found == False:
+                    del this_order[r_index]
+                else:
+                    r_index += 1
+        # 再插入排序
+            order_data = this_order
+            out_data = merge_lists(order_data, out_data)
         return out_data
     except:
         bugs_report(
@@ -737,7 +801,7 @@ def wait_open():
                 had_refresh = True
         if config["fdr"] == True:
             if is_focused_window_fullscreen() == True:
-                time.sleep(1)
+                time.sleep(cfg.SLEEP_INTERVAL)
                 continue
         if config["cf_type"] == "2" or config["cf_type"] == "3" or config["cf_type"]=="4":
             if key_quick_start == True:
@@ -880,9 +944,15 @@ def out_window():
         end_y = 0
     else:
         end_x,end_y = get_targetPos(width,height)
-    print(end_y)
     win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
     win32gui.UpdateWindow(hwnd)
+
+    if config["themeChangeType"]=="2":
+        color_r = is_screenshot_light((end_x,end_y,end_x+width,end_y+height),threshold=0.4)
+        if color_r == True:
+            window.evaluate_js("load_theme('light')")
+        else:
+            window.evaluate_js("load_theme('dark')")
 
     time.sleep(0.1)
     window.show()
@@ -1003,16 +1073,44 @@ def on_loaded():
     else:
         window.evaluate_js("grid_view()")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
+    windowEffect = WindowEffect()
+    windowEffect.setAcrylicEffect(hwnd)
     moveIn_window()
     # wait_open()
 
+def is_screenshot_light(region=None,threshold=0.4):
+    try:
+        if region:
+            screenshot = ImageGrab.grab(bbox=region)
+        else:
+            screenshot = ImageGrab.grab()
+        screenshot = screenshot.convert('RGB')
+        resized = screenshot.resize((100, 100))
+        pixels = list(resized.getdata())
 
+        # 统计颜色频率
+        color_count = {}
+        for pixel in pixels:
+            quantized = tuple((x // 32) * 32 for x in pixel)
+            color_count[quantized] = color_count.get(quantized, 0) + 1   
+
+        dominant_color = max(color_count, key=color_count.get)
+        r, g, b = dominant_color
+        brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+        is_light = brightness > threshold
+        return is_light
+        
+    except Exception as e:
+        print(f"截图或颜色分析失败: {e}")
+        return True
 def update_config(part, data):
     global config, ignore_action,hwnd
     config[part] = data
     json.dump(config, open("config.json", "w"))
-    if part == "follow_sys" and data == True:
-        sys_theme()
+    if part == "themeChangeType":
+        if data == "1":
+            sys_theme()
+            
     if part == "auto_start":
         if data == True:
             autoStart_registry()
@@ -1146,10 +1244,17 @@ class AppAPI:
 
     def get_config(self):
         global config
-        return config
+        return_config = config.copy()
+        del return_config["dir_order"]
+        return return_config
 
     def update_config(self, part, data):
         update_config(part, data)
+
+    def update_config_order(self,path,order):
+        global config
+        config["dir_order"][path]=order
+        json.dump(config, open("config.json", "w"))
 
     def search_desktop_path(self):
         return desktop_path
@@ -1516,5 +1621,6 @@ window = webview.create_window(
     hidden=True,
     easy_drag=False,
     resizable=False,
+    transparent=True
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)

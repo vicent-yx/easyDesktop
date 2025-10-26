@@ -398,8 +398,10 @@ class FileRenderer {
 
     createFileElement = async function(file, isGrid = true) {
         const element = document.createElement('div');
+        element.draggable = true
         element.className = isGrid ? 'file-item' : 'file-list-item';
         element.id = Utils.generateFileId(file.filePath);
+        element.dataset.list_index = file.index;
 
         const fileType = Utils.getFileType(file.file, file.fileType);
         const iconClass = isGrid ? 'file-icon' : 'file-list-icon';
@@ -407,22 +409,22 @@ class FileRenderer {
         const typeClass = isGrid ? 'file-type' : 'file-list-type';
 
         element.innerHTML = `
-            <img src="${file.ico}" alt="${file.fileName}" class="${iconClass}">
-            <span class="${nameClass}">${file.fileName}</span>
-            <span class="${typeClass}">${fileType}</span>
+            <img draggable = false src="${file.ico}" alt="${file.fileName}" class="${iconClass}">
+            <span draggable = false class="${nameClass}">${file.fileName}</span>
+            <span draggable = false class="${typeClass}">${fileType}</span>
         `;
         const cl_e = document.createElement("div")
         
         cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
         if(file.cl==false){
             if(document.getElementById("theme_css").href.includes("light")==true){
-                cl_e.innerHTML="<img src='./resources/imgs/cl.png'>"
+                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl.png'>"
             }else{
-                cl_e.innerHTML="<img src='./resources/imgs/cl_w.png'>"
+                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl_w.png'>"
             }
             
         }else{
-            cl_e.innerHTML="<img src='./resources/imgs/cl-active.png'>"
+            cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl-active.png'>"
             cl_e.style.display="block"
         }
         
@@ -977,20 +979,20 @@ const EventManager = {
     initToggleSettings() {
         const toggles = [
             'autoStartToggle', 'fullScreenToggle', 'fdrToggle',
-            'of_sToggle', 'sysappToggle', 'followSystemTheme','imgpreToggle'
+            'of_sToggle', 'sysappToggle',/* 'followSystemTheme',*/'imgpreToggle'
         ];
 
         const configKeys = [
             'auto_start', 'full_screen', 'fdr',
-            'of_s', 'show_sysApp', 'follow_sys','imgpre'
+            'of_s', 'show_sysApp',/* 'follow_sys',*/'imgpre'
         ];
 
         toggles.forEach((toggleId, index) => {
             DOMCache.get(toggleId).addEventListener('change', function () {
                 ApiHelper.updateConfig(configKeys[index], this.checked);
-                if (toggleId === 'followSystemTheme') {
-                    EventManager.updateThemeCardInteraction(this.checked);
-                }
+                // if (toggleId === 'themeChangeType_toggle') {
+                //     EventManager.updateThemeCardInteraction(this.value == "1");
+                // }
                 if(toggleId === "imgpreToggle"){
                     if(this.checked==true){
                         image_preview()
@@ -1026,9 +1028,16 @@ const EventManager = {
         DOMCache.get('out_cf_type_toggle').addEventListener('change', function () {
             ApiHelper.updateConfig('out_cf_type', this.value);
         });
-
         DOMCache.get("outPos_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('outPos', this.value);
+        });
+        DOMCache.get("bgType_toggle").addEventListener('change', function () {
+            ApiHelper.updateConfig('bgType', this.value);
+            load_bgType(this.value)
+        });
+        DOMCache.get("themeChangeType_toggle").addEventListener('change', function () {
+            ApiHelper.updateConfig('themeChangeType', this.value);
+            EventManager.updateThemeCardInteraction(this.value == "1");
         });
     },
 
@@ -1052,7 +1061,7 @@ const EventManager = {
         // 监听系统主题变化
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async (e) => {
             const config = await ApiHelper.getConfig();
-            if (config.follow_sys) {
+            if (config.themeChangeType == "1") {
                 const newTheme = e.matches ? 'dark' : 'light';
                 load_theme(newTheme);
             }
@@ -1673,7 +1682,19 @@ async function load_theme(theme) {
         return false;
     }
 }
-
+async function load_bgType(tid){
+    if(tid=="1"){
+        document.body.style.background = ""
+        document.body.style.backgroundColor = "unset"
+    }else if(tid=="2"){
+        document.body.style.background = "unset"
+        document.body.style.backgroundColor = "rgba(0,0,0,0)"
+        document.body.style.backdropFilter = "blur(10px)"
+    }else{
+        document.body.style.background = "unset"
+        document.body.style.backgroundColor = "rgba(255,255,255,0.3)"
+    }
+}
 async function fit_window() {
     await ApiHelper.call('fit_window_start');
 }
@@ -1782,18 +1803,18 @@ window.addEventListener('pywebviewready', async function () {
 
         // 初始化UI状态
         const updateUIFromConfig = async (config) => {
-            const followSystem = config.follow_sys || false;
+            const followSystem = config.themeChangeType == "1";
             const currentTheme = config.theme || 'dark';
 
             // 更新切换开关状态
             const toggleConfigs = [
-                ['followSystemTheme', 'follow_sys'],
+                // ['followSystemTheme', 'follow_sys'],
                 ['autoStartToggle', 'auto_start'],
                 ['fullScreenToggle', 'full_screen'],
                 ['fdrToggle', 'fdr'],
                 ['of_sToggle', 'of_s'],
                 ['sysappToggle', 'show_sysApp'],
-                ['imgpreToggle', 'imgpre']
+                ['imgpreToggle', 'imgpre'],
             ];
 
             toggleConfigs.forEach(([elementId, configKey]) => {
@@ -1807,6 +1828,10 @@ window.addEventListener('pywebviewready', async function () {
             DOMCache.get('cf_type_toggle').value = config.cf_type;
             DOMCache.get('out_cf_type_toggle').value = config.out_cf_type;
             DOMCache.get('outPos_toggle').value = config.outPos;
+            DOMCache.get("bgType_toggle").value = config.bgType;
+            DOMCache.get("themeChangeType_toggle").value = config.themeChangeType;
+            EventManager.updateThemeCardInteraction(config.themeChangeType == "1");
+
 
             // 更新缩放
             const scSlider = DOMCache.get('sc_slider');
@@ -1833,6 +1858,9 @@ window.addEventListener('pywebviewready', async function () {
                 await load_theme(systemTheme);
             } else {
                 await load_theme(currentTheme);
+            }
+            if(config.bgType != "0"){
+                load_bgType(config.bgType)
             }
 
             // 更新背景设置
@@ -1871,7 +1899,7 @@ window.addEventListener('pywebviewready', async function () {
 // 监听系统主题变化
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async (e) => {
     const config = await ApiHelper.getConfig();
-    if (config.follow_sys) {
+    if (config.themeChangeType=="!") {
         const newTheme = e.matches ? 'dark' : 'light';
         await load_theme(newTheme);
     }
@@ -2015,3 +2043,61 @@ window.addEventListener("keydown", function(event) {
         }
     }
 });
+
+let dragging = false
+boxs = [document.getElementById("filesContainer"),document.getElementById("filesListContainer")]
+for(let list of boxs){
+    // let list = document.querySelector('.list')
+    let currentLi
+    list.addEventListener('dragstart',(e)=>{
+        e.dataTransfer.effectAllowed = 'move'
+        dragging = true
+        currentLi = e.target
+        setTimeout(()=>{
+            currentLi.classList.add('moving')
+        })
+    })
+
+    list.addEventListener('dragenter',(e)=>{
+        e.preventDefault()
+        dragging = true
+        if(e.target === currentLi||e.target === list){
+            return
+        }
+        let liArray = Array.from(list.childNodes)
+        let currentIndex = liArray.indexOf(currentLi)
+        let targetindex = liArray.indexOf(e.target)
+
+        try{
+            if(currentIndex<targetindex){
+                list.insertBefore(currentLi,e.target.nextElementSibling)
+            }else{
+        
+                list.insertBefore(currentLi,e.target)
+            }
+        }catch(e){}
+    })
+    list.addEventListener('dragover',(e)=>{
+        e.preventDefault()
+        dragging = true
+    })
+    list.addEventListener('dragend',(e)=>{
+        currentLi.classList.remove('moving')
+        dragging = false
+        save_new_order()
+    })
+}
+
+async function save_new_order(){
+    if(boxs[0].style.display!="none"){
+        target_box = boxs[0]
+    }else{
+        target_box = boxs[1]
+    }
+    let new_order = []
+    for(let item of target_box.children){
+        new_order.push(AppState.files_data[item.dataset.list_index])
+    }
+    console.log(new_order)
+    await ApiHelper.call("update_config_order",AppState.currentPath,new_order)
+}
