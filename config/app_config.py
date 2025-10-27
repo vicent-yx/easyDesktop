@@ -27,8 +27,8 @@ WS_EX_TOOLWINDOW = 0x00000080
 WS_EX_APPWINDOW = 0x00040000
 
 # ===== 动画和界面常量 =====
-ANIMATION_STEPS = 60
-ANIMATION_DELAY = 0.003
+ANIMATION_STEPS = 80
+ANIMATION_DELAY = 0.001
 WINDOW_WIDTH_RATIO = 0.65
 WINDOW_HEIGHT_RATIO = 0.4
 WINDOW_POSITION_RATIO = 0.1
@@ -153,13 +153,14 @@ def get_default_config(width, height):
         "cf_hotkey":"",
         "out_cf_type": "1",
         "show_sysApp": False,
-        "scale": 100,
+        "scale": 90,
         "df_dir": "desktop",
         "df_dir_name": "桌面",
         "of_s": True,
         "outPos":"1",
         "imgpre": True,
         "bgType":"1",
+        'blur_bg':False,
         "dir_order":{}
     }
 

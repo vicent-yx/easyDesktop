@@ -325,6 +325,7 @@ body {
     align-items: center;
     z-index: 2000;
     display: none;
+    backdrop-filter: blur(5px);
 }
 
 .rename-container {

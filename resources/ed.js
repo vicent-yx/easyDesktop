@@ -369,8 +369,8 @@ class FileRenderer {
     /**
      * 渲染文件列表
      */
-    async render(files) {
-        this.clearContainers();
+    async render(files,target_ctn=null) {
+        this.clearContainers(target_ctn);
 
         if (!files || files.length === 0) {
             this.setEmptyState();
@@ -378,17 +378,17 @@ class FileRenderer {
         }
 
         files.forEach(file => {
-            this.renderGridItem(file);
-            this.renderListItem(file);
+            if(target_ctn=="grid" || target_ctn==null)this.renderGridItem(file);
+            if(target_ctn=="list" || target_ctn==null)this.renderListItem(file);
         });
         setTimeout(() => { 
             image_preview()
         }, 500);
     }
 
-    clearContainers() {
-        this.gridContainer.innerHTML = '';
-        this.listContainer.innerHTML = '';
+    clearContainers(target_ctn) {
+        if(target_ctn=="grid" || target_ctn==null)this.gridContainer.innerHTML = '';
+        if(target_ctn=="list" || target_ctn==null)this.listContainer.innerHTML = '';
     }
 
     setEmptyState() {
@@ -413,25 +413,25 @@ class FileRenderer {
             <span draggable = false class="${nameClass}">${file.fileName}</span>
             <span draggable = false class="${typeClass}">${fileType}</span>
         `;
-        const cl_e = document.createElement("div")
+        // const cl_e = document.createElement("div")
         
-        cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
-        if(file.cl==false){
-            if(document.getElementById("theme_css").href.includes("light")==true){
-                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl.png'>"
-            }else{
-                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl_w.png'>"
-            }
+        // cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
+        // if(file.cl==false){
+        //     if(document.getElementById("theme_css").href.includes("light")==true){
+        //         cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl.png'>"
+        //     }else{
+        //         cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl_w.png'>"
+        //     }
             
-        }else{
-            cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl-active.png'>"
-            cl_e.style.display="block"
-        }
+        // }else{
+        //     cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl-active.png'>"
+        //     cl_e.style.display="block"
+        // }
         
-        cl_e.onclick=(event) => {event.stopPropagation();change_cl_state(file.filePath, file.cl)};
-        cl_e.ondblclick = (event) => {event.stopPropagation();}
-        element.insertBefore(cl_e, element.firstChild);
-        element.cl = cl_e;
+        // cl_e.onclick=(event) => {event.stopPropagation();change_cl_state(file.filePath, file.cl)};
+        // cl_e.ondblclick = (event) => {event.stopPropagation();}
+        // element.insertBefore(cl_e, element.firstChild);
+        // element.cl = cl_e;
 
         this.attachFileEvents(element, file);
         return element;
@@ -668,6 +668,7 @@ const SearchManager = {
 
 // ========== 主题管理器 ==========
 const ThemeManager = {
+    now_theme: 'light',
     async applyBackgroundSettings(config) {
         const body = document.body;
         if (config.use_bg && config.bg) {
@@ -979,12 +980,12 @@ const EventManager = {
     initToggleSettings() {
         const toggles = [
             'autoStartToggle', 'fullScreenToggle', 'fdrToggle',
-            'of_sToggle', 'sysappToggle',/* 'followSystemTheme',*/'imgpreToggle'
+            'of_sToggle', 'sysappToggle',/* 'followSystemTheme',*/'imgpreToggle','blurToggle'
         ];
 
         const configKeys = [
             'auto_start', 'full_screen', 'fdr',
-            'of_s', 'show_sysApp',/* 'follow_sys',*/'imgpre'
+            'of_s', 'show_sysApp',/* 'follow_sys',*/'imgpre','blur_bg'
         ];
 
         toggles.forEach((toggleId, index) => {
@@ -999,6 +1000,8 @@ const EventManager = {
                     }else{
                         preview_runing = false
                     }
+                }else if(toggleId === "blurToggle"){
+                    ApiHelper.call('set_blur_effect', this.checked);
                 }
             });
         });
@@ -1047,7 +1050,7 @@ const EventManager = {
 
         themeCards.forEach(card => {
             card.addEventListener('click', function () {
-                if (followSystemToggle.checked) return;
+                // if (followSystemToggle.checked) return;
 
                 const theme = this.dataset.theme;
                 ApiHelper.updateConfig("theme", theme);
@@ -1676,6 +1679,14 @@ async function load_theme(theme) {
         NavigationManager.refreshCurrentPath();
         render_class_btn()
         console.log(`主题已切换到: ${theme}`);
+        if(theme=="light"){
+            await ApiHelper.call('load_blur_effect', 'Acrylic');
+        }else{
+            await ApiHelper.call('load_blur_effect', 'Aero');
+        }
+        ThemeManager.now_theme = theme;
+        config = await ApiHelper.getConfig();
+        if(config["bgType"]=="3")load_bgType(config["bgType"])
         return true;
     } catch (error) {
         console.error('load_theme: 加载主题时发生错误', error);
@@ -1692,7 +1703,11 @@ async function load_bgType(tid){
         document.body.style.backdropFilter = "blur(10px)"
     }else{
         document.body.style.background = "unset"
-        document.body.style.backgroundColor = "rgba(255,255,255,0.3)"
+        if(ThemeManager.now_theme=='light'){
+            document.body.style.backgroundColor = "rgba(255,255,255,0.3)"
+        }else{
+            document.body.style.backgroundColor = "rgba(0,0,0,0.3)"
+        }
     }
 }
 async function fit_window() {
@@ -1805,6 +1820,7 @@ window.addEventListener('pywebviewready', async function () {
         const updateUIFromConfig = async (config) => {
             const followSystem = config.themeChangeType == "1";
             const currentTheme = config.theme || 'dark';
+            load_bgType(config.bgType)
 
             // 更新切换开关状态
             const toggleConfigs = [
@@ -1815,6 +1831,7 @@ window.addEventListener('pywebviewready', async function () {
                 ['of_sToggle', 'of_s'],
                 ['sysappToggle', 'show_sysApp'],
                 ['imgpreToggle', 'imgpre'],
+                ['blurToggle','blur_bg']
             ];
 
             toggleConfigs.forEach(([elementId, configKey]) => {
@@ -1860,7 +1877,9 @@ window.addEventListener('pywebviewready', async function () {
                 await load_theme(currentTheme);
             }
             if(config.bgType != "0"){
-                load_bgType(config.bgType)
+                setTimeout(function(){
+                    load_bgType(config.bgType)
+                },100)
             }
 
             // 更新背景设置
@@ -2046,6 +2065,8 @@ window.addEventListener("keydown", function(event) {
 
 let dragging = false
 boxs = [document.getElementById("filesContainer"),document.getElementById("filesListContainer")]
+boxs[0].dataset.other = "list"
+boxs[1].dataset.other = "grid"
 for(let list of boxs){
     // let list = document.querySelector('.list')
     let currentLi
@@ -2072,7 +2093,6 @@ for(let list of boxs){
             if(currentIndex<targetindex){
                 list.insertBefore(currentLi,e.target.nextElementSibling)
             }else{
-        
                 list.insertBefore(currentLi,e.target)
             }
         }catch(e){}
@@ -2084,11 +2104,11 @@ for(let list of boxs){
     list.addEventListener('dragend',(e)=>{
         currentLi.classList.remove('moving')
         dragging = false
-        save_new_order()
+        save_new_order(list.dataset.other)
     })
 }
 
-async function save_new_order(){
+async function save_new_order(reload_part){
     if(boxs[0].style.display!="none"){
         target_box = boxs[0]
     }else{
@@ -2100,4 +2120,6 @@ async function save_new_order(){
     }
     console.log(new_order)
     await ApiHelper.call("update_config_order",AppState.currentPath,new_order)
+    console.log(reload_part)
+    fileRenderer.render(new_order,reload_part)
 }

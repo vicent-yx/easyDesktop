@@ -205,10 +205,10 @@ else:
     config = default_config
     json.dump(config, open(cfg.CONFIG_FILE, "w"))
 
-if not os.path.exists(cfg.CL_DATA_FILE):
-    with open(cfg.CL_DATA_FILE, "w") as f:
-        json.dump({}, f)
-        f.close()
+# if not os.path.exists(cfg.CL_DATA_FILE):
+#     with open(cfg.CL_DATA_FILE, "w") as f:
+#         json.dump({}, f)
+#         f.close()
 
 if not os.path.exists(cfg.USER_CLASS_FILE):
     itemClass = {config["df_dir"]:{}}
@@ -269,8 +269,8 @@ def turn_png(file_path):
             with Image.open(file_path) as img:
                 # 获取最大尺寸的图标
                 if hasattr(img, "size") and img.size[0] > 0:
-                    png_path = os.path.splitext(file_path)[0] + ".png"
-                    img.save(png_path, "PNG")
+                    png_path = os.path.splitext(file_path)[0] + ".webp"
+                    img.save(png_path, "WEBP")
                     return png_path
                 else:
                     return "./resources/file_icos/exe.png"
@@ -323,7 +323,7 @@ def get_icon(exe_path, name):
         dir_name = os.path.dirname(exe_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
-        output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
+        ico_path = output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
 
         # 检查exe文件是否存在
         if not os.path.exists(exe_path):
@@ -334,6 +334,8 @@ def get_icon(exe_path, name):
             extractor = IconExtractor(exe_path)
             extractor.export_icon(output_path)
             output_path = turn_png(output_path)
+            if os.path.exists(ico_path):
+                os.remove(ico_path)
             if output_path and output_path != "./resources/file_icos/exe.png":
                 loaded_exe_cache[exe_path] = output_path
                 return {"success":True,"ico":output_path}
@@ -436,16 +438,16 @@ def check_recover(data, match):
             result = True
             break
     return result
-def is_cl(file_path):
-    try:
-        cl_data = json.load(open(cfg.CL_DATA_FILE, "r"))
-        if file_path in cl_data:
-            return cl_data[file_path]
-        else:
-            return False
-    except Exception as e:
-        print(f"读取收藏数据失败: {e}")
-        return False
+# def is_cl(file_path):
+#     try:
+#         cl_data = json.load(open(cfg.CL_DATA_FILE, "r"))
+#         if file_path in cl_data:
+#             return cl_data[file_path]
+#         else:
+#             return False
+#     except Exception as e:
+#         print(f"读取收藏数据失败: {e}")
+#         return False
 def merge_lists(a, b):
     # 插入排序
     a_filepaths = {item['filePath'] for item in a}
@@ -474,9 +476,6 @@ def merge_lists(a, b):
         
         index_mapping[item['index']] = item
         a_indices = sorted(index_mapping.keys())
-    
-    for i, item in enumerate(a):
-        item['index'] = i
     
     return a
 def update_inf(dir_path):
@@ -541,7 +540,7 @@ def update_inf(dir_path):
                                         "filePath": full_path,
                                         "realPath": target_path,
                                         "ico": exe_icon,
-                                        "cl": is_cl(full_path),
+                                        # "cl": is_cl(full_path),
                                     }
                                 )
                                 continue
@@ -554,7 +553,7 @@ def update_inf(dir_path):
                                         "file": os.path.basename(full_path),
                                         "filePath": full_path,
                                         "ico": icon_image,
-                                        "cl":is_cl(full_path),
+                                        # "cl":is_cl(full_path),
                                     }
                                 )
                             else:
@@ -566,7 +565,7 @@ def update_inf(dir_path):
                                             "file": item,
                                             "filePath": target_path,
                                             "ico": match_ico(item),
-                                            "cl": is_cl(target_path),
+                                            # "cl": is_cl(target_path),
                                         }
                                     )
                                 else:
@@ -578,7 +577,7 @@ def update_inf(dir_path):
                                                 "file": item,
                                                 "filePath": full_path,
                                                 "ico":  get_url_icon(full_path)["ico"],
-                                                "cl": is_cl(target_path),
+                                                # "cl": is_cl(target_path),
                                             }
                                         )
                                     else:
@@ -589,7 +588,7 @@ def update_inf(dir_path):
                                                 "file": item,
                                                 "filePath": target_path,
                                                 "ico": "./resources/file_icos/dir.png",
-                                                "cl": is_cl(target_path),
+                                                # "cl": is_cl(target_path),
                                             }
                                         )
                                 continue
@@ -602,7 +601,7 @@ def update_inf(dir_path):
                                     "file": os.path.basename(full_path),
                                     "filePath": full_path,
                                     "ico": icon_image,
-                                    "cl": is_cl(full_path),
+                                    # "cl": is_cl(full_path),
                                 }
                             )
                         else:
@@ -613,7 +612,7 @@ def update_inf(dir_path):
                                     "file": item,
                                     "filePath": full_path,
                                     "ico": match_ico(item),
-                                    "cl": is_cl(full_path),
+                                    # "cl": is_cl(full_path),
                                 }
                             )
                     else:
@@ -624,7 +623,7 @@ def update_inf(dir_path):
                                 "file": item,
                                 "filePath": full_path,
                                 "ico": "./resources/file_icos/dir.png",
-                                "cl": is_cl(full_path),
+                                # "cl": is_cl(full_path),
                             }
                         )
                 except:
@@ -643,40 +642,23 @@ def update_inf(dir_path):
             or dir_path == public_desktop
         ):
             for item in cfg.SYSTEM_APPS:
-                item["cl"]=False
+                # item["cl"]=False
                 item["index"]= index
                 index+=1
                 out_data.append(item)
         
-        for i in range(2):
-            r = i==False
-            for item in exe_data:
-                if check_recover(out_data, item) == True:
-                    continue
-                if r==True and item["cl"]!=True:
-                    continue
-                item["index"]=index
-                item["f_type"] = "exe"
-                index+=1
-                out_data.append(item)
-            for item in dir_data:
-                if check_recover(out_data, item) == True:
-                    continue
-                if r==True and item["cl"]!=True:
-                    continue
-                item["index"]=index
-                item["f_type"] = "dir"
-                index+=1
-                out_data.append(item)
-            for item in file_data:
-                if check_recover(out_data, item) == True:
-                    continue
-                if r==True and item["cl"]!=True:
-                    continue
-                item["index"]=index
-                item["f_type"] = "file"
-                index+=1
-                out_data.append(item)
+        o_data = exe_data + file_data + dir_data
+        for item in o_data:
+            if check_recover(out_data, item) == True:
+                continue
+
+            # if item["cl"]==True:
+            #     cl_list.append(item)
+            #     continue
+            item["index"]=index
+            item["f_type"] = "exe"
+            index+=1
+            out_data.append(item)
         
         order_data = []
         if dir_path in config["dir_order"]:
@@ -697,6 +679,8 @@ def update_inf(dir_path):
         # 再插入排序
             order_data = this_order
             out_data = merge_lists(order_data, out_data)
+        for i, item in enumerate(out_data):
+            item['index'] = i
         return out_data
     except:
         bugs_report(
@@ -842,42 +826,18 @@ def animate_window(
     hwnd, start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY
 ):
     global window, config
-    screen_width, screen_height = get_screen_size()
+    positions = []
     for i in range(steps + 1):
         progress = i / steps
-        eased_progress = ease_out_quad(progress)
-        current_x = start_x + (end_x - start_x) * eased_progress
-        current_y = start_y + (end_y - start_y) * eased_progress
-        if config["full_screen"] == True:
-            if start_x < end_x:
-                win32gui.MoveWindow(hwnd, int(current_x), int(current_y), screen_width, screen_height, True)
-            else:
-                win32gui.MoveWindow(
-                    hwnd,
-                    int(current_x),
-                    int(current_y),
-                    int(screen_width),
-                    int(screen_height),
-                    # int(screen_width - (screen_width * eased_progress)),
-                    # int(screen_height - (screen_height * eased_progress)),
-                    True,
-                )
-        else:
-            if (
-                ((config["outPos"] in ["1","2"]) and (start_x < end_x)) or (config["outPos"]=="3" and start_y>end_y) or (config["outPos"]=="4" and end_y>start_y)
-            ):
-                win32gui.MoveWindow(hwnd, int(current_x), int(current_y), width, height, True)
-            else:
-                win32gui.MoveWindow(
-                    hwnd,
-                    int(current_x),
-                    int(current_y),
-                    int(config["width"]),
-                    int(config["height"]),
-                    # int(config["width"] - (config["width"] * eased_progress)),
-                    # int(config["height"] - (config["height"] * eased_progress)),
-                    True,
-                )
+        eased = progress * (2 - progress)  # easeOutQuad
+        x = start_x + (end_x - start_x) * eased
+        y = start_y + (end_y - start_y) * eased
+        positions.append((int(x), int(y)))
+    
+    # 执行动画
+    delay = 0.25 / steps  # 总时长250ms
+    for x, y in positions:
+        win32gui.MoveWindow(hwnd, x, y, width, height, True)
         time.sleep(delay)
 
 def get_targetPos(win_width=None,win_height=None):
@@ -908,11 +868,10 @@ def out_window():
         return
     moving = True
     window_state = True
+    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
     if config["full_screen"] == False:
         window.resize(config["width"], config["height"])
-    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();NavigationManager.refreshCurrentPath();fit_btnBar();")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-    hide_from_taskbar(window)
     if not hwnd:
         print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
         return False
@@ -951,13 +910,18 @@ def out_window():
         color_r = is_screenshot_light((end_x,end_y,end_x+width,end_y+height),threshold=0.4)
         if color_r == True:
             window.evaluate_js("load_theme('light')")
+            if config['blur_bg']==True:
+                WindowEffect().setAcrylicEffect(hwnd)
         else:
             window.evaluate_js("load_theme('dark')")
+            if config['blur_bg']==True:
+                WindowEffect().setAeroEffect(hwnd)
 
-    time.sleep(0.1)
     window.show()
+    time.sleep(0.1)
     animate_window(hwnd, start_x, start_y, end_x, end_y, rect["width"], rect["height"])
     window.evaluate_js("window_state=true;")
+    window.evaluate_js("NavigationManager.refreshCurrentPath();fit_btnBar();")
 
     while True:
         if fullscreen_close == True:
@@ -1073,8 +1037,8 @@ def on_loaded():
     else:
         window.evaluate_js("grid_view()")
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-    windowEffect = WindowEffect()
-    windowEffect.setAcrylicEffect(hwnd)
+    set_blur(config["blur_bg"])
+    hide_from_taskbar(window)
     moveIn_window()
     # wait_open()
 
@@ -1212,6 +1176,17 @@ def open_sysApp_action(component_name):
         print(f"打开 {component_name} 时出错: {str(e)}")
         return False
 
+def set_blur(open_state):
+    global hwnd,config
+    windowEffect = WindowEffect()
+    if open_state==True:
+        if config['theme']=="light":
+            windowEffect.setAcrylicEffect(hwnd)
+        else:
+            windowEffect.setAeroEffect(hwnd)
+    else:
+        windowEffect.resetEffect(hwnd)
+
 class AppAPI:
     def bug_report(self, part, data):
         bugs_report(
@@ -1220,10 +1195,10 @@ class AppAPI:
         )
     def is_path_abs(self,path):
         return os.path.isabs(path)
-    def change_cl_state(self,filePath, state):
-        cl_data = json.load(open(cfg.CL_DATA_FILE,"r"))
-        cl_data[filePath] = not state
-        json.dump(cl_data,open(cfg.CL_DATA_FILE,"w"))
+    # def change_cl_state(self,filePath, state):
+    #     cl_data = json.load(open(cfg.CL_DATA_FILE,"r"))
+    #     cl_data[filePath] = not state
+    #     json.dump(cl_data,open(cfg.CL_DATA_FILE,"w"))
     def set_background(self):
         try:
             global ignore_action
@@ -1606,6 +1581,18 @@ class AppAPI:
     def enable_autoClose(self):
         global ignore_action
         ignore_action = False
+    def set_blur_effect(self,open_state):
+        set_blur(open_state)
+
+    def load_blur_effect(self,b_type='Acrylic'):
+        global hwnd,config
+        if config['blur_bg']==False:
+            return
+        WindowEffect().resetEffect(hwnd)
+        if b_type=='Acrylic':
+            WindowEffect().setAcrylicEffect(hwnd)
+        else:
+            WindowEffect().setAeroEffect(hwnd)
 
 webview.settings["ALLOW_FILE_URLS"] = True
 window = webview.create_window(

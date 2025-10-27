@@ -90,3 +90,24 @@ class WindowEffect():
         self.accentPolicy.AnimationId = animationId
         # 开启亚克力
         self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
+
+    def setAeroEffect(self, hWnd: int, gradientColor: str = 'F2F2F230',
+                         isEnableShadow: bool = True, animationId: int = 0):
+        self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_ENABLE_BLURBEHIND.value[0]
+        # 开启Aero
+        self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
+    
+    def resetEffect(self, hWnd: int):
+        """ 恢复窗口默认效果
+        
+        Parameter
+        ----------
+        hWnd: int
+            窗口句柄
+        """
+        self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_DISABLED.value[0]
+        self.accentPolicy.GradientColor = DWORD(0)
+        self.accentPolicy.AccentFlags = DWORD(0)
+        self.accentPolicy.AnimationId = DWORD(0)
+        # 应用默认效果
+        self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
