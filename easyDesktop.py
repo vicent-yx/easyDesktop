@@ -25,7 +25,6 @@ import send2trash
 import re
 import win32ui
 import config as cfg
-from pyautogui import size
 import traceback
 import winerror
 import win32event
@@ -34,8 +33,6 @@ import win32pipe
 import base64
 import io
 from window_effect import WindowEffect
-# sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-
 def activate_existing_instance():
     """激活已存在的实例"""
     try:
@@ -111,6 +108,9 @@ window_state = False
 moving = False
 icon = None
 hwnd = None
+fit_hwnd = None
+SW_HIDE = 0
+SW_SHOW = 5
 os.environ["FUSION_LOG"] = "1"
 os.environ["FUSION_LOG_PATH"] = "/logs/"
 # 加载Windows API
@@ -156,20 +156,49 @@ error: {data}
                 cfg.APP_NAME+" 提示",
             )
             os.startfile(os.path.abspath(bugs_report_file))
-def get_screen_size():
-    r1_width = win32api.GetSystemMetrics(0)
-    r1_height = win32api.GetSystemMetrics(1)
 
-    r2_width,r2_height = size()
-    if r1_width==r2_width and r1_height==r2_height:
-        return r2_width,r2_height
+def get_active_screen_size(with_origin=False,with_work_area=False):
+    """
+    获取当前活动屏幕的宽高（包含鼠标光标的屏幕）
+    返回: (width, height)
+    """
+    # 获取鼠标位置
+    mouse_x, mouse_y = win32api.GetCursorPos()
+    
+    # 获取包含该点的显示器信息
+    monitor = win32api.MonitorFromPoint((mouse_x, mouse_y), win32con.MONITOR_DEFAULTTONEAREST)
+    monitor_info = win32api.GetMonitorInfo(monitor)
+    
+    # 获取工作区域（减去任务栏后的可用区域）
+    work_area = monitor_info['Work']
+    # print("work_area =",work_area)
+    # os._exit(0)
+    width = work_area[2] - work_area[0]  # right - left
+    height = work_area[3] - work_area[1] # bottom - top
+    
+    if with_origin==True and with_work_area==True:
+        return width, height,work_area[0],work_area[1],work_area[2],work_area[3]
+    elif with_origin==True and with_work_area==False:
+        return width, height,work_area[0],work_area[1]
     else:
-        add_c_1 = r1_width+r1_width
-        add_c_2 = r2_height+r2_height
-        if add_c_1>add_c_2:
-            return r1_width,r1_height
-        else:
-            return r2_width,r2_height
+        return width, height
+
+def get_screen_size():
+    r1_width,r1_height = get_active_screen_size()
+    return r1_width,r1_height
+    # r1_width = win32api.GetSystemMetrics(0)
+    # r1_height = win32api.GetSystemMetrics(1)
+
+    # r2_width,r2_height = size()
+    # if r1_width==r2_width and r1_height==r2_height:
+    #     return r2_width,r2_height
+    # else:
+    #     add_c_1 = r1_width+r1_width
+    #     add_c_2 = r2_height+r2_height
+    #     if add_c_1>add_c_2:
+    #         return r1_width,r1_height
+    #     else:
+    #         return r2_width,r2_height
 
 
 def get_active_window():
@@ -821,23 +850,43 @@ def get_window_rect(hwnd):
         "height": rect[3] - rect[1],
     }
 
-
+SWP_NOMOVE = 0x0002
+SWP_NOZORDER = 0x0004
 def animate_window(
     hwnd, start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY
 ):
-    global window, config
+    global window, config,mask_window
     positions = []
+    # sw,wh,ox,oy=get_active_screen_size(True)
+    w = width
+    h = height
+    # if ox!=0 and oy!=0:
+    #     r1_width = win32api.GetSystemMetrics(0)
+    #     r1_height = win32api.GetSystemMetrics(1)
+    #     w_rate = sw / r1_width
+    #     h_rate = wh / r1_height
+    #     end_x = int((end_x-ox)*w_rate)+ox
+    #     end_y = int((end_y-oy)*h_rate)+oy
+    #     flags = SWP_NOMOVE | SWP_NOZORDER | 0x0008 # 组合标志位
+    #     windll.user32.SetWindowPos(
+    #         hwnd, 0, 0, 0, int(w*w_rate), int(h*h_rate), flags
+    #     )
+    #     window.hide()
+    #     window.show()
+    # else:
+    #     w_rate = h_rate = 1
     for i in range(steps + 1):
         progress = i / steps
         eased = progress * (2 - progress)  # easeOutQuad
         x = start_x + (end_x - start_x) * eased
         y = start_y + (end_y - start_y) * eased
-        positions.append((int(x), int(y)))
-    
+        positions.append((int(x), int(y),int(w),int(h)))
+    # print(positions)
     # 执行动画
     delay = 0.25 / steps  # 总时长250ms
-    for x, y in positions:
-        win32gui.MoveWindow(hwnd, x, y, width, height, True)
+    for x, y, w, h in positions:
+        win32gui.MoveWindow(hwnd, x, y, w, h, True)
+        win32gui.UpdateWindow(hwnd)
         time.sleep(delay)
 
 def get_targetPos(win_width=None,win_height=None):
@@ -846,21 +895,34 @@ def get_targetPos(win_width=None,win_height=None):
     if win_height==None:
         win_height = height
     global config
-    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+    screen_width,screen_height,ox,oy = get_active_screen_size(True)
     if config["outPos"]=="1":
-        end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
-        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + win_height))
+        end_x = ox+(int(screen_width * cfg.WINDOW_POSITION_RATIO))
+        end_y = oy+(int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + win_height)))
     elif config["outPos"]=="2":
-        end_x = int(screen_width * cfg.WINDOW_POSITION_RATIO)
-        end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
+        end_x = ox+(int(screen_width * cfg.WINDOW_POSITION_RATIO))
+        end_y = oy+(int((screen_height * cfg.WINDOW_POSITION_RATIO)))
     elif config["outPos"]=="3":
-        end_x = int((screen_width-win_width)//2)
-        end_y = int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + win_height))
+        end_x = ox+(int((screen_width-win_width)//2))
+        end_y = oy+(int(screen_height - ((screen_height * cfg.WINDOW_POSITION_RATIO) + win_height)))
     elif config["outPos"]=="4":
-        end_x = int((screen_width-win_width)//2)
-        end_y = int((screen_height * cfg.WINDOW_POSITION_RATIO))
+        end_x = ox+(int((screen_width-win_width)//2))
+        end_y = oy+(int((screen_height * cfg.WINDOW_POSITION_RATIO)))
     return end_x,end_y
+
+def fit_blur_effect():
+    width, height, end_x, end_y = get_window_inf()
+    if config["themeChangeType"]=="2":
+        color_r = is_screenshot_light((end_x,end_y,end_x+width,end_y+height),threshold=0.4)
+        if color_r == True:
+            window.evaluate_js("load_theme('light')")
+            if config['blur_bg']==True:
+                WindowEffect().setAcrylicEffect(hwnd)
+        else:
+            window.evaluate_js("load_theme('dark')")
+            if config['blur_bg']==True:
+                WindowEffect().setAeroEffect(hwnd)
+
 def out_window():
     global moving, ignore_action, fullscreen_close, key_quick_start,window_state,config
     key_quick_start = False
@@ -881,41 +943,31 @@ def out_window():
         windll.user32.keybd_event(0x12, 0, 0x0002, 0)
     except:
         pass
-    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+    screen_width,screen_height,ox,oy = get_active_screen_size(True)
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
     if config["outPos"]=="1":
-        start_x = -width
-        start_y = screen_height - height // 2
+        start_x = ox+(-width)
+        start_y = oy+(screen_height - height // 2)
     elif config["outPos"]=="2":
-        start_x = -width
-        start_y = 0 - (height // 2)
+        start_x = ox+(-width)
+        start_y = oy+( - (height // 2))
     elif config["outPos"]=="3":
-        start_x = int((screen_width-width)//2)
-        start_y = screen_height + height
+        start_x = ox+(int((screen_width-width)//2))
+        start_y = oy+(screen_height + height)
     elif config["outPos"]=="4":
-        start_x = (screen_width-width)//2
-        start_y = -height
+        start_x = ox+((screen_width-width)//2)
+        start_y = oy+(-height)
     if config["full_screen"] == True:
-        end_x = 0
-        end_y = 0
+        end_x = ox
+        end_y = oy
     else:
         end_x,end_y = get_targetPos(width,height)
     win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
     win32gui.UpdateWindow(hwnd)
 
-    if config["themeChangeType"]=="2":
-        color_r = is_screenshot_light((end_x,end_y,end_x+width,end_y+height),threshold=0.4)
-        if color_r == True:
-            window.evaluate_js("load_theme('light')")
-            if config['blur_bg']==True:
-                WindowEffect().setAcrylicEffect(hwnd)
-        else:
-            window.evaluate_js("load_theme('dark')")
-            if config['blur_bg']==True:
-                WindowEffect().setAeroEffect(hwnd)
+    fit_blur_effect()
 
     window.show()
     time.sleep(0.1)
@@ -959,25 +1011,24 @@ def moveIn_window():
     if not hwnd:
         print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
         return False
-    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+    screen_width,screen_height,ox,oy = get_active_screen_size(True)
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
     current_x = rect["left"]
     current_y = rect["top"]
     if config["outPos"]=="1":
-        start_x = -width
-        start_y = screen_height - height // 2
+        start_x = ox+(-width)
+        start_y = oy+(screen_height - height // 2)
     elif config["outPos"]=="2":
-        start_x = -width
-        start_y = 0 - (height // 2)
+        start_x = ox+(-width)
+        start_y = oy+(0 - (height // 2))
     elif config["outPos"]=="3":
-        start_x = int((screen_width-width)//2)
-        start_y = screen_height + height
+        start_x = ox+(int((screen_width-width)//2))
+        start_y = oy+(screen_height + height)
     elif config["outPos"]=="4":
-        start_x = (screen_width-width)//2
-        start_y = -height
+        start_x = ox+((screen_width-width)//2)
+        start_y = oy+(-height)
     window.evaluate_js("window_state=false;preview_runing = false;")
     animate_window(hwnd, current_x, current_y, start_x, start_y, width, height)
     window.hide()
@@ -1023,22 +1074,26 @@ def check_update():
 
 
 def on_loaded():
-    global hwnd, config
+    global hwnd, config,window,mask_window
+    window.hide()
     if config["full_screen"] == True:
         window.resize(screen_width, screen_height)
-    window.hide()
     Thread(target=check_update).start()
     Thread(target=stray).start()
     Thread(target=hotkey_detect).start()
     start_pipe_server()
+    hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
+    hide_from_taskbar(window)
+    set_blur(config["blur_bg"])
+    end_x, end_y = get_targetPos(config['width'],config['height'])
+    win32gui.MoveWindow(hwnd, end_x, end_y, config['width'], config['height'], True)
     sys_theme()
     if config["view"] == "list":
         window.evaluate_js("list_view()")
     else:
         window.evaluate_js("grid_view()")
-    hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-    set_blur(config["blur_bg"])
-    hide_from_taskbar(window)
+    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
+    fit_blur_effect()
     moveIn_window()
     # wait_open()
 
@@ -1049,6 +1104,7 @@ def is_screenshot_light(region=None,threshold=0.4):
         else:
             screenshot = ImageGrab.grab()
         screenshot = screenshot.convert('RGB')
+        screenshot.save("screenshot_debug.png")
         resized = screenshot.resize((100, 100))
         pixels = list(resized.getdata())
 
@@ -1176,16 +1232,33 @@ def open_sysApp_action(component_name):
         print(f"打开 {component_name} 时出错: {str(e)}")
         return False
 
-def set_blur(open_state):
+def set_blur(open_state,real_theme=None):
     global hwnd,config
     windowEffect = WindowEffect()
+    if real_theme == None:
+        real_theme = config["theme"]
     if open_state==True:
-        if config['theme']=="light":
+        if real_theme=="light":
             windowEffect.setAcrylicEffect(hwnd)
         else:
             windowEffect.setAeroEffect(hwnd)
     else:
         windowEffect.resetEffect(hwnd)
+
+def remove_title_bar(hwnd):
+    # 获取当前窗口样式
+    current_style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+    
+    # 只移除标题栏相关样式，保留WS_THICKFRAME用于调整大小
+    new_style = current_style & ~(win32con.WS_CAPTION | win32con.WS_SYSMENU)
+    
+    # 设置新的窗口样式
+    win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, new_style)
+    
+    # 刷新窗口
+    win32gui.SetWindowPos(hwnd, None, 0, 0, 0, 0, 
+                         win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | 
+                         win32con.SWP_NOZORDER | win32con.SWP_FRAMECHANGED)
 
 class AppAPI:
     def bug_report(self, part, data):
@@ -1247,7 +1320,7 @@ class AppAPI:
         return outData
 
     def fit_window_start(self):
-        global ignore_action, config, resize_window, hwnd, has_cleared_fit
+        global ignore_action, config, resize_window, hwnd, has_cleared_fit,fit_hwnd
         if config["full_screen"] == True:
             return
         ignore_action = True
@@ -1269,6 +1342,9 @@ class AppAPI:
         has_cleared_fit = False
         resize_window.resize(config["width"], config["height"])
         resize_window.evaluate_js("disable_settings()")
+        fit_hwnd = win32gui.FindWindow(None, "easyDesktop-fit")
+        win32gui.MoveWindow(fit_hwnd, end_x, end_y, width, height, True)
+        remove_title_bar(fit_hwnd)
         print("config:", config["width"], config["height"])
         print("window: ", width, height)
         print("webview:", window.width, window.height)
@@ -1296,14 +1372,16 @@ class AppAPI:
         except:
             window.show()
             return
-        window.resize(width, height)
+        flags = SWP_NOMOVE | SWP_NOZORDER | 0x0008 # 组合标志位
+        windll.user32.SetWindowPos(
+            hwnd, 0, 0, 0, width, height, flags
+        )
         update_config("width", width)
         update_config("height", height)
         resize_window.destroy()
         window.show()
-        width, height, end_x, end_y = get_window_inf(window.title)
-        win32gui.MoveWindow(hwnd, int(end_x), int(end_y)
-                            , width, height, True)
+        if config['blur_bg']==True:
+            fit_blur_effect()
         time.sleep(1)
         ignore_action = False
 
@@ -1581,8 +1659,8 @@ class AppAPI:
     def enable_autoClose(self):
         global ignore_action
         ignore_action = False
-    def set_blur_effect(self,open_state):
-        set_blur(open_state)
+    def set_blur_effect(self,open_state,real_theme=None):
+        set_blur(open_state,real_theme)
 
     def load_blur_effect(self,b_type='Acrylic'):
         global hwnd,config
@@ -1594,20 +1672,27 @@ class AppAPI:
         else:
             WindowEffect().setAeroEffect(hwnd)
 
+    def fit_resize(self):
+        global fit_hwnd
+        width, height, end_x, end_y = get_window_inf("easyDesktop-fit")
+        win32gui.MoveWindow(fit_hwnd, end_x, end_y, width, height, True)
+
 webview.settings["ALLOW_FILE_URLS"] = True
+px,py = get_targetPos(config["width"],config["height"])
 window = webview.create_window(
     cfg.APP_NAME,
     "easyFileDesk.html",
     width=config["width"],
     height=config["height"],
+    x=px,y=py,
     js_api=AppAPI(),
     confirm_close=False,
     frameless=True,
     shadow=True,
-    on_top=True,
     hidden=True,
     easy_drag=False,
     resizable=False,
-    transparent=True
+    transparent=True,
+    on_top=True,
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)

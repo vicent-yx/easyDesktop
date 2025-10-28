@@ -1001,7 +1001,7 @@ const EventManager = {
                         preview_runing = false
                     }
                 }else if(toggleId === "blurToggle"){
-                    ApiHelper.call('set_blur_effect', this.checked);
+                    ApiHelper.call('set_blur_effect', this.checked,ThemeManager.now_theme);
                 }
             });
         });
@@ -1037,6 +1037,7 @@ const EventManager = {
         DOMCache.get("bgType_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('bgType', this.value);
             load_bgType(this.value)
+            EventManager.updateBGInteraction(this.value != "1");
         });
         DOMCache.get("themeChangeType_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('themeChangeType', this.value);
@@ -1077,6 +1078,13 @@ const EventManager = {
             card.style.opacity = followSystem ? '0.5' : '1';
             card.style.pointerEvents = followSystem ? 'none' : 'auto';
         });
+    },
+    updateBGInteraction(state) {
+        const bgtCards = DOMCache.get('bg_setting');
+        for(let card of bgtCards.children){
+            card.style.opacity = state ? '0.5' : '1';
+            card.style.pointerEvents = state ? 'none' : 'auto';
+        };
     },
 
     initBackgroundSettings() {
@@ -1713,8 +1721,9 @@ async function load_bgType(tid){
 async function fit_window() {
     await ApiHelper.call('fit_window_start');
 }
-
+let setting_mode = false
 async function disable_settings() {
+    setting_mode = true
     DOMCache.get("fit_btn").innerText = "点击完成调整";
     DOMCache.get("fit_btn").onclick = async function () {
         await ApiHelper.call('fit_window_end');
@@ -1725,6 +1734,9 @@ async function disable_settings() {
     });
     DOMCache.getAllBySelector(".setting_note").forEach((item) => {
         item.style.display = "none";
+    });
+    window.addEventListener("resize",async function(event) {
+        await ApiHelper.call('fit_resize');
     });
 }
 
@@ -1868,6 +1880,7 @@ window.addEventListener('pywebviewready', async function () {
             }
 
             EventManager.updateThemeCardInteraction(followSystem);
+            EventManager.updateBGInteraction(config.bgType != "1");
 
             // 加载主题
             if (followSystem) {
