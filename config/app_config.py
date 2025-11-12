@@ -3,14 +3,19 @@
 EasyDesktop 配置文件
 包含应用程序的所有配置常量和默认设置
 """
+import sys
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "1.12.1"
+APP_VERSION = "1.12.2"
 APP_NAME = "EasyDesktop"
-DEFAULT_WINDOW_TITLE = "EasyDesktop"
+DEFAULT_WINDOW_TITLE = "EasyDesktop_Main"
 
 # ===== 路径配置 =====
-DESKTOP_ICO_PATH = "./desktopICO/"
+if hasattr(sys, '_MEIPASS'):
+    DESKTOP_ICO_PATH = "./_internal/desktopICO/"
+else:
+    DESKTOP_ICO_PATH = "./desktopICO/"
+DESKTOP_ICO_RELATIVE_PATH = "./desktopICO/"
 RESOURCES_PATH = "./resources/"
 FILE_ICO_PATH = "./resources/file_icos/"
 CONFIG_FILE = "config.json"
@@ -32,7 +37,7 @@ ANIMATION_DELAY = 0.001
 WINDOW_WIDTH_RATIO = 0.65
 WINDOW_HEIGHT_RATIO = 0.4
 WINDOW_POSITION_RATIO = 0.1
-TOLERANCE = 3  # 像素容差
+TOLERANCE = 5  # 像素容差
 CORNER_SIZE = 10  # 角落区域的边长
 WAIT_TIMEOUT = 3  # 等待超时时间（秒）
 SLEEP_INTERVAL = 0.4  # 循环间隔（秒）
@@ -138,7 +143,7 @@ def get_default_config(width, height):
     return {
         "theme": "light",
         "language": "zh-CN",
-        "themeChangeType": "1",
+        "themeChangeType": "2",
         "view": "block",
         "auto_start": False,
         "use_bg": False,
@@ -151,7 +156,7 @@ def get_default_config(width, height):
         "fdr": True,
         "cf_type": "1",
         "cf_hotkey":"",
-        "out_cf_type": "1",
+        "out_cf_type": "2",
         "show_sysApp": False,
         "scale": 90,
         "df_dir": "desktop",
@@ -159,8 +164,9 @@ def get_default_config(width, height):
         "of_s": True,
         "outPos":"1",
         "imgpre": True,
-        "bgType":"1",
-        'blur_bg':False,
+        "bgType":"2",
+        'blur_bg':True,
+        'blur_effect':30,
         "dir_order":{}
     }
 
@@ -198,3 +204,59 @@ SYSTEM_COMMANDS = {
     "控制面板": r"explorer.exe shell:::{26EE0668-A00A-44D7-9371-BEB064C98683}",
     "回收站": r"explorer.exe shell:RecycleBinFolder",
 }
+
+# ===== 常用游戏窗口标题 =====
+common_game_windows = [
+    # 射击类
+    "Counter-Strike: Global Offensive",
+    "CS:GO", 
+    "PLAYERUNKNOWN'S BATTLEGROUNDS",
+    "Apex Legends",
+    "Call of Duty: Modern Warfare II",
+    "Call of Duty: Warzone",
+    "Overwatch",
+    "VALORANT",
+    "无畏契约",
+    "Battlefield™ V",
+    
+    # 大型多人在线角色扮演游戏
+    "World of Warcraft",
+    "FINAL FANTASY XIV",
+    "剑侠情缘网络版叁",
+    "Guild Wars 2", 
+    "The Elder Scrolls Online",
+    "Black Desert",
+    "Path of Exile",
+    
+    # 多人在线战术竞技游戏
+    "League of Legends",
+    "Dota 2",
+    "Heroes of the Storm",
+    
+    # 策略与模拟类
+    "Company of Heroes",
+    "Sid Meier's Civilization VI",
+    "StarCraft II",
+    "Europa Universalis IV", 
+    "Cities: Skylines",
+    "Microsoft Flight Simulator",
+    
+    # 动作角色扮演与冒险类
+    "ELDEN RING",
+    "DARK SOULS III",
+    "Cyberpunk 2077",
+    "The Witcher 3: Wild Hunt",
+    "MONSTER HUNTER: WORLD",
+    "原神",
+    "Genshin Impact",
+    "崩坏：星穹铁道",
+    "崩坏3",
+    "绝区零",
+    "LOST ARK",
+    
+    # 独立与沙盒游戏
+    "Minecraft", 
+    "Stardew Valley",
+    "Terraria",
+    "Hades"
+]

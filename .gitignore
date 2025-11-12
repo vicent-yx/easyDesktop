@@ -4,6 +4,7 @@ ed/
 build/
 dist/
 bugs_report/
+_internal/
 *.spec
 *.json
 b.html

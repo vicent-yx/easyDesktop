@@ -62,8 +62,10 @@ def select_dir():
     if not os.path.exists(install_path):
         os.makedirs(install_path)
     path_v.set(install_path)
+
 def start_install(itype="install"):
-    global download_inf_bar,download_inf_var,progressbar,install_started,uninstall_btn
+    global download_inf_bar,download_inf_var,progressbar,install_started,uninstall_btn,main_frame,install_type
+    install_type = itype  # 保存操作类型
     install_started=True
     path_input_frame.destroy()
     start_btn.pack_forget()
@@ -71,15 +73,23 @@ def start_install(itype="install"):
         uninstall_btn.pack_forget()
     except:
         pass
-    progressbar=ttk.Progressbar(window)
-    progressbar.pack()
+    
+    # 创建安装进度区域
+    progress_frame = tkinter.Frame(main_frame, bg="white")
+    progress_frame.pack(fill="both", expand=True, pady=20)
+    
+    progressbar=ttk.Progressbar(progress_frame, style="Custom.Horizontal.TProgressbar")
+    progressbar.pack(pady=20)
     #设置进度条最大值为100
     progressbar['maximum']=100
     #设置进度条长度
-    progressbar['length']=500
+    progressbar['length']=400
+    
     download_inf_var = tkinter.StringVar()
-    download_inf_bar = tkinter.Label(window,textvariable=download_inf_var)
-    download_inf_bar.place(x=50,y=290)
+    download_inf_bar = tkinter.Label(progress_frame, textvariable=download_inf_var, 
+                                    bg="white", fg="#333333", font=("微软雅黑", 10))
+    download_inf_bar.pack(pady=5)
+    
     text_json = os.path.join(install_path,"text.json")
     if not os.path.exists(install_path):
         try:
@@ -294,41 +304,148 @@ def out_and_open():
     os.startfile(os.path.join(install_path,"easyDesktop.exe"))
     window.quit()
 def show_finish():
-    global install_path
-    progressbar.pack_forget()
-    download_inf_bar.place_forget()
-    tkinter.Button(window,text="完成",width=20,height=2,font=("微软雅黑", 20),command=out).pack()
-    if os.path.exists(install_path):
-        tkinter.Button(window,text="完成并打开",width=20,height=2,font=("微软雅黑", 20),command=out_and_open).pack()
+    global install_path, main_frame, install_type
+    
+    # 清除进度相关组件
+    for widget in main_frame.winfo_children():
+        widget.destroy()
+    
+    # 创建完成界面
+    finish_frame = tkinter.Frame(main_frame, bg="white")
+    finish_frame.pack(fill="both", expand=True)
+    
+    # 根据操作类型显示不同的内容
+    if install_type == "uninstall":
+        # 卸载完成界面
+        # 创建图标容器确保居中
+        icon_frame = tkinter.Frame(finish_frame, bg="white")
+        icon_frame.pack(fill="x", pady=(30, 0))
+        success_label = tkinter.Label(icon_frame, text="    🗑️", font=("微软雅黑", 48), 
+                                     fg="#FF6B6B", bg="white")
+        success_label.pack(anchor="center")
+        success_text = tkinter.Label(finish_frame, text="卸载完成！", 
+                                    font=("微软雅黑", 16, "bold"), fg="#333333", bg="white")
+        success_text.pack(pady=10)
+        desc_text = tkinter.Label(finish_frame, text="EasyDesktop 已从您的计算机中移除", 
+                                 font=("微软雅黑", 10), fg="#666666", bg="white")
+        desc_text.pack(pady=5)
+        # 按钮容器
+        button_frame = tkinter.Frame(finish_frame, bg="white")
+        button_frame.pack(fill="x", pady=40)
+
+        inner_button_frame = tkinter.Frame(button_frame, bg="white")
+        inner_button_frame.pack(anchor="center")
+        tkinter.Button(inner_button_frame, text="完成", width=18, height=2, 
+                      font=("微软雅黑", 11, "bold"), bg="#6C757D", fg="white", 
+                      activebackground="#5A6268", relief="flat", 
+                      cursor="hand2", command=out).pack()
+        
+    else:
+        # 安装完成界面
+        # 创建图标容器确保居中
+        icon_frame = tkinter.Frame(finish_frame, bg="white")
+        icon_frame.pack(fill="x", pady=(30, 0))
+        success_label = tkinter.Label(icon_frame, text="🎉", font=("微软雅黑", 48), 
+                                     fg="#4CAF50", bg="white")
+        success_label.pack(anchor="center")  # 使用anchor="center"确保居中
+        success_text = tkinter.Label(finish_frame, text="安装完成！", 
+                                    font=("微软雅黑", 16, "bold"), fg="#333333", bg="white")
+        success_text.pack(pady=10)
+        desc_text = tkinter.Label(finish_frame, text="EasyDesktop 已成功安装到您的计算机", 
+                                 font=("微软雅黑", 10), fg="#666666", bg="white")
+        desc_text.pack(pady=5)
+        # 按钮容器
+        button_frame = tkinter.Frame(finish_frame, bg="white")
+        button_frame.pack(fill="x", pady=30)
+        
+        # 创建内部按钮框架确保按钮居中
+        inner_button_frame = tkinter.Frame(button_frame, bg="white")
+        inner_button_frame.pack(anchor="center")
+        
+        # 水平排列按钮
+        tkinter.Button(inner_button_frame, text="完成", width=12, height=2, 
+                      font=("微软雅黑", 11, "bold"), bg="#6C757D", fg="white", 
+                      activebackground="#5A6268", relief="flat", 
+                      cursor="hand2", command=out).pack(side="left", padx=8)
+        
+        if os.path.exists(install_path):
+            tkinter.Button(inner_button_frame, text="完成并打开", width=12, height=2, 
+                          font=("微软雅黑", 11, "bold"), bg="#2196F3", fg="white", 
+                          activebackground="#1976D2", relief="flat", 
+                          cursor="hand2", command=out_and_open).pack(side="left", padx=8)
+
 def closeWindow():
     if install_started == True:
         messagebox.showerror("警告","正在进行安装，请不要退出")
         return
     window.quit()
+
 have_network=False
 install_path = "D:/easydesktop"
-
 install_started = False
+install_type = "install"  # 默认操作类型
+
 window = tkinter.Tk()
 window.title("EasyDesktop - 安装")
 window.geometry("600x400")
 window.resizable(False,False)
+
+# 设置样式
+style = ttk.Style()
+style.theme_use('clam')
+style.configure("Custom.Horizontal.TProgressbar", 
+                troughcolor='#f0f0f0',
+                background='#4CAF50',
+                bordercolor='#f0f0f0',
+                lightcolor='#4CAF50',
+                darkcolor='#4CAF50')
+
 logo_img = tkinter.PhotoImage(file=resource_path(os.path.join("res","ed_logo.png"))) 
-tkinter.Label(window, image=logo_img).pack(anchor="center")
-path_input_frame = tkinter.Frame(window)
+bg_img = tkinter.PhotoImage(file=resource_path(os.path.join("res","bg.png"))) 
+background_label = tkinter.Label(window, image=bg_img)
+background_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+# 创建主容器框架
+main_frame = tkinter.Frame(window, bg="white", relief="flat", bd=1)
+main_frame.place(relx=0.5, rely=0.5, anchor="center", width=550, height=350)
+
+tkinter.Label(main_frame, image=logo_img, bg="white").pack(anchor="center", pady=20)
+
+path_input_frame = tkinter.Frame(main_frame, bg="white")
 path_v = tkinter.StringVar()
 path_v.set(install_path)
-tkinter.Label(path_input_frame,textvariable=path_v,width=50,height=2,bg="white").pack(side="left")
-tkinter.Button(path_input_frame,text="浏览",width=5,height=2,command=select_dir).pack(side="right")
-path_input_frame.pack()
-start_btn=tkinter.Button(window,text="开始安装",width=20,height=1,font=("微软雅黑", 20),command=go_install)
+tkinter.Label(path_input_frame, textvariable=path_v, width=40, height=1, 
+              bg="#f8f9fa", fg="#333333", font=("微软雅黑", 10),
+              relief="solid", bd=1, anchor="w", padx=10).pack(side="left", fill="both", expand=True)
+tkinter.Button(path_input_frame, text="浏览", width=8, height=1, 
+               command=select_dir, bg="#0078D7", fg="white", 
+               font=("微软雅黑", 9, "bold"), relief="flat",
+               activebackground="#106EBE").pack(side="right", padx=(10, 0))
+path_input_frame.pack(pady=15, fill="x", padx=50)
+
+start_btn=tkinter.Button(main_frame, text="开始安装", width=20, height=1, 
+                        font=("微软雅黑", 12, "bold"), command=go_install,
+                        bg="#0078D7", fg="white", relief="flat",
+                        activebackground="#106EBE")
 if check_registry_key()!=None:
     install_path=check_registry_key()
     path_v.set(install_path)
-    start_btn=tkinter.Button(window,text="更新程序",width=20,height=1,font=("微软雅黑", 20),command=go_install)
-    uninstall_btn=tkinter.Button(window,text="卸载程序",width=20,height=1,font=("微软雅黑", 20),command=go_unsintall)
-start_btn.pack()
+    start_btn=tkinter.Button(main_frame, text="更新程序", width=20, height=1,
+                            font=("微软雅黑", 12, "bold"), command=go_install,
+                            bg="#0078D7", fg="white", relief="flat",
+                            activebackground="#106EBE")
+    uninstall_btn=tkinter.Button(main_frame, text="卸载程序", width=20, height=1,
+                                font=("微软雅黑", 12, "bold"), command=go_unsintall,
+                                bg="#D83B01", fg="white", relief="flat",
+                                activebackground="#C13501")
+start_btn.pack(pady=5)
 if check_registry_key()!=None:
-    uninstall_btn.pack()
+    uninstall_btn.pack(pady=5)
+
+# 添加底部版权信息
+copyright_label = tkinter.Label(main_frame, text="EasyDesktop © 2025     Made by CodeVicent", 
+                               bg="white", fg="#666666", font=("微软雅黑", 8))
+copyright_label.pack(side="bottom", pady=10)
+
 window.protocol('WM_DELETE_WINDOW', closeWindow)
-window.mainloop() 
+window.mainloop()

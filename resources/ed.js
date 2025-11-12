@@ -670,6 +670,7 @@ const SearchManager = {
 const ThemeManager = {
     now_theme: 'light',
     async applyBackgroundSettings(config) {
+        if(config.blur_bg==true || config.bgType!="1")return;
         const body = document.body;
         if (config.use_bg && config.bg) {
             Object.assign(body.style, {
@@ -1041,7 +1042,7 @@ const EventManager = {
         });
         DOMCache.get("themeChangeType_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('themeChangeType', this.value);
-            EventManager.updateThemeCardInteraction(this.value == "1");
+            EventManager.updateThemeCardInteraction(this.value != "0");
         });
     },
 
@@ -1116,11 +1117,17 @@ const EventManager = {
                 if (bgUrl) {
                     await ApiHelper.updateConfig("use_bg", true);
                     await ApiHelper.updateConfig("bg", bgUrl);
-                    window.location.reload();
+                    config = await ApiHelper.getConfig();
+                    setTimeout(() => {
+                        ThemeManager.applyBackgroundSettings(config);
+                    }, 500);
                 }
             } catch (error) {
                 console.error('设置背景图片失败:', error);
             }
+            // setTimeout(() => {
+            //     window.location.reload();
+            // }, 500);
         });
     },
 
@@ -1130,6 +1137,12 @@ const EventManager = {
             const scaleValue = this.value;
             DOMCache.get("sc_input").innerText = `缩放比例：${scaleValue}%`;
             ConfigManager.updateScale(scaleValue);
+        });
+        const blur_ef_input = DOMCache.get('blur_ef_input');
+        blur_ef_input.addEventListener('input', function () {
+            var value = this.value;
+            DOMCache.get("blur_ef_input_show").innerText = `毛玻璃效果强度：${value}%`;
+            ApiHelper.updateConfig("blur_effect", Math.floor(100-value));
         });
     },
 
@@ -1695,6 +1708,7 @@ async function load_theme(theme) {
         ThemeManager.now_theme = theme;
         config = await ApiHelper.getConfig();
         if(config["bgType"]=="3")load_bgType(config["bgType"])
+        ThemeManager.applyBackgroundSettings(config);
         return true;
     } catch (error) {
         console.error('load_theme: 加载主题时发生错误', error);
@@ -1716,6 +1730,10 @@ async function load_bgType(tid){
         }else{
             document.body.style.backgroundColor = "rgba(0,0,0,0.3)"
         }
+    }
+    var config = await ApiHelper.getConfig();
+    if(config['use_bg']==true && config['bgType']==1){
+        ThemeManager.applyBackgroundSettings(config);
     }
 }
 async function fit_window() {
@@ -1830,7 +1848,7 @@ window.addEventListener('pywebviewready', async function () {
 
         // 初始化UI状态
         const updateUIFromConfig = async (config) => {
-            const followSystem = config.themeChangeType == "1";
+            const followSystem = config.themeChangeType != "0";
             const currentTheme = config.theme || 'dark';
             load_bgType(config.bgType)
 
@@ -1859,13 +1877,16 @@ window.addEventListener('pywebviewready', async function () {
             DOMCache.get('outPos_toggle').value = config.outPos;
             DOMCache.get("bgType_toggle").value = config.bgType;
             DOMCache.get("themeChangeType_toggle").value = config.themeChangeType;
-            EventManager.updateThemeCardInteraction(config.themeChangeType == "1");
+            EventManager.updateThemeCardInteraction(config.themeChangeType != "0");
 
 
             // 更新缩放
             const scSlider = DOMCache.get('sc_slider');
             scSlider.value = config.scale;
+            const blur_ef_input = DOMCache.get('blur_ef_input');
+            blur_ef_input.value = Math.floor(100-config.blur_effect);
             DOMCache.get("sc_input").innerText = "缩放比例：" + config.scale + "%";
+            DOMCache.get("blur_ef_input_show").innerText = "毛玻璃效果强度：" + Math.floor(100-config.blur_effect) + "%";
             await ConfigManager.updateScale(config.scale);
 
             // 更新主题卡片状态
@@ -2078,8 +2099,48 @@ window.addEventListener("keydown", function(event) {
 
 let dragging = false
 boxs = [document.getElementById("filesContainer"),document.getElementById("filesListContainer")]
+content_box = document.getElementById("content_box")
 boxs[0].dataset.other = "list"
 boxs[1].dataset.other = "grid"
+pos_move_dt = null
+pos_move_pc = null
+async function move_ctn(num){
+    content_box.scrollTo({
+        top: content_box.scrollTop + num,
+        behavior: 'smooth',
+    })
+}
+async function detect_posMove(){
+    r = await ApiHelper.call("drag_posMoveAction")
+    if(r!="none"){
+        if(r=="bottom"){
+            if(pos_move_pc!=null)return
+            pos_move_pc = setInterval(async function(){
+                move_ctn(200)
+            },50)
+        }else if(r=="top"){
+            if(pos_move_pc!=null)return
+            pos_move_pc = setInterval(async function(){
+                move_ctn(-200)
+            },50)
+        }
+    }else{
+        if(pos_move_pc!=null){
+            clearInterval(pos_move_pc)
+            pos_move_pc = null
+        }
+    }
+}
+async function stop_moveAction(){
+    if(pos_move_pc!=null){
+        clearInterval(pos_move_pc)
+        pos_move_pc = null
+    }
+    if(pos_move_dt!=null){
+        clearInterval(pos_move_dt)
+        pos_move_dt = null
+    }
+}
 for(let list of boxs){
     // let list = document.querySelector('.list')
     let currentLi
@@ -2090,6 +2151,10 @@ for(let list of boxs){
         setTimeout(()=>{
             currentLi.classList.add('moving')
         })
+        stop_moveAction()
+        pos_move_dt = setInterval(async function(){
+            detect_posMove()
+        },100)
     })
 
     list.addEventListener('dragenter',(e)=>{
@@ -2114,10 +2179,12 @@ for(let list of boxs){
         e.preventDefault()
         dragging = true
     })
-    list.addEventListener('dragend',(e)=>{
+    list.addEventListener('dragend',async(e)=>{
         currentLi.classList.remove('moving')
         dragging = false
-        save_new_order(list.dataset.other)
+        stop_moveAction()
+        await save_new_order(list.dataset.other)
+
     })
 }
 
@@ -2134,5 +2201,6 @@ async function save_new_order(reload_part){
     console.log(new_order)
     await ApiHelper.call("update_config_order",AppState.currentPath,new_order)
     console.log(reload_part)
-    fileRenderer.render(new_order,reload_part)
+    NavigationManager.refreshCurrentPath()
+    // fileRenderer.render(new_order,reload_part)
 }

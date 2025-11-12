@@ -4,6 +4,7 @@ import win32com.client
 import win32gui
 import win32api
 import win32con
+from win32 import win32print
 import time
 import webview
 import pystray
@@ -32,7 +33,7 @@ import win32file
 import win32pipe
 import base64
 import io
-from window_effect import WindowEffect
+from window_effect import WindowEffect,set_window_rounded_corners
 def activate_existing_instance():
     """激活已存在的实例"""
     try:
@@ -96,6 +97,11 @@ if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
     activate_existing_instance()
     os._exit(0)
 
+# 打包后纠正工作目录
+if getattr(sys, 'frozen', False):
+    base_path = os.path.dirname(os.path.realpath(sys.executable))
+    os.chdir(base_path)
+
 has_opened_window = False
 key_quick_start = False
 start_action = False
@@ -128,6 +134,13 @@ try:
 except:
     msgbox("无法加载pythonnet")
 
+try:
+    if not os.path.exists("./_internal"):
+        os.makedirs("./_internal")
+    if os.path.exists(cfg.DESKTOP_ICO_PATH) == False:
+        os.mkdir(cfg.DESKTOP_ICO_PATH)
+except:
+    msgbox(os.getcwd())
 
 def get_real_path():
     if getattr(sys, "frozen", False):
@@ -158,6 +171,7 @@ error: {data}
             os.startfile(os.path.abspath(bugs_report_file))
 
 def get_active_screen_size(with_origin=False,with_work_area=False):
+    global sfb
     """
     获取当前活动屏幕的宽高（包含鼠标光标的屏幕）
     返回: (width, height)
@@ -169,10 +183,15 @@ def get_active_screen_size(with_origin=False,with_work_area=False):
     monitor = win32api.MonitorFromPoint((mouse_x, mouse_y), win32con.MONITOR_DEFAULTTONEAREST)
     monitor_info = win32api.GetMonitorInfo(monitor)
     
-    # 获取工作区域（减去任务栏后的可用区域）
-    work_area = monitor_info['Work']
+    # 获取工作区域
+    work_area = monitor_info['Monitor']
     # print("work_area =",work_area)
     # os._exit(0)
+    work_area = list(work_area)
+    for i in range(len(work_area)):
+        num = work_area[i]
+        if str(num)[-1]!="0":
+            work_area[i] = int(round(num*sfb))
     width = work_area[2] - work_area[0]  # right - left
     height = work_area[3] - work_area[1] # bottom - top
     
@@ -207,16 +226,18 @@ def get_active_window():
     return a_hwnd if a_hwnd else None
 
 def get_sfb():
-    windll.user32.SetProcessDPIAware()
-    try:
-        # 获取系统DPI（Windows 10 1607+）
-        dpi = windll.user32.GetDpiForSystem()
-        scaling_percentage = round(dpi / 96)
-        return scaling_percentage
-    except AttributeError:
-        return 1.5
+    hdc = win32gui.GetDC(0)
+    # 获取物理分辨率
+    physical_width = win32print.GetDeviceCaps(hdc, win32con.DESKTOPHORZRES)
+    # 获取逻辑分辨率（受缩放影响）
+    logical_width = win32print.GetDeviceCaps(hdc, win32con.HORZRES)
+    
+    # 计算缩放比例
+    scale_factor = round(physical_width / logical_width, 2)
+    return scale_factor
 
-sfb = 1
+
+sfb = get_sfb()
 print("sfb = ",sfb)
 screen_width, screen_height = get_screen_size()
 print(screen_width, screen_height)
@@ -333,10 +354,11 @@ def get_shortcut_icon_win32(lnk_path,name):
                 if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
                     os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
                 output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
+                relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"
                 shutil.copyfile(result, output_path)
                 output_path = turn_png(output_path)
-                loaded_exe_cache[lnk_path] = output_path
-                return {"success":True,"ico":output_path}
+                loaded_exe_cache[lnk_path] = relative_path
+                return {"success":True,"ico":relative_path}
             elif result.split(".")[-1] in ["exe",".EXE"]:
                 return get_icon(result,name)
             else:
@@ -353,6 +375,7 @@ def get_icon(exe_path, name):
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
         ico_path = output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
+        relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"
 
         # 检查exe文件是否存在
         if not os.path.exists(exe_path):
@@ -366,8 +389,8 @@ def get_icon(exe_path, name):
             if os.path.exists(ico_path):
                 os.remove(ico_path)
             if output_path and output_path != "./resources/file_icos/exe.png":
-                loaded_exe_cache[exe_path] = output_path
-                return {"success":True,"ico":output_path}
+                loaded_exe_cache[exe_path] = relative_path
+                return {"success":True,"ico":relative_path}
             else:
                 # 如果转换失败，使用默认图标
                 print(f"图标转换失败，使用默认图标: {exe_path}")
@@ -434,8 +457,8 @@ def get_url_icon(url_path):
         del hbmp
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
-        image.save(cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png")
-        return {"success":True,"ico":cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".png"}
+        image.save(cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".webp")
+        return {"success":True,"ico":cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + os.path.basename(url_path) + ".webp"}
     except Exception as e:
         print(f"提取图标失败: {e}")
         return {"success":False,"ico":"./resources/file_icos/exe.png"}
@@ -493,15 +516,18 @@ def merge_lists(a, b):
         target_index = item['index']
         if target_index in index_mapping:
             insert_pos = a.index(index_mapping[target_index]) + 1
-            a.insert(insert_pos, item)
+            if check_recover(a,item)==False:
+                a.insert(insert_pos, item)
         else:
             smaller_indices = [idx for idx in a_indices if idx < target_index]
             if smaller_indices:
                 max_smaller_index = max(smaller_indices)
                 insert_pos = a.index(index_mapping[max_smaller_index]) + 1
-                a.insert(insert_pos, item)
+                if check_recover(a,item)==False:
+                    a.insert(insert_pos, item)
             else:
-                a.insert(0, item)
+                if check_recover(a,item)==False:
+                    a.insert(0, item)
         
         index_mapping[item['index']] = item
         a_indices = sorted(index_mapping.keys())
@@ -708,6 +734,22 @@ def update_inf(dir_path):
         # 再插入排序
             order_data = this_order
             out_data = merge_lists(order_data, out_data)
+
+        # 重复监测
+        temp_list = []
+        r_index = 0
+        while r_index < len(out_data): 
+            need_del = False
+            for item in temp_list:
+                if item["filePath"] == out_data[r_index]["filePath"]:
+                    need_del = True
+                    break
+            if need_del == True:
+                del out_data[r_index]
+            else:
+                temp_list.append(out_data[r_index])
+                r_index += 1
+        temp_list = []
         for i, item in enumerate(out_data):
             item['index'] = i
         return out_data
@@ -737,6 +779,8 @@ def is_focused_window_fullscreen():
         window_title = win32gui.GetWindowText(active_hwnd)
         if window_title == "Program Manager" or window_title == "":
             return False
+        if window_title in cfg.common_game_windows:
+            return True
 
         # 获取窗口尺寸和位置信息
         rect = win32gui.GetWindowRect(active_hwnd)
@@ -855,7 +899,7 @@ SWP_NOZORDER = 0x0004
 def animate_window(
     hwnd, start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY
 ):
-    global window, config,mask_window
+    global window, config
     positions = []
     # sw,wh,ox,oy=get_active_screen_size(True)
     w = width
@@ -884,10 +928,11 @@ def animate_window(
     # print(positions)
     # 执行动画
     delay = 0.25 / steps  # 总时长250ms
+    
     for x, y, w, h in positions:
         win32gui.MoveWindow(hwnd, x, y, w, h, True)
-        win32gui.UpdateWindow(hwnd)
         time.sleep(delay)
+    # WindowEffect().resetEffect(hwnd)
 
 def get_targetPos(win_width=None,win_height=None):
     if win_width==None:
@@ -917,14 +962,21 @@ def fit_blur_effect():
         if color_r == True:
             window.evaluate_js("load_theme('light')")
             if config['blur_bg']==True:
-                WindowEffect().setAcrylicEffect(hwnd)
+                WindowEffect().setAcrylicEffect(hwnd,effect=config["blur_effect"])
+                print("from fbe")
         else:
             window.evaluate_js("load_theme('dark')")
             if config['blur_bg']==True:
                 WindowEffect().setAeroEffect(hwnd)
+                print("from fbe")
+    if config['blur_bg']==False:
+        time.sleep(0.2)
+        WindowEffect().setAcrylicEffect(hwnd,effect=config["blur_effect"])
+        WindowEffect().resetEffect(hwnd)
 
+ox = oy = 0
 def out_window():
-    global moving, ignore_action, fullscreen_close, key_quick_start,window_state,config
+    global moving, ignore_action, fullscreen_close, key_quick_start,window_state,config,ox,oy
     key_quick_start = False
     if moving == True:
         return
@@ -1002,7 +1054,7 @@ def out_window():
 
 
 def moveIn_window():
-    global moving,window_state,hwnd,ignore_action
+    global moving,window_state,hwnd,ignore_action,ox,oy
     if moving == True:
         return
     moving = True
@@ -1011,7 +1063,7 @@ def moveIn_window():
     if not hwnd:
         print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
         return False
-    screen_width,screen_height,ox,oy = get_active_screen_size(True)
+    screen_width,screen_height,_,_ = get_active_screen_size(True)
     rect = get_window_rect(hwnd)
     width = rect["width"]
     height = rect["height"]
@@ -1074,7 +1126,7 @@ def check_update():
 
 
 def on_loaded():
-    global hwnd, config,window,mask_window
+    global hwnd, config,window
     window.hide()
     if config["full_screen"] == True:
         window.resize(screen_width, screen_height)
@@ -1094,6 +1146,7 @@ def on_loaded():
         window.evaluate_js("grid_view()")
     window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
     fit_blur_effect()
+    set_window_rounded_corners(hwnd)
     moveIn_window()
     # wait_open()
 
@@ -1104,7 +1157,7 @@ def is_screenshot_light(region=None,threshold=0.4):
         else:
             screenshot = ImageGrab.grab()
         screenshot = screenshot.convert('RGB')
-        screenshot.save("screenshot_debug.png")
+        # screenshot.save("screenshot_debug.png")
         resized = screenshot.resize((100, 100))
         pixels = list(resized.getdata())
 
@@ -1130,6 +1183,8 @@ def update_config(part, data):
     if part == "themeChangeType":
         if data == "1":
             sys_theme()
+        elif data == "2":
+            fit_blur_effect()
             
     if part == "auto_start":
         if data == True:
@@ -1158,6 +1213,15 @@ def update_config(part, data):
         current_y = rect["top"]
         go_x,go_y = get_targetPos(width,height)
         animate_window(hwnd, current_x, current_y, go_x, go_y, width, height)
+    if part == "blur_effect":
+        if config['blur_bg']== True and config['bgType']!="1":
+            now_t = window.evaluate_js("ThemeManager.now_theme")
+            if now_t=="light":
+                WindowEffect().setAcrylicEffect(hwnd,effect=config['blur_effect'])
+                print("from uc")
+    if part == "blur_bg":
+        if config['blur_bg']==False:
+            WindowEffect().resetEffect(hwnd)
 
 def autoStart_registry():
     python_exe = sys.executable
@@ -1234,14 +1298,18 @@ def open_sysApp_action(component_name):
 
 def set_blur(open_state,real_theme=None):
     global hwnd,config
+    if config["blur_bg"]==False:
+        return
     windowEffect = WindowEffect()
     if real_theme == None:
         real_theme = config["theme"]
     if open_state==True:
         if real_theme=="light":
             windowEffect.setAcrylicEffect(hwnd)
+            print("from sb")
         else:
             windowEffect.setAeroEffect(hwnd)
+            print("from sb")
     else:
         windowEffect.resetEffect(hwnd)
 
@@ -1667,6 +1735,7 @@ class AppAPI:
         if config['blur_bg']==False:
             return
         WindowEffect().resetEffect(hwnd)
+        print("from lbe")
         if b_type=='Acrylic':
             WindowEffect().setAcrylicEffect(hwnd)
         else:
@@ -1677,10 +1746,28 @@ class AppAPI:
         width, height, end_x, end_y = get_window_inf("easyDesktop-fit")
         win32gui.MoveWindow(fit_hwnd, end_x, end_y, width, height, True)
 
+    def drag_posMoveAction(self):
+        global hwnd
+        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+        point = win32api.GetCursorPos()
+        in_window = (left <= point[0] <= right) and (top <= point[1] <= bottom)
+        if in_window == True:
+            pos_percent = (bottom-point[1])/(bottom-top)
+            if pos_percent < 0.2:
+                move_type = "bottom"
+            elif pos_percent > 0.8:
+                move_type = "top"
+            else:
+                move_type = "none"
+        else:
+            move_type = "none"
+        return move_type
+
+
 webview.settings["ALLOW_FILE_URLS"] = True
 px,py = get_targetPos(config["width"],config["height"])
 window = webview.create_window(
-    cfg.APP_NAME,
+    cfg.DEFAULT_WINDOW_TITLE,
     "easyFileDesk.html",
     width=config["width"],
     height=config["height"],

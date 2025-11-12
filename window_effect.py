@@ -1,4 +1,4 @@
-from ctypes import POINTER, c_bool, sizeof, windll,pointer,c_int
+from ctypes import POINTER, c_bool, sizeof, windll,pointer,c_int,c_uint,byref
 from ctypes.wintypes import DWORD, ULONG
 from ctypes import POINTER, Structure
 from enum import Enum
@@ -73,8 +73,9 @@ class WindowEffect():
         self.winCompAttrData.SizeOfData = sizeof(self.accentPolicy)
         self.winCompAttrData.Data = pointer(self.accentPolicy)
 
-    def setAcrylicEffect(self, hWnd: int, gradientColor: str = 'F2F2F230',
+    def setAcrylicEffect(self, hWnd: int, gradient_color: str = 'F2F2F2',effect:int=30,
                          isEnableShadow: bool = True, animationId: int = 0):
+        gradientColor = gradient_color+str(effect)
         # 亚克力混合色
         gradientColor = gradientColor[6:] + gradientColor[4:6] + \
             gradientColor[2:4] + gradientColor[:2]
@@ -90,12 +91,16 @@ class WindowEffect():
         self.accentPolicy.AnimationId = animationId
         # 开启亚克力
         self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
+        set_window_rounded_corners(hWnd)
+        print("setAcrylicEffect success")
 
     def setAeroEffect(self, hWnd: int, gradientColor: str = 'F2F2F230',
                          isEnableShadow: bool = True, animationId: int = 0):
         self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_ENABLE_BLURBEHIND.value[0]
         # 开启Aero
         self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
+        set_window_rounded_corners(hWnd)
+        print("setAeroEffect success")
     
     def resetEffect(self, hWnd: int):
         """ 恢复窗口默认效果
@@ -110,4 +115,40 @@ class WindowEffect():
         self.accentPolicy.AccentFlags = DWORD(0)
         self.accentPolicy.AnimationId = DWORD(0)
         # 应用默认效果
+        set_window_rounded_corners(hWnd, DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_DONOTROUND)
         self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
+        print("resetEffect success")
+    
+DWMWA_WINDOW_CORNER_PREFERENCE = 33
+DWM_WINDOW_CORNER_PREFERENCE = c_uint
+
+# 枚举窗口圆角选项
+class DWM_WINDOW_CORNER_PREFERENCE(c_int):
+    DWMWCP_DEFAULT = 0
+    DWMWCP_DONOTROUND = 1
+    DWMWCP_ROUND = 2
+    DWMWCP_ROUNDSMALL = 3
+
+def set_window_rounded_corners(hwnd, corner_preference=DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND):
+    """
+    设置窗口圆角
+    hwnd: 窗口句柄
+    corner_preference: 圆角偏好设置
+    """
+    try:
+        # 加载dwmapi.dll
+        dwmapi = windll.dwmapi
+        
+        # 设置窗口属性
+        preference = DWM_WINDOW_CORNER_PREFERENCE(corner_preference)
+        result = dwmapi.DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_WINDOW_CORNER_PREFERENCE,
+            byref(preference),
+            sizeof(preference)
+        )
+        return result == 0  # 成功返回True
+    except Exception as e:
+        print(f"设置圆角失败: {e}")
+        return False
+    print("set_window_rounded_corners success")

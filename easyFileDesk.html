@@ -163,6 +163,7 @@
             height: 100vh;
             overflow: scroll;
             margin: unset;
+            transition: 0.1s;
         }
 
         .content_box::-webkit-scrollbar {
@@ -255,9 +256,6 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
             margin-top: 40px;
-        }
-        .files-grid{
-            transition: 0.2s;
         }
         .file-item.moving{
             visibility: hidden;
@@ -557,7 +555,7 @@
     </style>
     <!-- 主题设置面板 -->
     <div class="settings_box" id="themeSettingsPanel" style="display: flex;">
-        <div class="theme-settings-panel" id="themeSettings_box" style="height: 90vh;overflow: scroll;display: block;">
+        <div class="theme-settings-panel" id="themeSettings_box" style="height: 80%;overflow: scroll;display: block;">
             <div class="settings-header">
                 <h3>设置</h3>
                 <button class="close-btn" id="closeThemePanel"><i class="fas fa-times"></i></button>
@@ -710,6 +708,11 @@
                 </div>
             </div>
             <div class="settings-section">
+                <label id="blur_ef_input_show">毛玻璃效果强度：</label>
+                <input type="range" style="width: 100%;" id="blur_ef_input" class="sc-slider" min="10" max="100"
+                    value="100">
+            </div>
+            <div class="settings-section">
                 <h4>选择主题</h4>
                 <div class="theme-cards">
                     <div class="theme-card" data-theme="light">
@@ -743,7 +746,7 @@
                     <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
                 </div>
             </div>
-            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v1.12.0</p>
+            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v2.0.1 beta</p>
         </div>
     </div>
     </div>
