@@ -702,7 +702,7 @@ def update_inf(dir_path):
                 index+=1
                 out_data.append(item)
         
-        o_data = exe_data + file_data + dir_data
+        o_data = exe_data + dir_data + file_data
         for item in o_data:
             if check_recover(out_data, item) == True:
                 continue

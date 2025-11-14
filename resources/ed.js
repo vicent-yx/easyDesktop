@@ -1550,6 +1550,7 @@ async function push(fData = null, useLoadDir = false, path = '') {
 }
 let preview_runing = false
 async function image_preview() {
+    console.log("image_preview")
     try{
         if(preview_runing) return;
         let config = await ApiHelper.getConfig()
@@ -1561,13 +1562,14 @@ async function image_preview() {
                 if(view_img){
                     console.log("预览图片："+file.fileName)
                     te = document.getElementById(Utils.generateFileId(file.filePath))
-                    te.children[1].src = view_img
+                    te.children[0].src = view_img
                 }
             }
             if(preview_runing==false) break;
         }
         preview_runing = false;
     }catch{
+        console.log("image_preview error")
         preview_runing = false
     }
 }

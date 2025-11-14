@@ -6,7 +6,7 @@ EasyDesktop 配置文件
 import sys
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "1.12.2"
+APP_VERSION = "2.0.2"
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop_Main"
 
