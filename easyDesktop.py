@@ -1222,6 +1222,13 @@ def update_config(part, data):
     if part == "blur_bg":
         if config['blur_bg']==False:
             WindowEffect().resetEffect(hwnd)
+    if part == "bgType":
+        if data!='1':
+            if config['blur_bg']==False:
+                WindowEffect().resetEffect(hwnd,True)
+        else:
+            set_window_rounded_corners(hwnd)
+    
 
 def autoStart_registry():
     python_exe = sys.executable
@@ -1314,19 +1321,19 @@ def set_blur(open_state,real_theme=None):
         windowEffect.resetEffect(hwnd)
 
 def remove_title_bar(hwnd):
+    GWL_STYLE = -16
+    WS_CAPTION = 0x00C00000
     # 获取当前窗口样式
-    current_style = win32gui.GetWindowLong(hwnd, win32con.GWL_STYLE)
+    current_style = user32.GetWindowLongW(hwnd, GWL_STYLE)
     
-    # 只移除标题栏相关样式，保留WS_THICKFRAME用于调整大小
-    new_style = current_style & ~(win32con.WS_CAPTION | win32con.WS_SYSMENU)
+    # 移除标题栏样式
+    new_style = current_style & ~WS_CAPTION
     
     # 设置新的窗口样式
-    win32gui.SetWindowLong(hwnd, win32con.GWL_STYLE, new_style)
+    user32.SetWindowLongW(hwnd, GWL_STYLE, new_style)
     
     # 刷新窗口
-    win32gui.SetWindowPos(hwnd, None, 0, 0, 0, 0, 
-                         win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | 
-                         win32con.SWP_NOZORDER | win32con.SWP_FRAMECHANGED)
+    user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0027)
 
 class AppAPI:
     def bug_report(self, part, data):
@@ -1341,22 +1348,23 @@ class AppAPI:
     #     cl_data[filePath] = not state
     #     json.dump(cl_data,open(cfg.CL_DATA_FILE,"w"))
     def set_background(self):
-        try:
-            global ignore_action
-            file_types = ("Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)", "All files (*.*)")
-            ignore_action = True
-            bg_file = window.create_file_dialog(file_types=file_types, allow_multiple=False)
-            ignore_action = False
-            bg_file = bg_file[0]
-            if bg_file:
+        global ignore_action
+        file_types = ("Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)", "All files (*.*)")
+        ignore_action = True
+        bg_file = window.create_file_dialog(file_types=file_types, allow_multiple=False)
+        ignore_action = False
+        bg_file = bg_file[0]
+        if bg_file:
+            bg_config_path = "bg." + str(bg_file).split(".")[-1]
+            if getattr(sys, 'frozen', False):
+                file_path = "_internal/bg." + str(bg_file).split(".")[-1]
+            else:
                 file_path = "bg." + str(bg_file).split(".")[-1]
-                if os.path.exists(config["bg"]):
-                    os.remove(config["bg"])
-                shutil.copy(bg_file, file_path)
-                return file_path
-            return ""
-        except:
-            return ""
+            if os.path.exists(config["bg"]):
+                os.remove(config["bg"])
+            shutil.copy(bg_file, file_path)
+            return bg_config_path
+        return None
 
     def get_config(self):
         global config
@@ -1403,9 +1411,8 @@ class AppAPI:
             confirm_close=False,
             shadow=True,
             on_top=True,
-            easy_drag=False,
             resizable=True,
-            draggable=False
+            draggable=False,
         )
         has_cleared_fit = False
         resize_window.resize(config["width"], config["height"])
@@ -1441,9 +1448,8 @@ class AppAPI:
             window.show()
             return
         flags = SWP_NOMOVE | SWP_NOZORDER | 0x0008 # 组合标志位
-        windll.user32.SetWindowPos(
-            hwnd, 0, 0, 0, width, height, flags
-        )
+        endx,endy = get_targetPos(width, height)
+        win32gui.MoveWindow(hwnd, endx, endy, width, height, True)
         update_config("width", width)
         update_config("height", height)
         resize_window.destroy()

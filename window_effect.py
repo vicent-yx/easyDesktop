@@ -2,6 +2,11 @@ from ctypes import POINTER, c_bool, sizeof, windll,pointer,c_int,c_uint,byref
 from ctypes.wintypes import DWORD, ULONG
 from ctypes import POINTER, Structure
 from enum import Enum
+import json
+import config as cfg
+def get_config():
+    with open(cfg.CONFIG_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 class WINDOWCOMPOSITIONATTRIB(Enum):
     WCA_UNDEFINED = 0,
@@ -102,7 +107,7 @@ class WindowEffect():
         set_window_rounded_corners(hWnd)
         print("setAeroEffect success")
     
-    def resetEffect(self, hWnd: int):
+    def resetEffect(self, hWnd: int,corners_only=False):
         """ 恢复窗口默认效果
         
         Parameter
@@ -110,12 +115,16 @@ class WindowEffect():
         hWnd: int
             窗口句柄
         """
+        if corners_only==True:
+            set_window_rounded_corners(hWnd, DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_DONOTROUND)
+            return
+        if get_config()["bgType"]!="1":
+            set_window_rounded_corners(hWnd, DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_DONOTROUND)
         self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_DISABLED.value[0]
         self.accentPolicy.GradientColor = DWORD(0)
         self.accentPolicy.AccentFlags = DWORD(0)
         self.accentPolicy.AnimationId = DWORD(0)
         # 应用默认效果
-        set_window_rounded_corners(hWnd, DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_DONOTROUND)
         self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
         print("resetEffect success")
     

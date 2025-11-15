@@ -670,7 +670,8 @@ const SearchManager = {
 const ThemeManager = {
     now_theme: 'light',
     async applyBackgroundSettings(config) {
-        if(config.blur_bg==true || config.bgType!="1")return;
+        if(config.bgType!="1")return;
+        console.log("applyBackgroundSettings")
         const body = document.body;
         if (config.use_bg && config.bg) {
             Object.assign(body.style, {
@@ -1119,7 +1120,8 @@ const EventManager = {
                     await ApiHelper.updateConfig("bg", bgUrl);
                     config = await ApiHelper.getConfig();
                     setTimeout(() => {
-                        ThemeManager.applyBackgroundSettings(config);
+                        window.location.reload();
+                        // ThemeManager.applyBackgroundSettings(config);
                     }, 500);
                 }
             } catch (error) {
