@@ -481,7 +481,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    height: 10%;
 }
 
 .settings-header h3 {

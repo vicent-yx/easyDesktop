@@ -176,31 +176,35 @@ def get_active_screen_size(with_origin=False,with_work_area=False):
     获取当前活动屏幕的宽高（包含鼠标光标的屏幕）
     返回: (width, height)
     """
-    # 获取鼠标位置
-    mouse_x, mouse_y = win32api.GetCursorPos()
-    
-    # 获取包含该点的显示器信息
-    monitor = win32api.MonitorFromPoint((mouse_x, mouse_y), win32con.MONITOR_DEFAULTTONEAREST)
-    monitor_info = win32api.GetMonitorInfo(monitor)
-    
-    # 获取工作区域
-    work_area = monitor_info['Monitor']
-    # print("work_area =",work_area)
-    # os._exit(0)
-    work_area = list(work_area)
-    for i in range(len(work_area)):
-        num = work_area[i]
-        if str(num)[-1]!="0":
-            work_area[i] = int(round(num*sfb))
-    width = work_area[2] - work_area[0]  # right - left
-    height = work_area[3] - work_area[1] # bottom - top
-    
-    if with_origin==True and with_work_area==True:
-        return width, height,work_area[0],work_area[1],work_area[2],work_area[3]
-    elif with_origin==True and with_work_area==False:
-        return width, height,work_area[0],work_area[1]
-    else:
-        return width, height
+    while True:
+        try:
+            # 获取鼠标位置
+            mouse_x, mouse_y = win32api.GetCursorPos()
+            
+            # 获取包含该点的显示器信息
+            monitor = win32api.MonitorFromPoint((mouse_x, mouse_y), win32con.MONITOR_DEFAULTTONEAREST)
+            monitor_info = win32api.GetMonitorInfo(monitor)
+            
+            # 获取工作区域
+            work_area = monitor_info['Monitor']
+            # print("work_area =",work_area)
+            # os._exit(0)
+            work_area = list(work_area)
+            for i in range(len(work_area)):
+                num = work_area[i]
+                if str(num)[-1]!="0":
+                    work_area[i] = int(round(num*sfb))
+            width = work_area[2] - work_area[0]  # right - left
+            height = work_area[3] - work_area[1] # bottom - top
+            
+            if with_origin==True and with_work_area==True:
+                return width, height,work_area[0],work_area[1],work_area[2],work_area[3]
+            elif with_origin==True and with_work_area==False:
+                return width, height,work_area[0],work_area[1]
+            else:
+                return width, height
+        except:
+            time.sleep(0.5)
 
 def get_screen_size():
     r1_width,r1_height = get_active_screen_size()
@@ -255,10 +259,10 @@ else:
     config = default_config
     json.dump(config, open(cfg.CONFIG_FILE, "w"))
 
-# if not os.path.exists(cfg.CL_DATA_FILE):
-#     with open(cfg.CL_DATA_FILE, "w") as f:
-#         json.dump({}, f)
-#         f.close()
+if not os.path.exists(cfg.CL_DATA_FILE):
+    with open(cfg.CL_DATA_FILE, "w") as f:
+        json.dump({}, f)
+        f.close()
 
 if not os.path.exists(cfg.USER_CLASS_FILE):
     itemClass = {config["df_dir"]:{}}
@@ -490,16 +494,16 @@ def check_recover(data, match):
             result = True
             break
     return result
-# def is_cl(file_path):
-#     try:
-#         cl_data = json.load(open(cfg.CL_DATA_FILE, "r"))
-#         if file_path in cl_data:
-#             return cl_data[file_path]
-#         else:
-#             return False
-#     except Exception as e:
-#         print(f"读取收藏数据失败: {e}")
-#         return False
+def is_cl(file_path):
+    try:
+        cl_data = json.load(open(cfg.CL_DATA_FILE, "r"))
+        if file_path in cl_data:
+            return cl_data[file_path]
+        else:
+            return False
+    except Exception as e:
+        print(f"读取收藏数据失败: {e}")
+        return False
 def merge_lists(a, b):
     # 插入排序
     a_filepaths = {item['filePath'] for item in a}
@@ -595,7 +599,6 @@ def update_inf(dir_path):
                                         "filePath": full_path,
                                         "realPath": target_path,
                                         "ico": exe_icon,
-                                        # "cl": is_cl(full_path),
                                     }
                                 )
                                 continue
@@ -608,7 +611,7 @@ def update_inf(dir_path):
                                         "file": os.path.basename(full_path),
                                         "filePath": full_path,
                                         "ico": icon_image,
-                                        # "cl":is_cl(full_path),
+                                        "cl":is_cl(full_path),
                                     }
                                 )
                             else:
@@ -620,7 +623,6 @@ def update_inf(dir_path):
                                             "file": item,
                                             "filePath": target_path,
                                             "ico": match_ico(item),
-                                            # "cl": is_cl(target_path),
                                         }
                                     )
                                 else:
@@ -632,7 +634,6 @@ def update_inf(dir_path):
                                                 "file": item,
                                                 "filePath": full_path,
                                                 "ico":  get_url_icon(full_path)["ico"],
-                                                # "cl": is_cl(target_path),
                                             }
                                         )
                                     else:
@@ -643,7 +644,6 @@ def update_inf(dir_path):
                                                 "file": item,
                                                 "filePath": target_path,
                                                 "ico": "./resources/file_icos/dir.png",
-                                                # "cl": is_cl(target_path),
                                             }
                                         )
                                 continue
@@ -656,7 +656,6 @@ def update_inf(dir_path):
                                     "file": os.path.basename(full_path),
                                     "filePath": full_path,
                                     "ico": icon_image,
-                                    # "cl": is_cl(full_path),
                                 }
                             )
                         else:
@@ -667,7 +666,6 @@ def update_inf(dir_path):
                                     "file": item,
                                     "filePath": full_path,
                                     "ico": match_ico(item),
-                                    # "cl": is_cl(full_path),
                                 }
                             )
                     else:
@@ -678,7 +676,6 @@ def update_inf(dir_path):
                                 "file": item,
                                 "filePath": full_path,
                                 "ico": "./resources/file_icos/dir.png",
-                                # "cl": is_cl(full_path),
                             }
                         )
                 except:
@@ -750,8 +747,19 @@ def update_inf(dir_path):
                 temp_list.append(out_data[r_index])
                 r_index += 1
         temp_list = []
+
+        # 收藏排序
+        out_with_cl = []
+        for t in [True,False]:
+            for i in range(len(out_data)):
+                out_data[i]["cl"] = is_cl(out_data[i]["filePath"])
+                if out_data[i]["cl"]==t:
+                    out_with_cl.append(out_data[i])
+        out_data = out_with_cl
+        # 编号写入
         for i, item in enumerate(out_data):
             item['index'] = i
+
         return out_data
     except:
         bugs_report(
@@ -825,7 +833,12 @@ def is_desktop_and_mouse_in_corner():
         elif config["outPos"]=="4":
             cw = int(screen_width//3)
             corner_rect = (cw,0,screen_width-cw,corner_size)
-        mouse_x, mouse_y = win32api.GetCursorPos()
+        while True:
+            try:
+                mouse_x, mouse_y = win32api.GetCursorPos()
+                break
+            except:
+                time.sleep(0.5)
         in_corner = corner_rect[0] <= mouse_x <= corner_rect[2] and corner_rect[1] <= mouse_y <= corner_rect[3]
         return in_corner
     except Exception as e:
@@ -960,12 +973,12 @@ def fit_blur_effect():
     if config["themeChangeType"]=="2":
         color_r = is_screenshot_light((end_x,end_y,end_x+width,end_y+height),threshold=0.4)
         if color_r == True:
-            window.evaluate_js("load_theme('light')")
+            window.evaluate_js("load_theme('light',true)")
             if config['blur_bg']==True:
                 WindowEffect().setAcrylicEffect(hwnd,effect=config["blur_effect"])
                 print("from fbe")
         else:
-            window.evaluate_js("load_theme('dark')")
+            window.evaluate_js("load_theme('dark',true)")
             if config['blur_bg']==True:
                 WindowEffect().setAeroEffect(hwnd)
                 print("from fbe")
@@ -1343,10 +1356,10 @@ class AppAPI:
         )
     def is_path_abs(self,path):
         return os.path.isabs(path)
-    # def change_cl_state(self,filePath, state):
-    #     cl_data = json.load(open(cfg.CL_DATA_FILE,"r"))
-    #     cl_data[filePath] = not state
-    #     json.dump(cl_data,open(cfg.CL_DATA_FILE,"w"))
+    def change_cl_state(self,filePath, state):
+        cl_data = json.load(open(cfg.CL_DATA_FILE,"r"))
+        cl_data[filePath] = not state
+        json.dump(cl_data,open(cfg.CL_DATA_FILE,"w"))
     def set_background(self):
         global ignore_action
         file_types = ("Image Files (*.bmp;*.jpg;*.gif;*.png;*.jpeg)", "All files (*.*)")
@@ -1754,8 +1767,13 @@ class AppAPI:
 
     def drag_posMoveAction(self):
         global hwnd
-        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-        point = win32api.GetCursorPos()
+        while True:
+            try:
+                left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+                point = win32api.GetCursorPos()
+                break
+            except:
+                time.sleep(0.5)
         in_window = (left <= point[0] <= right) and (top <= point[1] <= bottom)
         if in_window == True:
             pos_percent = (bottom-point[1])/(bottom-top)
@@ -1768,6 +1786,8 @@ class AppAPI:
         else:
             move_type = "none"
         return move_type
+    def get_version(self):
+        return {"success":True,"version":cfg.APP_VERSION}
 
 
 webview.settings["ALLOW_FILE_URLS"] = True

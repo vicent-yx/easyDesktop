@@ -398,7 +398,8 @@ class FileRenderer {
 
     createFileElement = async function(file, isGrid = true) {
         const element = document.createElement('div');
-        element.draggable = true
+        element.draggable = true;
+        element.dataset.is_cl = file.cl;
         element.className = isGrid ? 'file-item' : 'file-list-item';
         element.id = Utils.generateFileId(file.filePath);
         element.dataset.list_index = file.index;
@@ -413,25 +414,25 @@ class FileRenderer {
             <span draggable = false class="${nameClass}">${file.fileName}</span>
             <span draggable = false class="${typeClass}">${fileType}</span>
         `;
-        // const cl_e = document.createElement("div")
+        const cl_e = document.createElement("div")
         
-        // cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
-        // if(file.cl==false){
-        //     if(document.getElementById("theme_css").href.includes("light")==true){
-        //         cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl.png'>"
-        //     }else{
-        //         cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl_w.png'>"
-        //     }
+        cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
+        if(file.cl==false){
+            if(document.getElementById("theme_css").href.includes("light")==true){
+                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl.png'>"
+            }else{
+                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl_w.png'>"
+            }
             
-        // }else{
-        //     cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl-active.png'>"
-        //     cl_e.style.display="block"
-        // }
+        }else{
+            cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl-active.png'>"
+            cl_e.style.display="block"
+        }
         
-        // cl_e.onclick=(event) => {event.stopPropagation();change_cl_state(file.filePath, file.cl)};
-        // cl_e.ondblclick = (event) => {event.stopPropagation();}
-        // element.insertBefore(cl_e, element.firstChild);
-        // element.cl = cl_e;
+        cl_e.onclick=(event) => {event.stopPropagation();change_cl_state(file.filePath, file.cl)};
+        cl_e.ondblclick = (event) => {event.stopPropagation();}
+        element.insertBefore(cl_e, element.firstChild);
+        element.cl = cl_e;
 
         this.attachFileEvents(element, file);
         return element;
@@ -1043,7 +1044,7 @@ const EventManager = {
         });
         DOMCache.get("themeChangeType_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('themeChangeType', this.value);
-            EventManager.updateThemeCardInteraction(this.value != "0");
+            // EventManager.updateThemeCardInteraction();
         });
     },
 
@@ -1074,11 +1075,13 @@ const EventManager = {
         });
     },
 
-    updateThemeCardInteraction(followSystem) {
+    async updateThemeCardInteraction() {
+        var now_config = await ApiHelper.getConfig()
+        let bgState = now_config.bgType != "1";
         const themeCards = DOMCache.getAllBySelector('.theme-card');
         themeCards.forEach(card => {
-            card.style.opacity = followSystem ? '0.5' : '1';
-            card.style.pointerEvents = followSystem ? 'none' : 'auto';
+            card.style.opacity = bgState ? '0.5' : '1';
+            card.style.pointerEvents = bgState ? 'none' : 'auto';
         });
     },
     updateBGInteraction(state) {
@@ -1678,7 +1681,7 @@ async function load_search() {
     await SearchManager.performSearch();
 }
 
-async function load_theme(theme) {
+async function load_theme(theme,from_fit) {
     try {
         // 参数验证
         if (!theme) {
@@ -1698,7 +1701,17 @@ async function load_theme(theme) {
             console.error('load_theme: 找不到主题CSS元素');
             return false;
         }
-
+        if(from_fit==true){
+            if(theme=="dark"){
+                let setting_theme = await ApiHelper.getConfig()
+                setting_theme = setting_theme["theme"]
+                if(setting_theme!="light"){
+                    console.log(setting_theme)
+                    load_theme(setting_theme)
+                    return 
+                }
+            }
+        }
         // 加载主题
         themeCSS.href = CONSTANTS.THEME_PATHS[theme];
         NavigationManager.refreshCurrentPath();
@@ -1849,6 +1862,8 @@ window.addEventListener('pywebviewready', async function () {
         AppState.setFiles(thisDir.data);
         files_data = thisDir.data; // 同步全局变量
         await fileRenderer.render(thisDir.data);
+        let version = await ApiHelper.call('get_version')
+        document.getElementById("v_note").innerText = "v"+version["version"]
 
         // 初始化UI状态
         const updateUIFromConfig = async (config) => {
@@ -1881,7 +1896,7 @@ window.addEventListener('pywebviewready', async function () {
             DOMCache.get('outPos_toggle').value = config.outPos;
             DOMCache.get("bgType_toggle").value = config.bgType;
             DOMCache.get("themeChangeType_toggle").value = config.themeChangeType;
-            EventManager.updateThemeCardInteraction(config.themeChangeType != "0");
+            // EventManager.updateThemeCardInteraction();
 
 
             // 更新缩放
@@ -1904,8 +1919,8 @@ window.addEventListener('pywebviewready', async function () {
                 }
             }
 
-            EventManager.updateThemeCardInteraction(followSystem);
-            EventManager.updateBGInteraction(config.bgType != "1");
+            // EventManager.updateThemeCardInteraction(followSystem);
+            EventManager.updateBGInteraction();
 
             // 加载主题
             if (followSystem) {
@@ -2167,6 +2182,7 @@ for(let list of boxs){
         if(e.target === currentLi||e.target === list){
             return
         }
+        if(e.target.dataset.is_cl!=currentLi.dataset.is_cl)return
         let liArray = Array.from(list.childNodes)
         let currentIndex = liArray.indexOf(currentLi)
         let targetindex = liArray.indexOf(e.target)

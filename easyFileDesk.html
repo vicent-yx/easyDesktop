@@ -552,201 +552,211 @@
             font-weight: bold;
             box-shadow: 0 0 5px rgba(93, 173, 226, 0.5);
         }
+        .settings_content_box{
+            height: 90%;
+            overflow: scroll;
+        }
+        .settings_content_box::-webkit-scrollbar {
+            display: none;
+            /* 隐藏滚动条 */
+        }
     </style>
     <!-- 主题设置面板 -->
     <div class="settings_box" id="themeSettingsPanel" style="display: flex;">
-        <div class="theme-settings-panel" id="themeSettings_box" style="height: 80%;overflow: scroll;display: block;">
+        <div class="theme-settings-panel" id="themeSettings_box" style="height: 80%;display: block;">
             <div class="settings-header">
                 <h3>设置</h3>
                 <button class="close-btn" id="closeThemePanel"><i class="fas fa-times"></i></button>
             </div>
 
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>开机自启动</span>
-                    <label class="switch">
-                        <input type="checkbox" id="autoStartToggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>全屏模式</span>
-                    <label class="switch">
-                        <input type="checkbox" id="fullScreenToggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>防打扰</span>
-                    <label class="switch">
-                        <input type="checkbox" id="fdrToggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <p id="fdr_note" class="setting_note">当有软件全屏时不触发easyDesktop</p>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>显示系统应用</span>
-                    <label class="switch">
-                        <input type="checkbox" id="sysappToggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <p id="sys_note" class="setting_note">在桌面显示此电脑、回收站、控制面板</p>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>使用图片预览</span>
-                    <label class="switch">
-                        <input type="checkbox" id="imgpreToggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <p id="sys_note" class="setting_note">关闭后将不会加载图片预览，节约性能</p>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>打开文件后收起窗口</span>
-                    <label class="switch">
-                        <input type="checkbox" id="of_sToggle">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-            </div>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>呼出触发方式</span>
-                    <select class="cf_type_toggle" id="cf_type_toggle">
-                        <option value="1">鼠标移到指定位置</option>
-                        <option value="2">win+shift</option>
-                        <option value="3">win+~</option>
-                        <option value="4">自定义</option>
-                    </select>
-                </div>
-            </div>
-            <p id="hotkey_show" class="setting_note" style="display: none;">自定义：</p>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>收起触发方式</span>
-                    <select class="cf_type_toggle" id="out_cf_type_toggle">
-                        <option value="1">鼠标移出窗口</option>
-                        <option value="2">窗口失焦</option>
-                    </select>
-                </div>
-            </div>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>窗口呼出位置</span>
-                    <select class="cf_type_toggle" id="outPos_toggle">
-                        <option value="1">左下角</option>
-                        <option value="2">左上角</option>
-                        <option value="3">正下方</option>
-                        <option value="4">正上方</option>
-                    </select>
-                </div>
-            </div>
-            <div class="settings-section">
-                <label id="sc_input">缩放比例：</label>
-                <input type="range" style="width: 100%;" id="sc_slider" class="sc-slider" min="40" max="120"
-                    value="100">
-            </div>
-            <div class="settings-section" style="display: flex;">
-                <span>默认文件夹</span>
-                <div class="dir_btn_box" id="dir_btn_box">
-                    <div class="dir_btn" onclick="change_default_dir('desktop')">
-                        <span>桌面</span>
-                    </div>
-                    <div class="dir_btn" onclick="change_default_dir()">
-                        <span>自定义</span>
+            <div class="settings_content_box">
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>开机自启动</span>
+                        <label class="switch">
+                            <input type="checkbox" id="autoStartToggle">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
                 </div>
-            </div>
-            <p id="defeat_dir_show" class="setting_note">当前选择：桌面</p>
-            
-            <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>主题自动切换</span>
-                    <select class="cf_type_toggle" id="themeChangeType_toggle">
-                        <option value="0">关闭</option>
-                        <option value="1">跟随系统主题</option>
-                        <option value="2">跟随当前屏幕</option>
-                    </select>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>全屏模式</span>
+                        <label class="switch">
+                            <input type="checkbox" id="fullScreenToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
                 </div>
-            </div>
-            <!-- <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>跟随系统主题</span>
-                    <label class="switch">
-                        <input type="checkbox" id="followSystemTheme">
-                        <span class="slider round"></span>
-                    </label>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>防打扰</span>
+                        <label class="switch">
+                            <input type="checkbox" id="fdrToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
                 </div>
-            </div> -->
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>背景模式</span>
-                    <select class="cf_type_toggle" id="bgType_toggle">
-                        <option value="1">正常</option>
-                        <option value="2">透明</option>
-                        <option value="3">半透明增强</option>
-                    </select>
+                <p id="fdr_note" class="setting_note">当有软件全屏时不触发easyDesktop</p>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>显示系统应用</span>
+                        <label class="switch">
+                            <input type="checkbox" id="sysappToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
                 </div>
-            </div>
-            <div class="settings-section">
-                <div class="system-theme-toggle">
-                    <span>毛玻璃</span>
-                    <label class="switch">
-                        <input type="checkbox" id="blurToggle">
-                        <span class="slider round"></span>
-                    </label>
+                <p id="sys_note" class="setting_note">在桌面显示此电脑、回收站、控制面板</p>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>使用图片预览</span>
+                        <label class="switch">
+                            <input type="checkbox" id="imgpreToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
                 </div>
-            </div>
-            <div class="settings-section">
-                <label id="blur_ef_input_show">毛玻璃效果强度：</label>
-                <input type="range" style="width: 100%;" id="blur_ef_input" class="sc-slider" min="10" max="100"
-                    value="100">
-            </div>
-            <div class="settings-section">
-                <h4>选择主题</h4>
-                <div class="theme-cards">
-                    <div class="theme-card" data-theme="light">
-                        <div class="theme-preview">
-                            <img src="/resources/theme_previews/light.png" alt="浅色主题预览">
+                <p id="sys_note" class="setting_note">关闭后将不会加载图片预览，节约性能</p>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>打开文件后收起窗口</span>
+                        <label class="switch">
+                            <input type="checkbox" id="of_sToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>呼出触发方式</span>
+                        <select class="cf_type_toggle" id="cf_type_toggle">
+                            <option value="1">鼠标移到指定位置</option>
+                            <option value="2">win+shift</option>
+                            <option value="3">win+~</option>
+                            <option value="4">自定义</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="hotkey_show" class="setting_note" style="display: none;">自定义：</p>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>收起触发方式</span>
+                        <select class="cf_type_toggle" id="out_cf_type_toggle">
+                            <option value="1">鼠标移出窗口</option>
+                            <option value="2">窗口失焦</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>窗口呼出位置</span>
+                        <select class="cf_type_toggle" id="outPos_toggle">
+                            <option value="1">左下角</option>
+                            <option value="2">左上角</option>
+                            <option value="3">正下方</option>
+                            <option value="4">正上方</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <label id="sc_input">缩放比例：</label>
+                    <input type="range" style="width: 100%;" id="sc_slider" class="sc-slider" min="40" max="120"
+                        value="100">
+                </div>
+                <div class="settings-section" style="display: flex;">
+                    <span>默认文件夹</span>
+                    <div class="dir_btn_box" id="dir_btn_box">
+                        <div class="dir_btn" onclick="change_default_dir('desktop')">
+                            <span>桌面</span>
                         </div>
-                        <span>浅色主题</span>
-                    </div>
-                    <div class="theme-card" data-theme="dark">
-                        <div class="theme-preview">
-                            <img src="/resources/theme_previews/dark.png" alt="深色主题预览">
+                        <div class="dir_btn" onclick="change_default_dir()">
+                            <span>自定义</span>
                         </div>
-                        <span>深色主题</span>
-                    </div>
-                    <div class="theme-card" data-theme="zzz">
-                        <div class="theme-preview">
-                            <img src="/resources/theme_previews/3z.png" alt="绝区零主题预览">
-                        </div>
-                        <span>3Z主题</span>
                     </div>
                 </div>
-            </div>
-            <div class="settings-section" id="bg_setting" style="margin-top: 20px;">
-                <h4>自定义背景设置</h4>
-                <div class="bg-settings">
-                    <div class="bg-buttons">
-                        <button id="bgResetBtn" class="bg-btn bg-reset">恢复默认</button>
-                        <button id="bgCustomBtn" class="bg-btn bg-custom">选择图片</button>
+                <p id="defeat_dir_show" class="setting_note">当前选择：桌面</p>
+                
+                <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>主题自动切换</span>
+                        <select class="cf_type_toggle" id="themeChangeType_toggle">
+                            <option value="0">关闭</option>
+                            <option value="1">跟随系统主题</option>
+                            <option value="2">跟随当前屏幕</option>
+                        </select>
                     </div>
-                    <label class="blur-label">磨砂效果强度: <span id="blurValue">0</span>%</label>
-                    <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
                 </div>
+                <!-- <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>跟随系统主题</span>
+                        <label class="switch">
+                            <input type="checkbox" id="followSystemTheme">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div> -->
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>背景模式</span>
+                        <select class="cf_type_toggle" id="bgType_toggle">
+                            <option value="1">正常</option>
+                            <option value="2">透明</option>
+                            <option value="3">半透明增强</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="system-theme-toggle">
+                        <span>毛玻璃</span>
+                        <label class="switch">
+                            <input type="checkbox" id="blurToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <label id="blur_ef_input_show">毛玻璃效果强度：</label>
+                    <input type="range" style="width: 100%;" id="blur_ef_input" class="sc-slider" min="10" max="100"
+                        value="100">
+                </div>
+                <div class="settings-section">
+                    <h4>选择主题</h4>
+                    <div class="theme-cards">
+                        <div class="theme-card" data-theme="light">
+                            <div class="theme-preview">
+                                <img src="/resources/theme_previews/light.png" alt="浅色主题预览">
+                            </div>
+                            <span>浅色主题</span>
+                        </div>
+                        <div class="theme-card" data-theme="dark">
+                            <div class="theme-preview">
+                                <img src="/resources/theme_previews/dark.png" alt="深色主题预览">
+                            </div>
+                            <span>深色主题</span>
+                        </div>
+                        <div class="theme-card" data-theme="zzz">
+                            <div class="theme-preview">
+                                <img src="/resources/theme_previews/3z.png" alt="绝区零主题预览">
+                            </div>
+                            <span>3Z主题</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-section" id="bg_setting" style="margin-top: 20px;">
+                    <h4>自定义背景设置</h4>
+                    <div class="bg-settings">
+                        <div class="bg-buttons">
+                            <button id="bgResetBtn" class="bg-btn bg-reset">恢复默认</button>
+                            <button id="bgCustomBtn" class="bg-btn bg-custom">选择图片</button>
+                        </div>
+                        <label class="blur-label">磨砂效果强度: <span id="blurValue">0</span>%</label>
+                        <input type="range" id="blurSlider" class="blur-slider" min="0" max="100" value="0">
+                    </div>
+                </div>
+                <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);margin-top: 10px;">v</p>
             </div>
-            <p id="v_note" style="font-size: 15px;width: 100%;text-align: center;color: rgb(163, 163, 163);">v2.0.2</p>
         </div>
     </div>
     </div>
