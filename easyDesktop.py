@@ -110,6 +110,7 @@ fullscreen_close = False
 resize_window = None
 ignore_action = False
 loaded_exe_cache = {}
+image_preview_cache = {}
 window_state = False
 moving = False
 icon = None
@@ -304,34 +305,35 @@ def hotkey_detect():
                 keyboard.read_key()
 
 def turn_png(file_path):
-    try:
-        # 检查文件是否存在
-        if not os.path.exists(file_path):
-            print(f"错误：文件 '{file_path}' 不存在")
-            return False
+    # try:
+    # 检查文件是否存在
+    # if not os.path.exists(file_path):
+    #     print(f"错误：文件 '{file_path}' 不存在")
+    #     return False
 
-        # 检查文件扩展名是否为ico
-        if not file_path.lower().endswith(".ico"):
-            print(f"错误：文件 '{file_path}' 不是ICO文件")
-            return False
+    # 检查文件扩展名是否为ico
+    if not file_path.lower().endswith(".ico"):
+        print(f"错误：文件 '{file_path}' 不是ICO文件")
+        return False
 
-        # 打开ICO文件并抑制警告
-        import warnings
+    # 打开ICO文件并抑制警告
+    import warnings
 
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", UserWarning)
-            with Image.open(file_path) as img:
-                # 获取最大尺寸的图标
-                if hasattr(img, "size") and img.size[0] > 0:
-                    png_path = os.path.splitext(file_path)[0] + ".webp"
-                    img.save(png_path, "WEBP")
-                    return png_path
-                else:
-                    return "./resources/file_icos/exe.png"
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with Image.open(file_path) as img:
+            # 获取最大尺寸的图标
+            if hasattr(img, "size") and img.size[0] > 0:
+                png_path = os.path.splitext(file_path)[0] + ".webp"
+                img.save(png_path, "WEBP")
+                return png_path
+            else:
+                return "./resources/file_icos/exe.png"
 
-    except Exception as e:
-        print(f"转换ICO到PNG过程中发生错误: {str(e)}")
-        return "./resources/file_icos/exe.png"
+
+    # except Exception as e:
+    #     print(f"转换ICO到PNG过程中发生错误: {str(e)}")
+    #     return "./resources/file_icos/exe.png"
 
 
 def get_desktop_path():
@@ -374,38 +376,41 @@ def get_shortcut_icon_win32(lnk_path,name):
         return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
 def get_icon(exe_path, name):
-    try:
+    # try:
         dir_name = os.path.dirname(exe_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
         ico_path = output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
         relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"
 
+        if os.path.exists(relative_path):
+            return {"success":True,"ico":relative_path}
+
         # 检查exe文件是否存在
         if not os.path.exists(exe_path):
             print(f"警告：EXE文件不存在 {exe_path}")
             return "./resources/file_icos/exe.png"
-
-        try:
-            extractor = IconExtractor(exe_path)
-            extractor.export_icon(output_path)
-            output_path = turn_png(output_path)
-            if os.path.exists(ico_path):
-                os.remove(ico_path)
-            if output_path and output_path != "./resources/file_icos/exe.png":
-                loaded_exe_cache[exe_path] = relative_path
-                return {"success":True,"ico":relative_path}
-            else:
-                # 如果转换失败，使用默认图标
-                print(f"图标转换失败，使用默认图标: {exe_path}")
-                return {"success":False,"ico":"./resources/file_icos/exe.png"}
-        except Exception as extract_error:
-            print(f"图标提取失败: {extract_error} - {exe_path}")
+ 
+        # try:
+        extractor = IconExtractor(exe_path)
+        extractor.export_icon(output_path)
+        output_path = turn_png(output_path)
+        if os.path.exists(ico_path):
+            os.remove(ico_path)
+        if output_path!=False and output_path != "./resources/file_icos/exe.png":
+            loaded_exe_cache[exe_path] = relative_path
+            return {"success":True,"ico":relative_path}
+        else:
+            # 如果转换失败，使用默认图标
+            print(f"图标转换失败，使用默认图标: {exe_path}")
             return {"success":False,"ico":"./resources/file_icos/exe.png"}
+    #     except Exception as extract_error:
+    #         print(f"图标提取失败: {extract_error} - {exe_path}")
+    #         return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
-    except Exception as e:
-        print(f"获取图标时发生未知错误: {e} - {exe_path}")
-        return {"success":False,"ico":"./resources/file_icos/exe.png"}
+    # except Exception as e:
+    #     print(f"获取图标时发生未知错误: {e} - {exe_path}")
+    #     return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
 
 def get_url_icon(url_path):
@@ -1349,6 +1354,7 @@ def remove_title_bar(hwnd):
     user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0027)
 
 class AppAPI:
+    file_info_temp = [],
     def bug_report(self, part, data):
         bugs_report(
             part,
@@ -1494,7 +1500,9 @@ class AppAPI:
         if path == "desktop" or path == "" or path == "\\":
             path = "desktop"
         data = update_inf(path)
-        return {"success": True, "data": data}
+        r_data = {"success": True, "data": data,"same":self.file_info_temp==data}
+        self.file_info_temp = data
+        return r_data
 
     def close_fullscreen_window(self):
         global fullscreen_close, config
@@ -1680,6 +1688,8 @@ class AppAPI:
         return {"success":True}
 
     def get_imageBase64(self,file_path):
+        if file_path in image_preview_cache:
+            return image_preview_cache[file_path]
         max_size_kb = 200
         quality=85
         step=5
@@ -1735,7 +1745,8 @@ class AppAPI:
         # 转换为base64字符串
         base64_string = base64.b64encode(output_buffer.getvalue()).decode('utf-8')
         blob_string = f"data:image/jpeg;base64,{base64_string}"
-        
+
+        image_preview_cache[file_path] = blob_string
         return blob_string
         # except:
         #     return None
@@ -1808,4 +1819,4 @@ window = webview.create_window(
     transparent=True,
     on_top=True,
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)

@@ -381,9 +381,7 @@ class FileRenderer {
             if(target_ctn=="grid" || target_ctn==null)this.renderGridItem(file);
             if(target_ctn=="list" || target_ctn==null)this.renderListItem(file);
         });
-        setTimeout(() => { 
-            image_preview()
-        }, 500);
+        image_preview()
     }
 
     clearContainers(target_ctn) {
@@ -576,6 +574,7 @@ const NavigationManager = {
 
     async refreshCurrentPath() {
         const result = await ApiHelper.getFileInfo(AppState.currentPath);
+        if(result.same==true)return;
         AppState.setFiles(result.data);
         await fileRenderer.render(result.data);
         if(last_group!="" || last_group!="全部"){
@@ -1567,7 +1566,7 @@ async function image_preview() {
                 if(view_img){
                     console.log("预览图片："+file.fileName)
                     te = document.getElementById(Utils.generateFileId(file.filePath))
-                    te.children[0].src = view_img
+                    te.children[1].src = view_img
                 }
             }
             if(preview_runing==false) break;
@@ -2221,6 +2220,6 @@ async function save_new_order(reload_part){
     console.log(new_order)
     await ApiHelper.call("update_config_order",AppState.currentPath,new_order)
     console.log(reload_part)
-    NavigationManager.refreshCurrentPath()
+    // NavigationManager.refreshCurrentPath()
     // fileRenderer.render(new_order,reload_part)
 }
