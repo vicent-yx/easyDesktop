@@ -307,9 +307,20 @@ def hotkey_detect():
 def turn_png(file_path):
     # try:
     # 检查文件是否存在
-    # if not os.path.exists(file_path):
-    #     print(f"错误：文件 '{file_path}' 不存在")
-    #     return False
+    file_ok = False
+    range_time = 0
+    while True:
+        if os.path.exists(file_path):
+            file_ok = True
+            break
+        else:
+            time.sleep(0.1)
+            range_time += 1
+            if range_time>100:
+                break
+    if file_ok==False:
+        print(f"错误：文件 '{file_path}' 不存在")
+        return False
 
     # 检查文件扩展名是否为ico
     if not file_path.lower().endswith(".ico"):
@@ -376,7 +387,7 @@ def get_shortcut_icon_win32(lnk_path,name):
         return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
 def get_icon(exe_path, name):
-    # try:
+    try:
         dir_name = os.path.dirname(exe_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
@@ -391,26 +402,26 @@ def get_icon(exe_path, name):
             print(f"警告：EXE文件不存在 {exe_path}")
             return "./resources/file_icos/exe.png"
  
-        # try:
-        extractor = IconExtractor(exe_path)
-        extractor.export_icon(output_path)
-        output_path = turn_png(output_path)
-        if os.path.exists(ico_path):
-            os.remove(ico_path)
-        if output_path!=False and output_path != "./resources/file_icos/exe.png":
-            loaded_exe_cache[exe_path] = relative_path
-            return {"success":True,"ico":relative_path}
-        else:
-            # 如果转换失败，使用默认图标
-            print(f"图标转换失败，使用默认图标: {exe_path}")
+        try:
+            extractor = IconExtractor(exe_path)
+            extractor.export_icon(output_path)
+            output_path = turn_png(output_path)
+            if os.path.exists(ico_path):
+                os.remove(ico_path)
+            if output_path!=False and output_path != "./resources/file_icos/exe.png":
+                loaded_exe_cache[exe_path] = relative_path
+                return {"success":True,"ico":relative_path}
+            else:
+                # 如果转换失败，使用默认图标
+                print(f"图标转换失败，使用默认图标: {exe_path}")
+                return {"success":False,"ico":"./resources/file_icos/exe.png"}
+        except Exception as extract_error:
+            print(f"图标提取失败: {extract_error} - {exe_path}")
             return {"success":False,"ico":"./resources/file_icos/exe.png"}
-    #     except Exception as extract_error:
-    #         print(f"图标提取失败: {extract_error} - {exe_path}")
-    #         return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
-    # except Exception as e:
-    #     print(f"获取图标时发生未知错误: {e} - {exe_path}")
-    #     return {"success":False,"ico":"./resources/file_icos/exe.png"}
+    except Exception as e:
+        print(f"获取图标时发生未知错误: {e} - {exe_path}")
+        return {"success":False,"ico":"./resources/file_icos/exe.png"}
 
 
 def get_url_icon(url_path):
@@ -738,20 +749,23 @@ def update_inf(dir_path):
             out_data = merge_lists(order_data, out_data)
 
         # 重复监测
-        temp_list = []
-        r_index = 0
-        while r_index < len(out_data): 
-            need_del = False
-            for item in temp_list:
-                if item["filePath"] == out_data[r_index]["filePath"]:
-                    need_del = True
-                    break
-            if need_del == True:
-                del out_data[r_index]
-            else:
-                temp_list.append(out_data[r_index])
-                r_index += 1
-        temp_list = []
+        try:
+            temp_list = []
+            r_index = 0
+            while r_index < len(out_data): 
+                need_del = False
+                for item in temp_list:
+                    if item["filePath"] == out_data[r_index]["filePath"]:
+                        need_del = True
+                        break
+                if need_del == True:
+                    del out_data[r_index]
+                else:
+                    temp_list.append(out_data[r_index])
+                    r_index += 1
+            temp_list = []
+        except:
+            pass
 
         # 收藏排序
         out_with_cl = []
@@ -1819,4 +1833,4 @@ window = webview.create_window(
     transparent=True,
     on_top=True,
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)
