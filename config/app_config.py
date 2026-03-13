@@ -179,6 +179,7 @@ def get_default_config(width, height):
         "bgType":"2",
         'blur_bg':True,
         'blur_effect':30,
+        "icon_size": 64,
         "dir_order":{},
         "class_order":[],
         "ico":{}

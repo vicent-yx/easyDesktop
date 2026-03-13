@@ -710,6 +710,13 @@ const ConfigManager = {
         await ApiHelper.updateConfig("scale", value);
     },
 
+    async updateIconSize(value) {
+        const size = parseInt(value);
+        document.documentElement.style.setProperty('--icon-size', size + 'px');
+        document.documentElement.style.setProperty('--grid-col-width', Math.round(size * 2.2) + 'px');
+        await ApiHelper.updateConfig("icon_size", size);
+    },
+
     async updateDefaultDirectory() {
         const config = await ApiHelper.getConfig();
         const settingBtns = DOMCache.get("dir_btn_box");
@@ -1163,6 +1170,14 @@ const EventManager = {
             DOMCache.get("blur_ef_input_show").innerText = `毛玻璃效果强度：${value}%`;
             ApiHelper.updateConfig("blur_effect", Math.floor(100-value));
         });
+        const iconSizeSlider = DOMCache.get('icon_size_slider');
+        if (iconSizeSlider) {
+            iconSizeSlider.addEventListener('input', function () {
+                const sizeValue = this.value;
+                DOMCache.get("icon_size_input").innerText = `图标大小：${sizeValue}px`;
+                ConfigManager.updateIconSize(sizeValue);
+            });
+        }
     },
 
     initNavigationEvents() {
@@ -1926,6 +1941,16 @@ window.addEventListener('pywebviewready', async function () {
             DOMCache.get("sc_input").innerText = "缩放比例：" + config.scale + "%";
             DOMCache.get("blur_ef_input_show").innerText = "毛玻璃效果强度：" + Math.floor(100-config.blur_effect) + "%";
             await ConfigManager.updateScale(config.scale);
+
+            // 更新图标大小
+            const iconSizeSlider = DOMCache.get('icon_size_slider');
+            const iconSize = config.icon_size || 64;
+            if (iconSizeSlider) {
+                iconSizeSlider.value = iconSize;
+                DOMCache.get("icon_size_input").innerText = "图标大小：" + iconSize + "px";
+            }
+            document.documentElement.style.setProperty('--icon-size', iconSize + 'px');
+            document.documentElement.style.setProperty('--grid-col-width', Math.round(iconSize * 2.2) + 'px');
 
             // 更新主题卡片状态
             const themeCards = DOMCache.getAllBySelector('.theme-card');

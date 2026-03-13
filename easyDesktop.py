@@ -1702,7 +1702,7 @@ window = webview.create_window(
     hidden=True,
     easy_drag=False,
     resizable=False,
-    transparent=True,
+    transparent=False,
     on_top=True,
 )
 webview.start(func=on_loaded)

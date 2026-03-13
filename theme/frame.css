@@ -51,7 +51,7 @@ body {
 
 .files-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(var(--grid-col-width, 140px), 1fr));
     gap: 25px;
     justify-items: center;
 }
@@ -128,8 +128,8 @@ body {
 }
 
 .file-icon {
-    width: 64px;
-    height: 64px;
+    width: var(--icon-size, 64px);
+    height: var(--icon-size, 64px);
     margin-bottom: 15px;
     object-fit: contain;
     transition: transform 0.3s;
@@ -638,8 +638,8 @@ input:checked + .slider:before {
     }
     
     .file-icon {
-        width: 56px;
-        height: 56px;
+        width: var(--icon-size, 56px);
+        height: var(--icon-size, 56px);
     }
 }
 
@@ -658,8 +658,8 @@ input:checked + .slider:before {
     }
     
     .file-icon {
-        width: 48px;
-        height: 48px;
+        width: var(--icon-size, 48px);
+        height: var(--icon-size, 48px);
     }
     
     .file-name {

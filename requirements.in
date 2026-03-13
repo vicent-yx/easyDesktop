@@ -4,6 +4,7 @@ icoextract==0.2.0
 keyboard==0.13.5
 pillow==11.3.0
 pypinyin==0.55.0
+pynput==1.8.1
 pystray==0.19.5
 pywebview==5.1
 pywin32==311
