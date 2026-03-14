@@ -207,6 +207,17 @@ body {
     background: #e0e0e0;
 }
 
+.group-delete-icon {
+    background: #fff1ef;
+    color: #e74c3c;
+}
+
+.group-delete-note {
+    background: #f7f9fc;
+    border: 1px solid #e6ebf2;
+    color: #58677a;
+}
+
 .search_box{
     background: #ffffffb3;
 }

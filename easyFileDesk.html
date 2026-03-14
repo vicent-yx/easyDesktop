@@ -381,7 +381,28 @@
             </div>
         </div>
 
-        <!-- 重命名对话框 -->
+        <!-- Group delete dialog -->
+        <div class="delete-confirm group-delete-confirm" id="groupDeleteConfirm">
+            <div class="delete-container group-delete-container">
+                <div class="group-delete-head">
+                    <div class="group-delete-icon">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <div class="group-delete-copy">
+                        <h3>解散应用组</h3>
+                        <p>确定要解散应用组“<span id="groupDeleteName" class="group-delete-name"></span>”吗？</p>
+                    </div>
+                </div>
+                <div class="group-delete-note">
+                    组内文件不会被删除，会自动回到主视图。
+                </div>
+                <div class="delete-buttons group-delete-buttons">
+                    <button class="delete-btn cancel" id="groupDeleteCancel">取消</button>
+                    <button class="delete-btn confirm" id="groupDeleteConfirmBtn">解散组</button>
+                </div>
+            </div>
+        </div>
+
         <div class="rename-overlay" id="renameOverlay">
             <div class="rename-container">
                 <h3>重命名文件</h3>

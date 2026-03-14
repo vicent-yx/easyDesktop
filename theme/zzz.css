@@ -230,6 +230,18 @@ body {
     background: rgba(255, 255, 255, 0.2);
 }
 
+.group-delete-icon {
+    background: rgba(231, 76, 60, 0.18);
+    color: #ffb0a8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.group-delete-note {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #d6dde5;
+}
+
 .search_box{
     border: 1px solid rgba(255, 255, 255, 0.1);
 }

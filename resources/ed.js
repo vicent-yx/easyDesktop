@@ -364,6 +364,29 @@ const UIUtils = {
 };
 
 // ========== 文件渲染器 ==========
+const DialogManager = {
+    unlockTimer: null,
+    unlockDelay: 150,
+
+    lockWindowVisibility() {
+        if (this.unlockTimer !== null) {
+            clearTimeout(this.unlockTimer);
+            this.unlockTimer = null;
+        }
+        ApiHelper.call('lock_window_visibility');
+    },
+
+    releaseWindowVisibility(delay = this.unlockDelay) {
+        if (this.unlockTimer !== null) {
+            clearTimeout(this.unlockTimer);
+        }
+        this.unlockTimer = setTimeout(() => {
+            this.unlockTimer = null;
+            ApiHelper.call('unlock_window_visibility');
+        }, delay);
+    }
+};
+
 class FileRenderer {
     constructor() {
         this.gridContainer = DOMCache.get('filesContainer');
@@ -965,7 +988,7 @@ const GroupManager = {
 
     async createGroup() {
         this.isDialogActive = true;
-        ApiHelper.call('lock_window_visibility');
+        DialogManager.lockWindowVisibility();
         const renameOverlay = DOMCache.get('renameOverlay');
         const renameInput = DOMCache.get('renameInput');
         const h3 = renameOverlay.querySelector('h3');
@@ -985,7 +1008,7 @@ const GroupManager = {
             confirmBtn.removeEventListener('click', handler);
             cancelBtn.removeEventListener('click', cancelHandler);
             this.isDialogActive = false;
-            ApiHelper.call('unlock_window_visibility');
+            DialogManager.releaseWindowVisibility();
             NavigationManager.refreshCurrentPath();
         };
         confirmBtn.addEventListener('click', handler);
@@ -1002,7 +1025,7 @@ const GroupManager = {
 
     async renameGroup(groupId) {
         this.isDialogActive = true;
-        ApiHelper.call('lock_window_visibility');
+        DialogManager.lockWindowVisibility();
         const renameOverlay = DOMCache.get('renameOverlay');
         const renameInput = DOMCache.get('renameInput');
         const h3 = renameOverlay.querySelector('h3');
@@ -1022,7 +1045,7 @@ const GroupManager = {
             confirmBtn.removeEventListener('click', handler);
             cancelBtn.removeEventListener('click', cancelHandler);
             this.isDialogActive = false;
-            ApiHelper.call('unlock_window_visibility');
+            DialogManager.releaseWindowVisibility();
             NavigationManager.refreshCurrentPath();
         };
         confirmBtn.addEventListener('click', handler);
@@ -1038,7 +1061,68 @@ const GroupManager = {
     },
 
     async deleteGroup(groupId) {
-        if (!confirm('确定要解散此组吗？组内文件将回到主视图。')) return;
+        return this.confirmAndDeleteGroup(groupId, this.currentGroupName);
+    },
+
+    async confirmAndDeleteGroup(groupId, groupName = '') {
+        const overlay = DOMCache.get('groupDeleteConfirm');
+        const groupDeleteName = DOMCache.get('groupDeleteName');
+        const cancelBtn = DOMCache.get('groupDeleteCancel');
+        const confirmBtn = DOMCache.get('groupDeleteConfirmBtn');
+
+        groupDeleteName.textContent = groupName || this.currentGroupName || '未命名应用组';
+        overlay.style.display = 'flex';
+        UIUtils.disableScroll();
+        DialogManager.lockWindowVisibility();
+
+        const confirmed = await new Promise((resolve) => {
+            let settled = false;
+
+            const cleanup = (result) => {
+                if (settled) return;
+                settled = true;
+                overlay.style.display = 'none';
+                cancelBtn.removeEventListener('click', handleCancel);
+                confirmBtn.removeEventListener('click', handleConfirm);
+                overlay.removeEventListener('click', handleOverlayClick);
+                document.removeEventListener('keydown', handleKeyDown, true);
+                if (DOMCache.get('groupViewOverlay').style.display !== 'flex') {
+                    UIUtils.enableScroll();
+                }
+                DialogManager.releaseWindowVisibility();
+                resolve(result);
+            };
+
+            const handleCancel = () => cleanup(false);
+            const handleConfirm = () => cleanup(true);
+            const handleOverlayClick = (e) => {
+                if (e.target.id === 'groupDeleteConfirm') {
+                    cleanup(false);
+                }
+            };
+            const handleKeyDown = (e) => {
+                if (overlay.style.display !== 'flex') return;
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    cleanup(true);
+                    return;
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    cleanup(false);
+                }
+            };
+
+            cancelBtn.addEventListener('click', handleCancel);
+            confirmBtn.addEventListener('click', handleConfirm);
+            overlay.addEventListener('click', handleOverlayClick);
+            document.addEventListener('keydown', handleKeyDown, true);
+            confirmBtn.focus();
+        });
+
+        if (!confirmed) return;
         await ApiHelper.call('delete_group', groupId);
         this.closeGroup();
         NavigationManager.refreshCurrentPath();
@@ -1077,7 +1161,8 @@ const GroupManager = {
         };
         DOMCache.get('menuGroupDelete').onclick = () => {
             menu.style.display = 'none';
-            this.deleteGroup(file.groupId);
+            this.currentGroupName = file.fileName;
+            this.confirmAndDeleteGroup(file.groupId, file.fileName);
         };
 
         disableScroll();
@@ -1287,7 +1372,7 @@ const EventManager = {
         });
 
         DOMCache.get('menuNew').addEventListener('click', () => {
-            ApiHelper.call('lock_window_visibility');
+            DialogManager.lockWindowVisibility();
             DOMCache.get('newFileOverlay').style.display = 'flex';
             DOMCache.get('blankMenu').style.display = 'none';
         });
@@ -1311,7 +1396,7 @@ const EventManager = {
     initDialogEvents() {
         // 重命名对话框
         DOMCache.get('renameCancel').addEventListener('click', () => {
-            ApiHelper.call('unlock_window_visibility');
+            DialogManager.releaseWindowVisibility();
             DOMCache.get('renameOverlay').style.display = 'none';
             AppState.dealing = false;
         });
@@ -1322,13 +1407,12 @@ const EventManager = {
             if (AppState.dealing) return;
             AppState.dealing = true;
             try{
-                ApiHelper.call('unlock_window_visibility');
-
                 const newName = DOMCache.get('renameInput').value.trim();
                 if (newName) {
                     try{
                         await FileOperationManager.renameFile(AppState.selectedFile.filePath, newName);
                         DOMCache.get('renameOverlay').style.display = 'none';
+                        DialogManager.releaseWindowVisibility();
                     }catch(e){
                         UIUtils.showError(e);
                     }
@@ -1365,24 +1449,30 @@ const EventManager = {
 
         // 新建文件对话框
         DOMCache.get('newFileCancel').addEventListener('click', () => {
-            ApiHelper.call('unlock_window_visibility');
+            DialogManager.releaseWindowVisibility();
             DOMCache.get('newFileOverlay').style.display = 'none';
         });
 
         DOMCache.get('newFileConfirm').addEventListener('click', async () => {
-            ApiHelper.call('unlock_window_visibility');
             const selectedType = DOMCache.get('newFileTypeSelect').value;
             if (selectedType) {
                 await FileOperationManager.createNewFile(selectedType);
                 DOMCache.get('newFileOverlay').style.display = 'none';
+                DialogManager.releaseWindowVisibility();
             }
         });
 
         // 重命名输入框回车确认
-        DOMCache.get('renameInput').addEventListener('keyup', (e) => {
-            ApiHelper.call('unlock_window_visibility');
+        DOMCache.get('renameInput').addEventListener('keydown', (e) => {
+            e.stopPropagation();
             if (e.key === 'Enter') {
+                e.preventDefault();
                 DOMCache.get('renameConfirm').click();
+                return;
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                DOMCache.get('renameCancel').click();
             }
         });
     },
@@ -1612,6 +1702,7 @@ const EventManager = {
             if (document.activeElement.id !== 'search_input') {
                 const searchInput = DOMCache.get('search_input');
                 if (DOMCache.get("renameOverlay").style.display === "flex") return;
+                if (DOMCache.get("groupDeleteConfirm").style.display === "flex") return;
                 if(document.activeElement.id == "categoryInput") return
                 if(window_state==false)return
 
@@ -1653,7 +1744,7 @@ const EventManager = {
     },
 
     showRenameDialog() {
-        ApiHelper.call('lock_window_visibility');
+        DialogManager.lockWindowVisibility();
         const renameOverlay = DOMCache.get('renameOverlay');
         const renameInput = DOMCache.get('renameInput');
 
@@ -2562,6 +2653,7 @@ window.addEventListener("keydown", function(event) {
         // 输入框活跃或对话框打开时不触发文件点击
         if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
         if (DOMCache.get("renameOverlay").style.display === "flex") return;
+        if (DOMCache.get("groupDeleteConfirm").style.display === "flex") return;
         for(let e of [...document.getElementById("filesContainer").children,...document.getElementById("filesListContainer").children]){
             if(e.style.display != "none" && enter_click==false){
                 enter_click = true

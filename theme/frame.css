@@ -434,6 +434,63 @@ body {
     transition: all 0.2s;
 }
 
+.group-delete-confirm {
+    z-index: 3500;
+}
+
+.group-delete-container {
+    max-width: 460px;
+    text-align: left;
+}
+
+.group-delete-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.group-delete-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px;
+}
+
+.group-delete-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.group-delete-copy h3 {
+    margin: 2px 0 10px;
+}
+
+.group-delete-copy p {
+    margin: 0;
+}
+
+.group-delete-name {
+    font-weight: 700;
+    word-break: break-all;
+}
+
+.group-delete-note {
+    border-radius: 12px;
+    padding: 14px 16px;
+    line-height: 1.6;
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.group-delete-buttons {
+    justify-content: flex-end;
+}
+
 .search_box{
     width: 30%;
     padding: 8px 12px;
