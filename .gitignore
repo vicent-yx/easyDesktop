@@ -14,6 +14,9 @@ bg.jpg
 report.md
 test.py
 t.py
+kb_tool.py
+kbt.py
+test1.py
 
 # Custom2(Already deduplicated)
 AppData/

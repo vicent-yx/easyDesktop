@@ -31,18 +31,23 @@ const DisplayModeManager = {
     btn:document.getElementById("displayToggleBtn"),
     async toggleDisplayMode(){
         if (this.mode == "grid") {
-            this.mode = "list";
-            this.btn.innerHTML = '<i class="fas fa-th"></i>';
-            EventManager.switchToGridView();
+            this.list_view()
             await ApiHelper.updateConfig("view", "block");
         } else {
-            this.mode = "grid";
-            this.btn.innerHTML = '<i class="fas fa-list"></i>';
-            EventManager.switchToListView();
+            this.grid_view()
             await ApiHelper.updateConfig("view", "list");
         }
+    },
+    async list_view(){
+        this.mode = "list";
+        this.btn.innerHTML = '<i class="fas fa-th-large"></i>';
+        EventManager.switchToGridView();
+    },
+    async grid_view(){
+        this.mode = "grid";
+        this.btn.innerHTML = '<i class="fas fa-list"></i>';
+        EventManager.switchToListView();
     }
-    
 }
 
 // ========== 工具函数模块 ==========
@@ -1729,6 +1734,8 @@ const EventManager = {
 
     initClickEvents() {
         document.addEventListener('click', (event) => {
+            if(event.target.id=="menuAddToGroup")return
+            if(event.target.parentNode.id=="menuAddToGroup")return
             MenuManager.hideAllMenus();
 
             if (["content_box", "main"].includes(event.target.id)) {
@@ -2129,13 +2136,6 @@ async function image_preview() {
 async function change_cl_state(filePath, cl){
     await ApiHelper.call('change_cl_state', filePath, cl);
     NavigationManager.refreshCurrentPath();
-}
-async function grid_view() {
-    EventManager.switchToGridView();
-}
-
-async function list_view() {
-    EventManager.switchToListView();
 }
 
 async function set_scale(value) {
@@ -2679,11 +2679,22 @@ boxs[0].dataset.other = "list"
 boxs[1].dataset.other = "grid"
 pos_move_dt = null
 pos_move_pc = null
-async function move_ctn(num){
-    content_box.scrollTo({
-        top: content_box.scrollTop + num,
-        behavior: 'smooth',
-    })
+const drag_move = {
+    last_time : null,
+    move_ctn:async function(num){
+        // 防过高频触发
+        if(this.last_time!=null){
+            if (Date.now() - this.last_time < 50) {
+                return;
+            }
+        }
+
+        content_box.scrollTo({
+            top: content_box.scrollTop + num,
+            behavior: 'smooth',
+        })
+        this.last_time = Date.now()
+    }
 }
 async function detect_posMove(){
     r = await ApiHelper.call("drag_posMoveAction")
@@ -2691,12 +2702,12 @@ async function detect_posMove(){
         if(r=="bottom"){
             if(pos_move_pc!=null)return
             pos_move_pc = setInterval(async function(){
-                move_ctn(200)
+                drag_move.move_ctn(50)
             },50)
         }else if(r=="top"){
             if(pos_move_pc!=null)return
             pos_move_pc = setInterval(async function(){
-                move_ctn(-200)
+                drag_move.move_ctn(-50)
             },50)
         }
     }else{ 
@@ -2730,6 +2741,7 @@ for(let list of boxs){
         pos_move_dt = setInterval(async function(){
             detect_posMove()
         },100)
+        ApiHelper.call("disable_autoClose")
     })
     list.addEventListener('dragenter',(e)=>{
         e.preventDefault()
@@ -2793,6 +2805,7 @@ for(let list of boxs){
         }
     })
     list.addEventListener('dragend',async(e)=>{
+        ApiHelper.call("enable_autoClose")
         currentLi.classList.remove('moving')
         dragging = false
         stop_moveAction()

@@ -34,7 +34,6 @@ import win32pipe
 import base64
 import io
 from window_effect import WindowEffect,set_window_rounded_corners
-import kb_tool
 import configparser
 # keyboard_monitor = kb_tool.KeyboardMonitor()
 def activate_existing_instance():
@@ -948,7 +947,7 @@ def moveIn_window():
     elif config["outPos"]=="4":
         start_x = ox+((screen_width-width)//2)
         start_y = oy+(-height)
-    window.evaluate_js("window_state=false;preview_runing = false;")
+    window.evaluate_js("window_state=false;preview_runing = false;MenuManager.hideAllMenus();")
     animate_window(hwnd, current_x, current_y, start_x, start_y, width, height)
     window.hide()
     moving = False
@@ -1009,9 +1008,9 @@ def on_loaded():
     win32gui.MoveWindow(hwnd, px, py, win_width, win_height, True)
     sys_theme()
     if config["view"] == "list":
-        window.evaluate_js("list_view()")
+        window.evaluate_js("DisplayModeManager.list_view()")
     else:
-        window.evaluate_js("grid_view()")
+        window.evaluate_js("DisplayModeManager.grid_view()")
     window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
     fit_blur_effect()
     set_window_rounded_corners(hwnd)
@@ -1811,7 +1810,7 @@ window = webview.create_window(
     hidden=True,
     easy_drag=False,
     resizable=False,
-    transparent=False, # pywebview的透明功能在windows上运行会出现问题
+    transparent=True,
     on_top=True,
 )
-webview.start(func=on_loaded,debug=True)
+webview.start(func=on_loaded)
