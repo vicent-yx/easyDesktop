@@ -25,6 +25,7 @@ import webbrowser
 import keyboard
 import send2trash
 import config as cfg
+import group_mgr
 import traceback
 import winerror
 import win32event
@@ -277,6 +278,10 @@ else:
         itemClass = json.load(f)
         f.close()
 
+if not os.path.exists(cfg.USER_GROUPS_FILE):
+    with open(cfg.USER_GROUPS_FILE, "w", encoding="utf-8") as f:
+        json.dump({}, f)
+
 def hotKey_outAction():
     print("hotkey_go")
     global key_quick_start,window_state, fullscreen_close
@@ -509,7 +514,46 @@ def update_inf(dir_path,retry_count=0):
             item["f_type"] = "exe"
             index+=1
             out_data.append(item)
-        
+
+        # 应用组：过滤已编组文件，注入组项目
+        grouped_paths = group_mgr.get_grouped_paths(dir_path)
+        if grouped_paths:
+            out_data = [item for item in out_data if item["filePath"] not in grouped_paths]
+        all_groups = group_mgr.get_all_groups(dir_path)
+        for gid, ginfo in all_groups.items():
+            # 校验组内文件是否仍有效
+            valid_items = [p for p in ginfo.get("items", []) if os.path.exists(p)]
+            if valid_items != ginfo.get("items", []):
+                ginfo["items"] = valid_items
+                _gdata = group_mgr._load_groups()
+                _gdata[dir_path] = all_groups
+                group_mgr._save_groups(_gdata)
+            # 收集前4个子项图标
+            group_icons = []
+            for fp in valid_items[:4]:
+                for it in o_data:
+                    if it["filePath"] == fp:
+                        group_icons.append(it.get("ico", ""))
+                        break
+                else:
+                    fn = os.path.splitext(os.path.basename(fp))[0]
+                    group_icons.append(iconMgr.get_icon(fp, fn))
+            group_item = {
+                "fileName": ginfo["name"],
+                "filePath": "__group__:" + gid,
+                "fileType": "应用组",
+                "ico": "",
+                "groupIcons": group_icons,
+                "isGroup": True,
+                "groupId": gid,
+                "itemCount": len(valid_items),
+                "f_type": "group",
+                "file": "__group__"
+            }
+            group_item["index"] = index
+            index += 1
+            out_data.append(group_item)
+
         order_data = []
         if dir_path in config["dir_order"]:
             this_order = config["dir_order"][dir_path]
@@ -848,7 +892,7 @@ def out_window():
     time.sleep(0.1)
     animate_window(hwnd, start_x, start_y, end_x, end_y, rect["width"], rect["height"])
     window.evaluate_js("window_state=true;")
-    window.evaluate_js("NavigationManager.refreshCurrentPath();fit_btnBar();")
+    window.evaluate_js("GroupManager.closeGroup();NavigationManager.refreshCurrentPath();fit_btnBar();")
 
     while True:
         if fullscreen_close == True:
@@ -1519,6 +1563,71 @@ class AppAPI:
                 json.dump(itemClass,f,ensure_ascii=False)
         return {"success":True}
 
+    # ===== 应用组 API =====
+    def create_group(self, name):
+        global config
+        gid = group_mgr.create_group(config["df_dir"], name)
+        return {"success": True, "groupId": gid}
+
+    def rename_group(self, group_id, new_name):
+        global config
+        ok = group_mgr.rename_group(config["df_dir"], group_id, new_name)
+        return {"success": ok}
+
+    def delete_group(self, group_id):
+        global config
+        ok = group_mgr.delete_group(config["df_dir"], group_id)
+        return {"success": ok}
+
+    def add_to_group(self, group_id, file_paths):
+        global config
+        ok = group_mgr.add_items(config["df_dir"], group_id, file_paths)
+        return {"success": ok}
+
+    def remove_from_group(self, group_id, file_path):
+        global config
+        ok = group_mgr.remove_item(config["df_dir"], group_id, file_path)
+        return {"success": ok}
+
+    def get_group_contents(self, group_id):
+        global config
+        items = group_mgr.get_group_items(config["df_dir"], group_id)
+        result = []
+        for fp in items:
+            if not os.path.exists(fp):
+                continue
+            fn = os.path.splitext(os.path.basename(fp))[0]
+            ico = iconMgr.get_icon(fp, fn)
+            if os.path.isfile(fp):
+                ext = os.path.splitext(fp)[1]
+            else:
+                ext = "dir"
+            if ext == ".lnk":
+                real_file = getIcon.get_shortcut_target(fp)
+                if os.path.isfile(real_file):
+                    ext = os.path.splitext(real_file)[1]
+                else:
+                    ext = "dir"
+                info_data = mix_fileInfo(fp, os.path.basename(real_file), ico, ext, real_file)
+            else:
+                info_data = mix_fileInfo(fp, fn, ico, ext)
+            info = info_data["inf"]
+            info["f_type"] = info_data["inf_type"]
+            info["cl"] = is_cl(fp)
+            result.append(info)
+        return {"success": True, "data": result}
+
+    def get_groups(self):
+        global config
+        groups = group_mgr.get_all_groups(config["df_dir"])
+        return {"success": True, "data": groups}
+
+    def save_group_order(self, ordered_ids):
+        global config
+        config["dir_order"]["__groups__:" + config["df_dir"]] = ordered_ids
+        json.dump(config, open("config.json", "w"), ensure_ascii=False)
+        return {"success": True}
+
     def get_imageBase64(self,file_path):
         if file_path in image_preview_cache:
             return image_preview_cache[file_path]
@@ -1702,7 +1811,7 @@ window = webview.create_window(
     hidden=True,
     easy_drag=False,
     resizable=False,
-    transparent=True,
+    transparent=False, # pywebview的透明功能在windows上运行会出现问题
     on_top=True,
 )
 webview.start(func=on_loaded,debug=True)
