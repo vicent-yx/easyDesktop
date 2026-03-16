@@ -41,12 +41,12 @@ const DisplayModeManager = {
     async list_view(){
         this.mode = "list";
         this.btn.innerHTML = '<i class="fas fa-th-large"></i>';
-        EventManager.switchToGridView();
+        EventManager.switchToListView();
     },
     async grid_view(){
         this.mode = "grid";
         this.btn.innerHTML = '<i class="fas fa-list"></i>';
-        EventManager.switchToListView();
+        EventManager.switchToGridView()
     }
 }
 
@@ -1735,7 +1735,7 @@ const EventManager = {
     initClickEvents() {
         document.addEventListener('click', (event) => {
             if(event.target.id=="menuAddToGroup")return
-            if(event.target.parentNode.id=="menuAddToGroup")return
+            try{if(event.target.parentNode.id=="menuAddToGroup")return}catch(e){}
             MenuManager.hideAllMenus();
 
             if (["content_box", "main"].includes(event.target.id)) {

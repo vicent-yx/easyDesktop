@@ -1008,6 +1008,7 @@ def on_loaded():
     win32gui.MoveWindow(hwnd, px, py, win_width, win_height, True)
     sys_theme()
     if config["view"] == "list":
+        print("视图list")
         window.evaluate_js("DisplayModeManager.list_view()")
     else:
         window.evaluate_js("DisplayModeManager.grid_view()")
