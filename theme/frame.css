@@ -434,6 +434,63 @@ body {
     transition: all 0.2s;
 }
 
+.group-delete-confirm {
+    z-index: 3500;
+}
+
+.group-delete-container {
+    max-width: 460px;
+    text-align: left;
+}
+
+.group-delete-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 18px;
+}
+
+.group-delete-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px;
+}
+
+.group-delete-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.group-delete-copy h3 {
+    margin: 2px 0 10px;
+}
+
+.group-delete-copy p {
+    margin: 0;
+}
+
+.group-delete-name {
+    font-weight: 700;
+    word-break: break-all;
+}
+
+.group-delete-note {
+    border-radius: 12px;
+    padding: 14px 16px;
+    line-height: 1.6;
+    font-size: 14px;
+    margin-bottom: 24px;
+}
+
+.group-delete-buttons {
+    justify-content: flex-end;
+}
+
 .search_box{
     width: 30%;
     padding: 8px 12px;
@@ -727,4 +784,115 @@ input:checked + .slider:before {
     align-items: center;
     padding: 20px;
     font-size: 14px;
+}
+
+/* ===== 应用组样式 ===== */
+.file-group-item .group-icon-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+    width: var(--icon-size, 64px);
+    height: var(--icon-size, 64px);
+    margin-bottom: 15px;
+    padding: 6px;
+    border-radius: 12px;
+    transition: transform 0.3s;
+}
+
+.file-group-item:hover .group-icon-grid {
+    transform: scale(1.1);
+}
+
+.file-group-item .group-icon-grid img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 4px;
+}
+
+.file-group-item .group-icon-grid .group-icon-empty {
+    border-radius: 4px;
+}
+
+.file-group-item .group-badge {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+}
+
+.drag-over-group {
+    outline: 2px dashed #3498db;
+    outline-offset: -2px;
+    transform: scale(1.05) !important;
+    transition: all 0.2s !important;
+}
+
+/* 组视图 overlay */
+.group-view-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3000;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(8px);
+}
+
+.group-view-container {
+    width: 70%;
+    max-width: 700px;
+    max-height: 80%;
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.group-view-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.group-view-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.group-view-body::-webkit-scrollbar {
+    display: none;
+}
+
+.group-view-body .files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(var(--grid-col-width, 120px), 1fr));
+    gap: 15px;
+    justify-items: center;
+}
+
+/* 组内文件右键菜单中的 "从组中移除" 项 */
+.context-menu-item.group-remove {
+    color: #e67e22;
+}
+
+.context-menu-item.group-remove i {
+    color: #e67e22;
 }

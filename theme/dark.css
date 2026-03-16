@@ -217,6 +217,17 @@ body {
     background: #e0e0e0;
 }
 
+.group-delete-icon {
+    background: rgba(231, 76, 60, 0.16);
+    color: #ff8e84;
+}
+
+.group-delete-note {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #cfd6de;
+}
+
 .search_box{
     background: rgba(40, 40, 60, 0.7);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -327,4 +338,32 @@ input:checked + .slider {
 
 .file-selection-item .file-type, .loading-indicator {
     color: #a0aec0;
+}
+
+/* 应用组 */
+.file-group-item .group-icon-grid {
+    background: rgba(50, 50, 70, 0.6);
+}
+
+.file-group-item .group-icon-grid .group-icon-empty {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.file-group-item .group-badge {
+    background: #667eea;
+    color: white;
+}
+
+.group-view-overlay {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+.group-view-container {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.group-view-header {
+    color: #e0e0e0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

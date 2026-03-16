@@ -24,6 +24,7 @@ FILE_ICO_PATH = "./resources/file_icos/"
 CONFIG_FILE = "config.json"
 CL_DATA_FILE = "cl_data.json"
 USER_CLASS_FILE = "user_class.json"
+USER_GROUPS_FILE = "user_groups.json"
 BUGS_REPORT_DIR = "bugs_report"
 EMPTY_XLSX_TEMPLATE = "resources/empty.xlsx"
 
