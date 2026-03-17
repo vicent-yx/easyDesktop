@@ -937,6 +937,7 @@ const FileOperationManager = {
     },
 
     async refreshAndRemindFile(result) {
+        console.log(result)
         await NavigationManager.refreshCurrentPath();
 
         if (result.file) {
@@ -1027,14 +1028,14 @@ const GroupManager = {
         const handler = async () => {
             const name = renameInput.value.trim();
             if (!name) return;
-            await ApiHelper.call('create_group', name);
+            var r = await ApiHelper.call('create_group', name);
             renameOverlay.style.display = 'none';
             h3.textContent = origTitle;
             confirmBtn.removeEventListener('click', handler);
             cancelBtn.removeEventListener('click', cancelHandler);
             this.isDialogActive = false;
             DialogManager.releaseWindowVisibility();
-            NavigationManager.refreshCurrentPath();
+            FileOperationManager.refreshAndRemindFile({file:"__group__:"+r.groupId})
         };
         confirmBtn.addEventListener('click', handler);
 

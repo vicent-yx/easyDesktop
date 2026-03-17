@@ -500,21 +500,9 @@ def update_inf(dir_path,retry_count=0):
                 item["index"]= index
                 index+=1
                 out_data.append(item)
-        
-        o_data = exe_data + dir_data + file_data
-        for item in o_data:
-            if check_recover(out_data, item) == True:
-                continue
-
-            # if item["cl"]==True:
-            #     cl_list.append(item)
-            #     continue
-            item["index"]=index
-            item["f_type"] = "exe"
-            index+=1
-            out_data.append(item)
 
         # 应用组：过滤已编组文件，注入组项目
+        group_data = []
         grouped_paths = group_mgr.get_grouped_paths(dir_path)
         if grouped_paths:
             out_data = [item for item in out_data if item["filePath"] not in grouped_paths]
@@ -551,7 +539,20 @@ def update_inf(dir_path,retry_count=0):
             }
             group_item["index"] = index
             index += 1
-            out_data.append(group_item)
+            group_data.append(group_item)
+        
+        o_data = group_data + exe_data + dir_data + file_data
+        for item in o_data:
+            if check_recover(out_data, item) == True:
+                continue
+
+            # if item["cl"]==True:
+            #     cl_list.append(item)
+            #     continue
+            item["index"]=index
+            item["f_type"] = "exe"
+            index+=1
+            out_data.append(item)
 
         order_data = []
         if dir_path in config["dir_order"]:
@@ -1814,4 +1815,4 @@ window = webview.create_window(
     transparent=True,
     on_top=True,
 )
-webview.start(func=on_loaded)
+webview.start(func=on_loaded,debug=True)
