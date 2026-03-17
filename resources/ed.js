@@ -32,20 +32,20 @@ const DisplayModeManager = {
     async toggleDisplayMode(){
         if (this.mode == "grid") {
             this.list_view()
-            await ApiHelper.updateConfig("view", "block");
+            await ApiHelper.updateConfig("view", "list");
         } else {
             this.grid_view()
-            await ApiHelper.updateConfig("view", "list");
+            await ApiHelper.updateConfig("view", "block");
         }
     },
     async list_view(){
         this.mode = "list";
-        this.btn.innerHTML = '<i class="fas fa-th-large"></i>';
+        this.btn.innerHTML = '<i class="fas fa-list"></i>';
         EventManager.switchToListView();
     },
     async grid_view(){
         this.mode = "grid";
-        this.btn.innerHTML = '<i class="fas fa-list"></i>';
+        this.btn.innerHTML = '<i class="fas fa-th-large"></i>';
         EventManager.switchToGridView()
     }
 }
@@ -423,10 +423,10 @@ class FileRenderer {
     async render(files,target_ctn=null) {
         this.clearContainers(target_ctn);
 
-        if (!files || files.length === 0) {
-            this.setEmptyState();
-            return;
-        }
+        // if (!files || files.length === 0) {
+        //     this.setEmptyState();
+        //     return;
+        // }
 
         files.forEach(file => {
             if(target_ctn=="grid" || target_ctn==null)this.renderGridItem(file);
@@ -440,10 +440,10 @@ class FileRenderer {
         if(target_ctn=="list" || target_ctn==null)this.listContainer.innerHTML = '';
     }
 
-    setEmptyState() {
-        this.gridContainer.style.minHeight = "75vh";
-        this.listContainer.style.minHeight = "75vh";
-    }
+    // setEmptyState() {
+    //     this.gridContainer.style.minHeight = "75vh";
+    //     this.listContainer.style.minHeight = "75vh";
+    // }
 
     createFileElement = async function(file, isGrid = true) {
         const element = document.createElement('div');
@@ -1742,19 +1742,22 @@ const EventManager = {
                 ApiHelper.call('close_fullscreen_window');
             }
         });
-
+        document.addEventListener('contextmenu', (e) => {
+            // this.handleBlankContextMenu(e);
+            console.log(e.target)
+        });
         // 空白区域右键菜单
-        DOMCache.getBySelector('.files-grid').addEventListener('contextmenu', (e) => {
+        DOMCache.getBySelector('.content_box').addEventListener('contextmenu', (e) => {
             this.handleBlankContextMenu(e);
         });
 
-        DOMCache.getBySelector('.files-list').addEventListener('contextmenu', (e) => {
-            this.handleBlankContextMenu(e);
-        });
+        // DOMCache.getBySelector('.content_box').addEventListener('contextmenu', (e) => {
+        //     this.handleBlankContextMenu(e);
+        // });
     },
 
     handleBlankContextMenu(e) {
-        if (e.target.classList.contains('files-grid') || e.target.classList.contains('files-list')) {
+        if (e.target.classList.contains('files-grid') || e.target.classList.contains('files-list') || e.target.classList.contains('content_box')) {
             e.preventDefault();
             MenuManager.hideContextMenu();
             const blankMenu = DOMCache.get('blankMenu');
@@ -2656,7 +2659,7 @@ let enter_click = false;
 window.addEventListener("keydown", function(event) {
     if (event.key === 'Enter') {
         // 输入框活跃或对话框打开时不触发文件点击
-        if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        // if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
         if (DOMCache.get("renameOverlay").style.display === "flex") return;
         if (DOMCache.get("groupDeleteConfirm").style.display === "flex") return;
         for(let e of [...document.getElementById("filesContainer").children,...document.getElementById("filesListContainer").children]){

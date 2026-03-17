@@ -845,7 +845,7 @@ def out_window():
         return
     moving = True
     window_state = True
-    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
+    window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();load_search();")
     if config["full_screen"] == True:
         w,h = get_screen_size()
         window.resize(w, h)
