@@ -894,7 +894,7 @@ def out_window():
     time.sleep(0.1)
     animate_window(hwnd, start_x, start_y, end_x, end_y, rect["width"], rect["height"])
     window.evaluate_js("window_state=true;")
-    window.evaluate_js("GroupManager.closeGroup();NavigationManager.refreshCurrentPath();fit_btnBar();")
+    window.evaluate_js("NavigationManager.refreshCurrentPath();fit_btnBar();")
 
     while True:
         if fullscreen_close == True:
@@ -954,6 +954,7 @@ def moveIn_window():
     animate_window(hwnd, current_x, current_y, start_x, start_y, width, height)
     window.hide()
     moving = False
+    window.evaluate_js("GroupManager.closeGroup();")
     wait_open()
 
 

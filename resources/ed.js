@@ -238,7 +238,7 @@ const ApiHelper = {
 
 // ========== UI工具类 ==========
 const UIUtils = {
-    showError(message) {
+    showMessage(message,isErr=true) {
         const errorBox = document.createElement('div');
         Object.assign(errorBox.style, {
             position: 'fixed',
@@ -246,7 +246,7 @@ const UIUtils = {
             left: '50%',
             transform: 'translateX(-50%)',
             padding: '20px 30px',
-            backgroundColor: '#ff4d4d',
+            backgroundColor: isErr?'#ff4d4d':'#2196F3',
             color: 'white',
             fontSize: '16px',
             borderRadius: '12px',
@@ -731,6 +731,7 @@ const NavigationManager = {
     async refreshCurrentPath() {
         const result = await ApiHelper.getFileInfo(AppState.currentPath);
         if(result.same==true)return;
+        DOMCache.get("search_input").value=""
         AppState.setFiles(result.data);
         await fileRenderer.render(result.data);
         if(last_group!="" || last_group!="全部"){
@@ -1191,9 +1192,8 @@ const GroupManager = {
 
     async addToGroup(groupId, filePaths) {
         await ApiHelper.call('add_to_group', groupId, filePaths);
-        if(DOMCache.get("search_input").value==''){
-            NavigationManager.refreshCurrentPath();
-        }
+        await NavigationManager.refreshCurrentPath();
+        UIUtils.showMessage("已添加到组",false)
     },
 
     async removeFromGroup(groupId, filePath) {
@@ -1425,7 +1425,7 @@ const EventManager = {
             try {
                 const result = await FileOperationManager.pasteFiles();
                 if (result.success === false) {
-                    UIUtils.showError(result.message);
+                    UIUtils.showMessage(result.message);
                 }
             } catch (error) {
                 console.error('粘贴失败:', error);
@@ -1476,7 +1476,7 @@ const EventManager = {
                         DOMCache.get('renameOverlay').style.display = 'none';
                         DialogManager.releaseWindowVisibility();
                     }catch(e){
-                        UIUtils.showError(e);
+                        UIUtils.showMessage(e);
                     }
                 }
             }catch(e){}
@@ -1493,7 +1493,7 @@ const EventManager = {
             AppState.dealing = true;
             const result = await FileOperationManager.removeFile(AppState.selectedFile.filePath);
             if (result.success === false) {
-                UIUtils.showError(result.message);
+                UIUtils.showMessage(result.message);
             }
             DOMCache.get('deleteConfirm').style.display = 'none';
             AppState.dealing = false;
@@ -1503,7 +1503,7 @@ const EventManager = {
             AppState.dealing = true;
             const result = await FileOperationManager.removeFile(AppState.selectedFile.filePath, "rubbish");
             if (result.success === false) {
-                UIUtils.showError(result.message);
+                UIUtils.showMessage(result.message);
             }
             DOMCache.get('deleteConfirm').style.display = 'none';
             AppState.dealing = false;
@@ -2289,7 +2289,7 @@ async function initBackgroundSettings() {
 }
 
 function showError(code) {
-    UIUtils.showError(code);
+    UIUtils.showMessage(code);
 }
 
 function checkChineseChars(str) {
