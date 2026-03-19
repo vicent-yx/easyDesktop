@@ -10,6 +10,10 @@
  软件使用pywebview开发，界面使用html+css+js实现，实际操作（如打开文件、新建文件等）由python实现（js通过pywebview调用）
  
 
+ 特别感谢[@CassianVale](https://gitee.com/ALX4890)对代码进行了模块化重构
+ 
+ 特别感谢[@achilng](https://gitee.com/achilng)为项目添加了应用组功能！
+
 
 
 ## ✨ 核心功能
@@ -89,4 +93,15 @@
 
 欢迎提交 Pull Request！喵。
 
+
+## 联系方式
+
+- 欢迎加入用户QQ群：**[EasyDesktop](https://qm.qq.com/q/gs8eVn4OLC)**
+
+![QQ](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/qrcode_1773930356930.jpg)
+
+---
+
 **如果喜欢这个项目，请点个 Star 支持一下呀！** 
+
+或者 [赞助作者](https://codevicent.xyz/give/)。
