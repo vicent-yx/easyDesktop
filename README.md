@@ -98,5 +98,3 @@
 ---
 
 **如果喜欢这个项目，请点个 Star 支持一下呀！** 
-
-或者 [赞助作者](https://codevicent.xyz/give/)。
