@@ -54,6 +54,8 @@ body {
     grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
     gap: 25px;
     justify-items: center;
+    position: relative;
+    transition: opacity 0.3s ease;
 }
 
 /* 列表视图样式 */
@@ -61,6 +63,8 @@ body {
     width: 100%;
     border-radius: 12px;
     overflow: hidden;
+    position: relative;
+    transition: opacity 0.3s ease;
 }
 
 .file-list-item {
@@ -77,6 +81,18 @@ body {
 .file-list-item:hover {
     transition: all 0.2s;
 }
+
+/* 动画 */
+/* 向上抽吸并渐隐的动画 */
+.fade-out-up {
+  animation: suckUp 0.3s ease forwards;
+}
+
+/* 新内容从下方淡入的动画 */
+.fade-in-up {
+  animation: fadeInUp 0.3s ease forwards;
+}
+/* ———————————————————————————— */
 
 .file-list-icon {
     width: 32px;
@@ -898,4 +914,28 @@ input:checked + .slider:before {
 
 .context-menu-item.group-remove i {
     color: #e67e22;
+}
+
+/* 向上抽吸动画关键帧 */
+@keyframes suckUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.95);
+  }
+}
+
+/* 从下方淡入动画关键帧 */
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

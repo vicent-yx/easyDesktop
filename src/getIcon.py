@@ -202,6 +202,7 @@ def get_shortcut_target(shortcut_path):
 
 
 def match_ico(file_name):
+    print("match_ico "+file_name)
     extension = os.path.splitext(file_name)[1]
     if extension in cfg.FILE_ICO:
         return cfg.FILE_ICO[extension]
@@ -283,15 +284,18 @@ def get_fileIcon(file_path):
     if icon_path == None:
         return match_ico(file_path)
     else:
-        ext = os.path.splitext(icon_path)[1]
-        if ext in [".exe",".EXE"]:
-            icon = get_icon(icon_path,os.path.basename(file_path))
-            if icon!=None:
-                return icon
+        try:
+            ext = os.path.splitext(icon_path)[1]
+            if ext in [".exe",".EXE"]:
+                icon = get_icon(icon_path,os.path.basename(file_path))
+                if icon!=None:
+                    return icon
+                else:
+                    return match_ico(file_path)
+            elif ext in [".ico",".ICO",".png",".PNG",".jpg",".jpeg",".JPG",".JPEG",".bmp"]:
+                icon = turn_png(icon_path)
             else:
-                return match_ico(file_path)
-        elif ext in [".ico",".ICO",".png",".PNG",".jpg",".jpeg",".JPG",".JPEG",".bmp"]:
-            icon = turn_png(icon_path)
-        else:
+                icon = match_ico(file_path)
+        except:
             icon = match_ico(file_path)
     return icon

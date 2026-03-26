@@ -134,6 +134,7 @@ FILE_ICO = {
     ".css": "./resources/file_icos/css.png",
     ".js": "./resources/file_icos/js.png",
     ".bat": "./resources/file_icos/bat.png",
+    ".lnk":"./resources/file_icos/lnk.png",
     "unkonw": "./resources/file_icos/unkonw.png",
 }
 DEFAULT_EXE_ICON = "./resources/file_icos/exe.png"

@@ -1,5 +1,5 @@
 import os
-import getIcon # 本地模块源
+from . import getIcon # 本地模块源
 import config as cfg
 
 class icon_mgr():
@@ -53,6 +53,8 @@ class icon_mgr():
             else:
                 # 从快捷方式指向的文件获取
                 target_path = getIcon.get_shortcut_target(file_path)
+                if not os.path.exists(target_path):
+                    return self.icon_file(file_path)
                 ltExt = os.path.splitext(target_path)[1]
                 if os.path.isfile(target_path):
                     if ltExt in [".exe",".EXE"]:

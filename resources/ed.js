@@ -12,7 +12,8 @@ const CONSTANTS = {
         'psd': '设计稿', 'fig': '设计稿',
         'sql': '数据库', 'json': '配置文件',
         'zip': '压缩文件', 'exe': '应用程序',
-        'SteamGame':"Steam游戏"
+        'SteamGame':"Steam游戏",
+        'lnk': "快捷方式",
     },
 
     THEME_PATHS: {
@@ -25,6 +26,7 @@ const CONSTANTS = {
     REMIND_DURATION: 1000,
     ERROR_DISPLAY_TIME: 5000
 };
+const block="block"
 // ========== 显示模式管理 ==========
 const DisplayModeManager = {
     mode:"grid",
@@ -52,6 +54,27 @@ const DisplayModeManager = {
 
 // ========== 工具函数模块 ==========
 const Utils = {
+    /**
+     * UIBox Display Change
+     */
+    async uiBoxDisplayChange(uiBox, display,ani=true) {
+        if (uiBox) {
+            
+            if (ani) {
+                if(['block','flex'].includes(display))uiBox.style.display = display
+                if(uiBox.children.length==1){
+                    uiBox = uiBox.children[0]
+                }
+                uiBox.classList.add(['block','flex'].includes(display) ? 'fade-in-up' : 'fade-out-up');
+                await new Promise(resolve => setTimeout(resolve, 300));
+                uiBox.classList.remove(['block','flex'].includes(display) ? 'fade-in-up' : 'fade-out-up');
+                if(['none'].includes(display))uiBox.style.display = display
+            }else{
+                uiBox.style.display = display;
+
+            }
+        }
+    },
     /**
      * 获取文件类型显示名称
      */
@@ -197,8 +220,8 @@ const ApiHelper = {
         return await this.call('update_config', key, value);
     },
 
-    async getFileInfo(path) {
-        var data = await this.call('get_fileinfo', path);
+    async getFileInfo(path,quick=true) {
+        var data = await this.call('get_fileinfo', path,quick);
         AppState.filter_data = data["filter_data"];
         return data;
     },
@@ -419,22 +442,33 @@ class FileRenderer {
         this.gridContainer = DOMCache.get('filesContainer');
         this.listContainer = DOMCache.get('filesListContainer');
     }
+    async changeClass_ani_state(t,class_name){
+        if(t==true){
+            this.gridContainer.classList.add(class_name);
+            this.listContainer.classList.add(class_name);
+        }else{
+            this.gridContainer.classList.remove(class_name);
+            this.listContainer.classList.remove(class_name);
+        }
+    }
 
     /**
      * 渲染文件列表
      */
-    async render(files,target_ctn=null) {
+    async render(files,target_ctn=null,ani=true) {
         this.clearContainers(target_ctn);
 
         // if (!files || files.length === 0) {
         //     this.setEmptyState();
         //     return;
         // }
-
         files.forEach(file => {
             if(target_ctn=="grid" || target_ctn==null)this.renderGridItem(file);
             if(target_ctn=="list" || target_ctn==null)this.renderListItem(file);
         });
+        if(ani==true)this.changeClass_ani_state(true,"fade-in-up")
+        if(ani==true)await new Promise(resolve => setTimeout(resolve, 300));
+        if(ani==true)this.changeClass_ani_state(false,"fade-in-up")
         image_preview()
     }
 
@@ -634,7 +668,8 @@ const MenuManager = {
         AppState.setSelectedFile(file);
 
         const contextMenu = DOMCache.get('contextMenu');
-        contextMenu.style.display = 'block';
+        // contextMenu.style.display = 'block';
+        Utils.uiBoxDisplayChange(contextMenu,block,true)
         var scale_rate = config["scale"] / 100
         console.log(e.pageX / scale_rate)
         console.log((window.innerWidth-contextMenu.offsetWidth)/scale_rate)
@@ -728,15 +763,20 @@ const NavigationManager = {
         window.scrollTo(0, 0);
     },
 
-    async refreshCurrentPath() {
-        const result = await ApiHelper.getFileInfo(AppState.currentPath);
-        if(result.same==true)return;
-        DOMCache.get("search_input").value=""
-        AppState.setFiles(result.data);
-        await fileRenderer.render(result.data);
-        if(last_group!="" || last_group!="全部"){
-            change_class(last_group)
-        }
+    async refreshCurrentPath(quick_update=true,ani=true) {
+        return new Promise(async (resolve) => { 
+            console.log(quick_update)
+            const result = await ApiHelper.getFileInfo(AppState.currentPath,quick_update);
+            // if(result.same==true)return;
+            DOMCache.get("search_input").value=""
+            AppState.setFiles(result.data);
+            await fileRenderer.render(result.data,null,ani);
+            if(last_group!="" || last_group!="全部"){
+                change_class(last_group)
+            }
+            console.log(result)
+            resolve(true);
+        });
     },
 
     async updateBreadcrumb(path) {
@@ -797,7 +837,7 @@ const SearchManager = {
         }
 
         if (key === "") {
-            await fileRenderer.render(AppState.files_data);
+            await fileRenderer.render(AppState.files_data,null,false);
             return;
         }
 
@@ -864,7 +904,7 @@ const SearchManager = {
             } catch (e) { /* 忽略 */ }
         }
 
-        if(render==true)await fileRenderer.render(outData);
+        if(render==true)await fileRenderer.render(outData,null,false);
         return outData;
     }
 };
@@ -963,7 +1003,7 @@ const FileOperationManager = {
 
     async refreshAndRemindFile(result) {
         console.log(result)
-        await NavigationManager.refreshCurrentPath();
+        await NavigationManager.refreshCurrentPath(false,false);
 
         if (result.file) {
             setTimeout(() => {
@@ -993,7 +1033,8 @@ const GroupManager = {
 
         title.textContent = groupName || '应用组';
         container.innerHTML = '<div class="loading-indicator">加载中...</div>';
-        overlay.style.display = 'flex';
+        // overlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(overlay, "flex",true)
         // UIUtils.disableScroll();
 
         try {
@@ -1047,7 +1088,8 @@ const GroupManager = {
         const origTitle = h3.textContent;
         h3.textContent = '新建组';
         renameInput.value = '';
-        renameOverlay.style.display = 'flex';
+        // renameOverlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(renameOverlay, "flex",true)
         renameInput.focus();
 
         const confirmBtn = DOMCache.get('renameConfirm');
@@ -1094,7 +1136,8 @@ const GroupManager = {
         const origTitle = h3.textContent;
         h3.textContent = '重命名组';
         renameInput.value = this.currentGroupName;
-        renameOverlay.style.display = 'flex';
+        // renameOverlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(renameOverlay, "flex",true)
         renameInput.focus();
 
         const confirmBtn = DOMCache.get('renameConfirm');
@@ -1133,7 +1176,8 @@ const GroupManager = {
         const confirmBtn = DOMCache.get('groupDeleteConfirmBtn');
 
         groupDeleteName.textContent = groupName || this.currentGroupName || '未命名应用组';
-        overlay.style.display = 'flex';
+        // overlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(overlay, "flex",true)
         UIUtils.disableScroll();
         DialogManager.lockWindowVisibility();
 
@@ -1208,7 +1252,8 @@ const GroupManager = {
     showGroupContextMenu(e, file) {
         MenuManager.hideAllMenus();
         const menu = DOMCache.get('groupContextMenu');
-        menu.style.display = 'block';
+        // menu.style.display = 'block';
+        Utils.uiBoxDisplayChange(menu,block,true)
         menu.style.left = `${e.pageX}px`;
         menu.style.top = `${e.pageY}px`;
 
@@ -1237,7 +1282,8 @@ const GroupManager = {
         AppState.setSelectedFile(file);
 
         const contextMenu = DOMCache.get('contextMenu');
-        contextMenu.style.display = 'block';
+        // contextMenu.style.display = 'block';
+        Utils.uiBoxDisplayChange(contextMenu,block,true)
         // 提升 z-index 使右键菜单显示在组视图 overlay 之上
         contextMenu.style.zIndex = '4000';
 
@@ -1267,7 +1313,8 @@ const GroupManager = {
             removeItem.innerHTML = '<i class="fas fa-minus-circle"></i><span>从组中移除</span>';
             contextMenu.appendChild(removeItem);
         }
-        removeItem.style.display = 'flex';
+        // removeItem.style.display = 'flex';
+        Utils.uiBoxDisplayChange(removeItem,"flex",true)
         removeItem.onclick = () => {
             this.removeFromGroup(groupId, file.filePath);
             MenuManager.hideContextMenu();
@@ -1435,12 +1482,15 @@ const EventManager = {
 
         DOMCache.get('menuNew').addEventListener('click', () => {
             DialogManager.lockWindowVisibility();
-            DOMCache.get('newFileOverlay').style.display = 'flex';
-            DOMCache.get('blankMenu').style.display = 'none';
+            // DOMCache.get('newFileOverlay').style.display = 'flex';
+            Utils.uiBoxDisplayChange(DOMCache.get('newFileOverlay'), 'flex',true);
+            // DOMCache.get('blankMenu').style.display = 'none';
+            Utils.uiBoxDisplayChange(DOMCache.get('blankMenu'),"none", false);
         });
 
         DOMCache.get('menuNewGroup').addEventListener('click', () => {
-            DOMCache.get('blankMenu').style.display = 'none';
+            // DOMCache.get('blankMenu').style.display = 'none';
+            Utils.uiBoxDisplayChange(DOMCache.get('blankMenu'),"none", false);
             GroupManager.createGroup();
         });
 
@@ -1546,14 +1596,15 @@ const EventManager = {
 
         settingsBtn.addEventListener('click', () => {
 
-            themePanel.style.display = themePanel.style.display === 'flex' ? 'none' : 'flex';
-            ApiHelper.call("disable_autoClose")
+            // themePanel.style.display = themePanel.style.display === 'flex' ? 'none' : 'flex';
+            Utils.uiBoxDisplayChange(themePanel, themePanel.style.display === 'flex' ? 'none' : 'flex',true);
+            ApiHelper.call("lock_window_visibility")
         });
 
         closeBtn.addEventListener('click', () => {
             UIUtils.enableScroll();
             themePanel.style.display = 'none';
-            ApiHelper.call("enable_autoClose")
+            ApiHelper.call("unlock_window_visibility")
         });
 
         this.initToggleSettings();
@@ -1786,12 +1837,16 @@ const EventManager = {
             console.log(e.target)
             if(config.df_dir==AppState.currentPath){
                 console.log("当前目录")
-                document.getElementById("menuNewGroup").style.display="block"
-                document.getElementById("menuAddToGroup").style.display="block"
+                // document.getElementById("menuNewGroup").style.display="block"
+                // document.getElementById("menuAddToGroup").style.display="block"
+                Utils.uiBoxDisplayChange(document.getElementById("menuNewGroup"),block,true)
+                Utils.uiBoxDisplayChange(document.getElementById("menuAddToGroup"),block,true)
             }else{
                 console.log("非当前目录")
-                document.getElementById("menuNewGroup").style.display="none"
-                document.getElementById("menuAddToGroup").style.display="none"
+                // document.getElementById("menuNewGroup").style.display="none"
+                // document.getElementById("menuAddToGroup").style.display="none"
+                Utils.uiBoxDisplayChange(document.getElementById("menuNewGroup"),none,true)
+                Utils.uiBoxDisplayChange(document.getElementById("menuAddToGroup"),none,true)
             }
         });
         // 空白区域右键菜单
@@ -1809,7 +1864,8 @@ const EventManager = {
             e.preventDefault();
             MenuManager.hideContextMenu();
             const blankMenu = DOMCache.get('blankMenu');
-            blankMenu.style.display = 'block';
+            // blankMenu.style.display = 'block';
+            Utils.uiBoxDisplayChange(blankMenu,block,true)
             blankMenu.style.left = `${e.pageX}px`;
             blankMenu.style.top = `${e.pageY}px`;
         }
@@ -1821,7 +1877,8 @@ const EventManager = {
         const renameInput = DOMCache.get('renameInput');
 
         renameInput.value = AppState.selectedFile.fileName;
-        renameOverlay.style.display = 'flex';
+        // renameOverlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(renameOverlay,"flex",true)
         renameInput.focus();
 
         MenuManager.hideContextMenu();
@@ -1832,7 +1889,8 @@ const EventManager = {
         const deleteFileName = DOMCache.get('deleteFileName');
 
         deleteFileName.textContent = AppState.selectedFile.fileName;
-        deleteConfirm.style.display = 'flex';
+        // deleteConfirm.style.display = 'flex';
+        Utils.uiBoxDisplayChange(deleteConfirm,"flex",true)
 
         MenuManager.hideContextMenu();
     },
@@ -1876,7 +1934,7 @@ function getFileType(fileName, fileType) {
 async function showFileSelectionDialog(class_name=null) {
     return new Promise(async (resolve) => {
         setTimeout(enableScroll,200)
-        ApiHelper.call("disable_autoClose")
+        ApiHelper.call("unlock_window_visibility")
         let del_btn = document.getElementById("fileSelectionDelete")
         let list_data = []
         if(class_name!=null){
@@ -1915,7 +1973,8 @@ async function showFileSelectionDialog(class_name=null) {
         categoryErrorMsg.textContent = '';
 
         // 显示对话框
-        dialogContainer.style.display = 'flex';
+        // dialogContainer.style.display = 'flex';
+        Utils.uiBoxDisplayChange(dialogContainer,"flex",true)
 
         // 禁用背景滚动
         UIUtils.disableScroll();
@@ -2009,7 +2068,7 @@ async function showFileSelectionDialog(class_name=null) {
             dialogContainer.style.display = 'none';
             UIUtils.enableScroll();
             resolve({files_data: [], title: ''});
-            ApiHelper.call("enable_autoClose")
+            ApiHelper.call("unlock_window_visibility")
         }
 
         // 确定按钮事件
@@ -2045,7 +2104,7 @@ async function showFileSelectionDialog(class_name=null) {
             dialogContainer.style.display = 'none';
             UIUtils.enableScroll();
             resolve({files_data: selectedItems, title: categoryTitle});
-            ApiHelper.call("enable_autoClose")
+            ApiHelper.call("unlock_window_visibility")
         }
 
         // 点击对话框外部关闭
@@ -2054,7 +2113,7 @@ async function showFileSelectionDialog(class_name=null) {
                 dialogContainer.style.display = 'none';
                 UIUtils.enableScroll();
                 resolve({files_data: [], title: ''});
-                ApiHelper.call("enable_autoClose")
+                ApiHelper.call("unlock_window_visibility")
             }
         }
 
@@ -2305,7 +2364,7 @@ async function load_search() {
 }
 
 async function load_theme(theme,from_fit) {
-    try {
+
         // 参数验证
         if (!theme) {
             console.warn('load_theme: 主题参数不能为空');
@@ -2350,10 +2409,7 @@ async function load_theme(theme,from_fit) {
         if(config["bgType"]=="3")load_bgType(config["bgType"])
         ThemeManager.applyBackgroundSettings(config);
         return true;
-    } catch (error) {
-        console.error('load_theme: 加载主题时发生错误', error);
-        return false;
-    }
+
 }
 async function load_bgType(tid){
     if(tid=="1"){
@@ -2472,7 +2528,7 @@ const fileRenderer = new FileRenderer();
 
 // 页面加载完成后执行
 window.addEventListener('pywebviewready', async function () {
-    try {
+
         // 初始化事件管理器
         EventManager.init();
 
@@ -2585,10 +2641,6 @@ window.addEventListener('pywebviewready', async function () {
         }, 100);
         // setInterval(check_dirChange,1000);
 
-    } catch (error) {
-        console.error('应用初始化失败:', error);
-        ApiHelper.call('bug_report', 'init', error.toString());
-    }
     render_class_btn()
 });
 
@@ -2821,7 +2873,7 @@ for(let list of boxs){
         pos_move_dt = setInterval(async function(){
             detect_posMove()
         },100)
-        ApiHelper.call("disable_autoClose")
+        ApiHelper.call("lock_window_visibility")
     })
     list.addEventListener('dragenter',(e)=>{
         e.preventDefault()
@@ -2885,7 +2937,7 @@ for(let list of boxs){
         }
     })
     list.addEventListener('dragend',async(e)=>{
-        ApiHelper.call("enable_autoClose")
+        ApiHelper.call("unlock_window_visibility")
         currentLi.classList.remove('moving')
         dragging = false
         stop_moveAction()
