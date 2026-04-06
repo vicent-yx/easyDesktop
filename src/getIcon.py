@@ -88,13 +88,20 @@ def get_shortcut_icon_win32(lnk_path,name):
         print(f"处理快捷方式 {lnk_path} 时出错: {e}")
         return None
 
+def _read_file_bytes(file_path: str) -> bytes:
+    """
+    将 exe 读入内存，避免 icoextract/pefile 在 Windows 上持有文件句柄导致 exe 被占用。
+    """
+    with open(file_path, "rb") as f:
+        return f.read()
+
 def get_icon(exe_path, name):
     try:
         dir_name = os.path.dirname(exe_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
         if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
             os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
-        ico_path = output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
-        relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"
+        ico_path = output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"       
+        relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"      
 
         if(os.path.exists(relative_path)):
             return relative_path
@@ -106,14 +113,18 @@ def get_icon(exe_path, name):
         if not os.path.exists(exe_path):
             print(f"警告：EXE文件不存在 {exe_path}")
             return None
- 
+
+        extractor = None
         try:
-            extractor = IconExtractor(exe_path)
+            # 关键修复：使用 data=bytes 模式，避免 Windows 上的文件句柄占用问题
+            exe_data = _read_file_bytes(exe_path)
+            extractor = IconExtractor(data=exe_data)
+
             extractor.export_icon(output_path)
             output_path = turn_png(output_path)
             if os.path.exists(ico_path):
                 os.remove(ico_path)
-            if output_path!=False and output_path != "./resources/file_icos/exe.png":
+            if output_path!=False and output_path != "./resources/file_icos/exe.png":        
                 return relative_path
             else:
                 # 如果转换失败，使用默认图标
@@ -122,6 +133,14 @@ def get_icon(exe_path, name):
         except Exception as extract_error:
             print(f"exe图标提取失败: {extract_error} - {exe_path}")
             return None
+        finally:
+            # 兜底释放 pefile 相关资源（即使 data 模式通常也不会持有文件句柄）
+            try:
+                pe = getattr(extractor, "_pe", None)
+                if pe is not None and hasattr(pe, "close"):
+                    pe.close()
+            except Exception:
+                pass
 
     except Exception as e:
         print(f"获取图标时发生未知错误: {e} - {exe_path}")
@@ -234,7 +253,7 @@ def get_file_icon_path(extension):
             f"{command}\\DefaultIcon"
         )
         
-        # 解析图标路径（可能包含索引，如 "C:\path\file.dll,0"）
+        # 解析图标路径（可能包含索引，如 "C:\\path\\file.dll,0"）
         if ',' in icon_path:
             icon_path = icon_path.split(',')[0].strip()
         
@@ -267,35 +286,62 @@ def get_file_icon_path(file_path):
             f"{command}\\DefaultIcon"
         )
         
-        # 解析图标路径（可能包含索引，如 "C:\path\file.dll,0"）
+        # 解析图标路径（可能包含索引，如 "C:\\path\\file.dll,0"）
         if ',' in icon_path:
             icon_path = icon_path.split(',')[0].strip()
         
         return icon_path
         
     except Exception as e:
+        print(f"获取图标失败: {e}")
         return None
-    
+
 def get_fileIcon(file_path):
-    ext = os.path.splitext(file_path)[1]
-    if ext in cfg.SCRIPTS_TYPE+[".js",".bat",".css",".doc",".docx",".xls",".xlsx",".pdf",".ppt",".pptx"]:
-        return match_ico(file_path)
-    icon_path = get_file_icon_path(file_path)
-    if icon_path == None:
-        return match_ico(file_path)
-    else:
-        try:
-            ext = os.path.splitext(icon_path)[1]
-            if ext in [".exe",".EXE"]:
-                icon = get_icon(icon_path,os.path.basename(file_path))
-                if icon!=None:
-                    return icon
-                else:
-                    return match_ico(file_path)
-            elif ext in [".ico",".ICO",".png",".PNG",".jpg",".jpeg",".JPG",".JPEG",".bmp"]:
-                icon = turn_png(icon_path)
-            else:
-                icon = match_ico(file_path)
-        except:
-            icon = match_ico(file_path)
-    return icon
+    try:
+        if file_path.split(".")[-1] in ["exe", "EXE"]:
+            return "./resources/file_icos/exe.png"
+        if file_path.split(".")[-1] in ["lnk", "LNK"]:
+            return "./resources/file_icos/lnk.png"
+        if file_path.split(".")[-1] in ["url", "URL"]:
+            return "./resources/file_icos/url.png"
+        if file_path.split(".")[-1] in ["ini", "INI"]:
+            return "./resources/file_icos/ini.png"
+        if file_path.split(".")[-1] in ["json", "JSON"]:
+            return "./resources/file_icos/JSON.png"
+        if file_path.split(".")[-1] in ["m4a", "M4A"]:
+            return "./resources/file_icos/m4a.png"
+        if file_path.split(".")[-1] in ["mp3", "MP3"]:
+            return "./resources/file_icos/mp3.png"
+        if file_path.split(".")[-1] in ["wav", "WAV"]:
+            return "./resources/file_icos/wav.png"
+        if file_path.split(".")[-1] in ["mp4", "MP4", "mkv", "MKV"]:
+            return "./resources/file_icos/mp4.png"
+        if file_path.split(".")[-1] in ["zip", "ZIP", "rar", "RAR", "7z", "7Z"]:
+            return "./resources/file_icos/zip.png"
+        if file_path.split(".")[-1] in ["png", "PNG", "jpg", "JPG", "jpeg", "JPEG", "gif", "GIF", "webp", "WEBP"]:
+            return "./resources/file_icos/image.png"
+        if file_path.split(".")[-1] in ["txt", "TXT"]:
+            return "./resources/file_icos/txt.png"
+        if file_path.split(".")[-1] in ["xls", "XLS", "xlsx", "XLSX"]:
+            return "./resources/file_icos/xlsx.png"
+        if file_path.split(".")[-1] in ["doc", "DOC", "docx", "DOCX"]:
+            return "./resources/file_icos/docx.png"
+        if file_path.split(".")[-1] in ["ppt", "PPT", "pptx", "PPTX"]:
+            return "./resources/file_icos/pptx.png"
+        if file_path.split(".")[-1] in ["pdf", "PDF"]:
+            return "./resources/file_icos/pdf.png"
+        if file_path.split(".")[-1] in ["html", "HTML", "htm", "HTM"]:
+            return "./resources/file_icos/html.png"
+        if file_path.split(".")[-1] in ["js", "JS"]:
+            return "./resources/file_icos/js.png"
+        if file_path.split(".")[-1] in ["css", "CSS"]:
+            return "./resources/file_icos/css.png"
+        if file_path.split(".")[-1] in ["bat", "BAT"]:
+            return "./resources/file_icos/bat.png"
+        if file_path.split(".")[-1] in ["py", "PY"]:
+            return "./resources/file_icos/script.png"
+        if file_path.split(".")[-1] in ["rbs", "RBS"]:
+            return "./resources/file_icos/rbs.png"
+        return "./resources/file_icos/unkonw.png"
+    except:
+        return "./resources/file_icos/unkonw.png"
