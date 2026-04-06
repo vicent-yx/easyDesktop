@@ -222,6 +222,8 @@ class windowMgr_main():
                 break
             if ucfg.data["out_cf_type"] == "1" and tool.is_mouse_in_easyDesktop() == True:
                 break
+            if ucfg.data["fdr"] == True and tool.is_focused_window_fullscreen() == True:
+                break
             time.sleep(cfg.MOUSE_CHECK_INTERVAL)
         self.moving = False
 

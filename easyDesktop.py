@@ -306,5 +306,6 @@ window = webview.create_window(
     transparent=True,
     on_top=True,
 )
+
 windowMgr.set_window(window)
 webview.start(func=on_loaded,debug=not getattr(sys, 'frozen', False))

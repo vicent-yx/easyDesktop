@@ -2,7 +2,12 @@ import json
 from config import app_config as cfg
 import os
 from . import screen
+import sys
 
+# 打包后纠正工作目录
+if getattr(sys, 'frozen', False):
+    base_path = os.path.dirname(os.path.realpath(sys.executable))
+    os.chdir(base_path)
 
 class AppConfig:
     def __init__(self):
@@ -12,7 +17,9 @@ class AppConfig:
         height = int(screen_height * cfg.WINDOW_HEIGHT_RATIO)
         default_config = cfg.get_default_config(width, height)
         if os.path.exists(cfg.CONFIG_FILE):
-            config = json.load(open(cfg.CONFIG_FILE))
+            with open(cfg.CONFIG_FILE, "r",encoding="utf-8") as f:
+                config = json.load(f)
+                f.close()
             for c_item in default_config.keys():
                 if c_item not in config.keys():
                     config[c_item] = default_config[c_item]
@@ -27,14 +34,14 @@ class AppConfig:
         self.data = config
 
         if not os.path.exists(cfg.CL_DATA_FILE):
-            with open(cfg.CL_DATA_FILE, "w") as f:
+            with open(cfg.CL_DATA_FILE, "w",encoding="utf-8") as f:
                 json.dump({}, f)
                 f.close()
 
         if not os.path.exists(cfg.USER_CLASS_FILE):
             itemClass = {self.data["df_dir"]:{}}
             with open(cfg.USER_CLASS_FILE, "w",encoding="utf-8") as f:
-                json.dump(itemClass, f)
+                json.dump(itemClass, f, ensure_ascii=True, indent=4)
                 f.close()
         else:
             with open(cfg.USER_CLASS_FILE, "r",encoding="utf-8") as f:
@@ -51,7 +58,7 @@ class AppConfig:
         self.write_json(cfg.CONFIG_FILE,self.data)
     def write_json(self,file,data):
         with open(file, "w")as f:
-            json.dump(data, f)
+            json.dump(data, f, ensure_ascii=True, indent=4)
             f.close()
 
     def update_config(self,part,data):

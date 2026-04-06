@@ -86,11 +86,15 @@ def get_targetPos(win_width=None,win_height=None):
         end_x = ox+(int((screen_width-win_width)//2))
         end_y = oy+(int((screen_height * cfg.WINDOW_POSITION_RATIO)))
     return end_x,end_y
+def read_windowTitle(hwnd):
+    window_title = win32gui.GetWindowText(hwnd)
+    return window_title
+
 def is_ed_focused():
     active_hwnd = get_active_window()
     if not active_hwnd:
         return False
-    window_title = win32gui.GetWindowText(active_hwnd)
+    window_title = read_windowTitle(active_hwnd)
     return window_title == cfg.DEFAULT_WINDOW_TITLE
 
 def get_active_window():

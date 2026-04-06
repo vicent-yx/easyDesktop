@@ -28,29 +28,30 @@ public_desktop = os.path.join(os.environ["PUBLIC"], "Desktop")
 class resource_load:
     def __init__(self):
         self.last_update_time = 0
+        self.temp = {}
     def read_full_temp(self):
         if os.path.exists(TEMP_FILE):
             try:
                 with open(TEMP_FILE, "r",encoding="utf-8") as f:
-                    return json.load(f)
-            except:
-                os.remove(TEMP_FILE)
-                return {}
+                    temp_data = json.load(f)
+                self.temp = temp_data
+                return temp_data
+            except Exception as e:
+                return self.temp
         else:
             return {}
     def write_temp(self,dirPath,temp):
         data = self.read_full_temp()
         data[dirPath]=temp
         with open(TEMP_FILE, "w",encoding="utf-8") as f:
-            json.dump(data, f)
+            json.dump(data, f,ensure_ascii=True, indent=4)
     def read_temp(self,dirPath):
         if os.path.exists(TEMP_FILE):
-            with open(TEMP_FILE, "r",encoding="utf-8") as f:
-                data = json.load(f)
-                if dirPath in data:
-                    return data[dirPath]
-                else:
-                    return None
+            data = self.read_full_temp()
+            if dirPath in data:
+                return data[dirPath]
+            else:
+                return None
         else:
             return None
     def check_recover(self,data, match):

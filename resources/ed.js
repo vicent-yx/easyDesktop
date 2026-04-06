@@ -462,10 +462,10 @@ class FileRenderer {
         //     this.setEmptyState();
         //     return;
         // }
-        files.forEach(file => {
-            if(target_ctn=="grid" || target_ctn==null)this.renderGridItem(file);
-            if(target_ctn=="list" || target_ctn==null)this.renderListItem(file);
-        });
+        for(var file of files){
+            if(target_ctn=="grid" || target_ctn==null)await this.renderGridItem(file);
+            if(target_ctn=="list" || target_ctn==null)await this.renderListItem(file);
+        }
         if(ani==true)this.changeClass_ani_state(true,"fade-in-up")
         if(ani==true)await new Promise(resolve => setTimeout(resolve, 300));
         if(ani==true)this.changeClass_ani_state(false,"fade-in-up")
@@ -740,7 +740,6 @@ const MenuManager = {
 // ========== 导航管理器 ==========
 const NavigationManager = {
     async navigateTo(path) {
-        DOMCache.get("content_box").scrollTo(0, 0);
         if(path=="/" || path=="" || path=="desktop" || path==document.getElementById("b2d").dataset.path){
             document.getElementById("box1").style.display="block"
         }else{
@@ -758,8 +757,11 @@ const NavigationManager = {
 
         const result = await ApiHelper.getFileInfo(path);
         AppState.setFiles(result.data);
+        DOMCache.get("content_box").scrollTo({
+            top: 0,
+            behavior: 'smooth',
+        })
         await fileRenderer.render(result.data);
-
         window.scrollTo(0, 0);
     },
 
@@ -2799,6 +2801,20 @@ window.addEventListener("keydown", function(event) {
     }
 });
 
+class DragHelper { 
+    constructor() {
+        this.dragging = false
+        this.boxs [
+            document.getElementById("filesContainer"),
+            document.getElementById("filesListContainer"),
+            document.getElementById("class_bar"),
+            document.getElementById("groupFilesContainer")
+        ]
+        this.content_box = document.getElementById("content_box")
+        this.boxs[0].dataset.other = "list"
+        this.boxs[1].dataset.other = "grid"
+    }
+}
 let dragging = false
 boxs = [
     document.getElementById("filesContainer"),
@@ -2975,9 +2991,7 @@ for(let list of boxs){
         }else{
             await save_new_order(list.dataset.other)
         }
-
     })
-
 }
 
 async function save_new_order(reload_part){
