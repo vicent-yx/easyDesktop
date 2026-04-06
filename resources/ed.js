@@ -12,7 +12,8 @@ const CONSTANTS = {
         'psd': '设计稿', 'fig': '设计稿',
         'sql': '数据库', 'json': '配置文件',
         'zip': '压缩文件', 'exe': '应用程序',
-        'SteamGame':"Steam游戏"
+        'SteamGame':"Steam游戏",
+        'lnk': "快捷方式",
     },
 
     THEME_PATHS: {
@@ -21,20 +22,66 @@ const CONSTANTS = {
         "zzz": "/theme/zzz.css"
     },
 
-    CLICK_DELAY: 200,
+    CLICK_DELAY: 100,
     REMIND_DURATION: 1000,
     ERROR_DISPLAY_TIME: 5000
 };
+const block="block"
+// ========== 显示模式管理 ==========
+const DisplayModeManager = {
+    mode:"grid",
+    btn:document.getElementById("displayToggleBtn"),
+    async toggleDisplayMode(){
+        if (this.mode == "grid") {
+            this.list_view()
+            await ApiHelper.updateConfig("view", "list");
+        } else {
+            this.grid_view()
+            await ApiHelper.updateConfig("view", "block");
+        }
+    },
+    async list_view(){
+        this.mode = "list";
+        this.btn.innerHTML = '<i class="fas fa-list"></i>';
+        EventManager.switchToListView();
+    },
+    async grid_view(){
+        this.mode = "grid";
+        this.btn.innerHTML = '<i class="fas fa-th-large"></i>';
+        EventManager.switchToGridView()
+    }
+}
 
 // ========== 工具函数模块 ==========
 const Utils = {
+    /**
+     * UIBox Display Change
+     */
+    async uiBoxDisplayChange(uiBox, display,ani=true) {
+        if (uiBox) {
+            
+            if (ani) {
+                if(['block','flex'].includes(display))uiBox.style.display = display
+                if(uiBox.children.length==1){
+                    uiBox = uiBox.children[0]
+                }
+                uiBox.classList.add(['block','flex'].includes(display) ? 'fade-in-up' : 'fade-out-up');
+                await new Promise(resolve => setTimeout(resolve, 300));
+                uiBox.classList.remove(['block','flex'].includes(display) ? 'fade-in-up' : 'fade-out-up');
+                if(['none'].includes(display))uiBox.style.display = display
+            }else{
+                uiBox.style.display = display;
+
+            }
+        }
+    },
     /**
      * 获取文件类型显示名称
      */
     getFileType(fileName, fileType) {
         if (fileType == '文件夹') return '文件夹';
         if (fileType == 'SteamGame') return 'Steam游戏';
-        console.log(fileType)
+        // console.log(fileType)
 
         const ext = fileName.split('.').pop().toLowerCase();
         if (CONSTANTS.SCRIPT_TYPES.includes(ext)) {
@@ -99,6 +146,7 @@ const Utils = {
 // ========== 应用状态管理 ==========
 const AppState = {
     files_data: [],
+    filter_data:[],
     selectedFile: null,
     contextMenu: null,
     dealing: false,
@@ -172,8 +220,10 @@ const ApiHelper = {
         return await this.call('update_config', key, value);
     },
 
-    async getFileInfo(path) {
-        return await this.call('get_fileinfo', path);
+    async getFileInfo(path,quick=true) {
+        var data = await this.call('get_fileinfo', path,quick);
+        AppState.filter_data = data["filter_data"];
+        return data;
     },
 
     async openFile(filePath) {
@@ -211,7 +261,7 @@ const ApiHelper = {
 
 // ========== UI工具类 ==========
 const UIUtils = {
-    showError(message) {
+    showMessage(message,isErr=true) {
         const errorBox = document.createElement('div');
         Object.assign(errorBox.style, {
             position: 'fixed',
@@ -219,7 +269,7 @@ const UIUtils = {
             left: '50%',
             transform: 'translateX(-50%)',
             padding: '20px 30px',
-            backgroundColor: '#ff4d4d',
+            backgroundColor: isErr?'#ff4d4d':'#2196F3',
             color: 'white',
             fontSize: '16px',
             borderRadius: '12px',
@@ -364,27 +414,61 @@ const UIUtils = {
 };
 
 // ========== 文件渲染器 ==========
+const DialogManager = {
+    unlockTimer: null,
+    unlockDelay: 150,
+
+    lockWindowVisibility() {
+        if (this.unlockTimer !== null) {
+            clearTimeout(this.unlockTimer);
+            this.unlockTimer = null;
+        }
+        ApiHelper.call('lock_window_visibility');
+    },
+
+    releaseWindowVisibility(delay = this.unlockDelay) {
+        if (this.unlockTimer !== null) {
+            clearTimeout(this.unlockTimer);
+        }
+        this.unlockTimer = setTimeout(() => {
+            this.unlockTimer = null;
+            ApiHelper.call('unlock_window_visibility');
+        }, delay);
+    }
+};
+
 class FileRenderer {
     constructor() {
         this.gridContainer = DOMCache.get('filesContainer');
         this.listContainer = DOMCache.get('filesListContainer');
     }
+    async changeClass_ani_state(t,class_name){
+        if(t==true){
+            this.gridContainer.classList.add(class_name);
+            this.listContainer.classList.add(class_name);
+        }else{
+            this.gridContainer.classList.remove(class_name);
+            this.listContainer.classList.remove(class_name);
+        }
+    }
 
     /**
      * 渲染文件列表
      */
-    async render(files,target_ctn=null) {
+    async render(files,target_ctn=null,ani=true) {
         this.clearContainers(target_ctn);
 
-        if (!files || files.length === 0) {
-            this.setEmptyState();
-            return;
-        }
-
+        // if (!files || files.length === 0) {
+        //     this.setEmptyState();
+        //     return;
+        // }
         files.forEach(file => {
             if(target_ctn=="grid" || target_ctn==null)this.renderGridItem(file);
             if(target_ctn=="list" || target_ctn==null)this.renderListItem(file);
         });
+        if(ani==true)this.changeClass_ani_state(true,"fade-in-up")
+        if(ani==true)await new Promise(resolve => setTimeout(resolve, 300));
+        if(ani==true)this.changeClass_ani_state(false,"fade-in-up")
         image_preview()
     }
 
@@ -393,18 +477,50 @@ class FileRenderer {
         if(target_ctn=="list" || target_ctn==null)this.listContainer.innerHTML = '';
     }
 
-    setEmptyState() {
-        this.gridContainer.style.minHeight = "75vh";
-        this.listContainer.style.minHeight = "75vh";
+    // setEmptyState() {
+    //     this.gridContainer.style.minHeight = "75vh";
+    //     this.listContainer.style.minHeight = "75vh";
+    // }
+    renderGroupIcon(isGrid,file){
+        // 2x2 宫格图标
+        let gridHtml = `<div class="group-icon-grid" ${isGrid?'':'style="width: 40px;height: 40px;margin-bottom: 0px;margin-left:1.5%"'}>`;
+        for (let i = 0; i < 4; i++) {
+            if (file.groupIcons && file.groupIcons[i]) {
+                gridHtml += `<img draggable="false" src="${file.groupIcons[i]}" alt="">`;
+            } else {
+                gridHtml += '<div class="group-icon-empty"></div>';
+            }
+        }
+        gridHtml += '</div>';
+        return gridHtml;
     }
 
     createFileElement = async function(file, isGrid = true) {
         const element = document.createElement('div');
         element.draggable = true;
         element.dataset.is_cl = file.cl;
-        element.className = isGrid ? 'file-item' : 'file-list-item';
         element.id = Utils.generateFileId(file.filePath);
         element.dataset.list_index = file.index;
+
+        // 组项目特殊渲染
+        if (file.isGroup) {
+            element.className = isGrid ? 'file-item file-group-item' : 'file-list-item file-group-item';
+            element.dataset.group_id = file.groupId;
+            const nameClass = isGrid ? 'file-name' : 'file-list-name';
+            const typeClass = isGrid ? 'file-type' : 'file-list-type';
+
+            let gridHtml = this.renderGroupIcon(isGrid,file);
+            element.innerHTML = `
+                ${gridHtml}
+                <span draggable="false" ${isGrid==true?'':'style="margin-left:12px;"'} class="${nameClass}">${file.fileName}</span>
+                <span draggable="false" class="${typeClass}">应用组</span>
+                ${isGrid==false?'':`<div class="group-badge">${file.itemCount}</div>`}
+            `;
+            this.attachGroupEvents(element, file);
+            return element;
+        }
+
+        element.className = isGrid ? 'file-item' : 'file-list-item';
 
         const fileType = Utils.getFileType(file.file, file.fileType);
         const iconClass = isGrid ? 'file-icon' : 'file-list-icon';
@@ -417,7 +533,7 @@ class FileRenderer {
             <span draggable = false class="${typeClass}">${fileType}</span>
         `;
         const cl_e = document.createElement("div")
-        
+
         cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
         if(file.cl==false){
             if(document.getElementById("theme_css").href.includes("light")==true){
@@ -425,12 +541,12 @@ class FileRenderer {
             }else{
                 cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl_w.png'>"
             }
-            
+
         }else{
             cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl-active.png'>"
             cl_e.style.display="block"
         }
-        
+
         cl_e.onclick=(event) => {event.stopPropagation();change_cl_state(file.filePath, file.cl)};
         cl_e.ondblclick = (event) => {event.stopPropagation();}
         element.insertBefore(cl_e, element.firstChild);
@@ -474,14 +590,28 @@ class FileRenderer {
         element.addEventListener('contextmenu', (e) => {
             e.preventDefault();
             if(file.sysApp!=undefined)return
+            // 组视图内由 showGroupItemContextMenu 接管，跳过普通菜单
+            if (GroupManager.currentOpenGroup !== null) return;
             MenuManager.showContextMenu(e, file);
         });
     }
 
     handleFileAction(file, isDoubleClick) {
+        if (file.isGroup) {
+            GroupManager.openGroup(file.groupId, file.fileName);
+            return;
+        }
+        // 从组视图内打开文件时，先关闭组视图（恢复 autoClose）
+        if (GroupManager.currentOpenGroup !== null) {
+            GroupManager.closeGroup();
+        }
         if (file.fileType === '文件夹') {
             if (isDoubleClick) {
-                ApiHelper.openFile(file.filePath);
+                if(config["dbc_action"]=="1"){
+                    ApiHelper.openFile(file.filePath);
+                }else{
+                    NavigationManager.navigateTo(file.filePath);
+                }
             } else {
                 NavigationManager.navigateTo(file.filePath);
             }
@@ -489,11 +619,42 @@ class FileRenderer {
             ApiHelper.call('open_sysApp', file.filePath);
         } else {
             if (isDoubleClick) {
-                ApiHelper.showFile(file.filePath);
+                if(config["dbc_action"]=="1"){
+                    ApiHelper.showFile(file.filePath);
+                }else{
+                    ApiHelper.openFile(file.filePath);
+                }
             } else {
                 ApiHelper.openFile(file.filePath);
             }
         }
+    }
+
+    attachGroupEvents(element, file) {
+        // 单击打开组视图
+        element.addEventListener('click', () => {
+            DOMCache.get("search_input").value = "";
+            AppState.timer = setTimeout(() => {
+                if (AppState.db_click_action) {
+                    AppState.db_click_action = false;
+                    return;
+                }
+                GroupManager.openGroup(file.groupId, file.fileName);
+            }, CONSTANTS.CLICK_DELAY);
+        });
+
+        // 双击也打开组
+        element.addEventListener('dblclick', () => {
+            AppState.db_click_action = true;
+            clearTimeout(AppState.timer);
+            GroupManager.openGroup(file.groupId, file.fileName);
+        });
+
+        // 右键菜单
+        element.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            GroupManager.showGroupContextMenu(e, file);
+        });
     }
 }
 
@@ -507,7 +668,8 @@ const MenuManager = {
         AppState.setSelectedFile(file);
 
         const contextMenu = DOMCache.get('contextMenu');
-        contextMenu.style.display = 'block';
+        // contextMenu.style.display = 'block';
+        Utils.uiBoxDisplayChange(contextMenu,block,true)
         var scale_rate = config["scale"] / 100
         console.log(e.pageX / scale_rate)
         console.log((window.innerWidth-contextMenu.offsetWidth)/scale_rate)
@@ -529,6 +691,17 @@ const MenuManager = {
         }else{
             DOMCache.get("edit_icon_btn").innerText="自定义图标"
         }
+        // 在普通文件右键菜单中显示"添加到组"，隐藏"从组中移除"
+        if(config["df_dir"]==AppState.currentPath){
+            const addToGroupItem = DOMCache.get('menuAddToGroup');
+            if (addToGroupItem) addToGroupItem.style.display = 'flex';
+            const removeItem = document.getElementById('menuGroupRemoveItem');
+            if (removeItem) removeItem.style.display = 'none';
+        }else{
+            addToGroupItem.style.display = 'none'
+            removeItem.style.display = 'none'
+        }
+        
         disableScroll();
     },
 
@@ -545,6 +718,7 @@ const MenuManager = {
         const contextMenu = DOMCache.get('contextMenu');
         if (contextMenu) {
             contextMenu.style.display = 'none';
+            contextMenu.style.zIndex = '';  // 恢复默认 z-index
         }
         enableScroll();
     },
@@ -552,6 +726,13 @@ const MenuManager = {
     hideAllMenus() {
         this.hideContextMenu();
         DOMCache.get('blankMenu').style.display = 'none';
+        const groupMenu = DOMCache.get('groupContextMenu');
+        if (groupMenu) groupMenu.style.display = 'none';
+        const groupSubMenu = DOMCache.get('groupSubMenu');
+        if (groupSubMenu) groupSubMenu.style.display = 'none';
+        // 隐藏"从组中移除"菜单项
+        const removeItem = document.getElementById('menuGroupRemoveItem');
+        if (removeItem) removeItem.style.display = 'none';
         enableScroll();
     }
 };
@@ -582,14 +763,20 @@ const NavigationManager = {
         window.scrollTo(0, 0);
     },
 
-    async refreshCurrentPath() {
-        const result = await ApiHelper.getFileInfo(AppState.currentPath);
-        if(result.same==true)return;
-        AppState.setFiles(result.data);
-        await fileRenderer.render(result.data);
-        if(last_group!="" || last_group!="全部"){
-            change_class(last_group)
-        }
+    async refreshCurrentPath(quick_update=true,ani=true) {
+        return new Promise(async (resolve) => { 
+            console.log(quick_update)
+            const result = await ApiHelper.getFileInfo(AppState.currentPath,quick_update);
+            // if(result.same==true)return;
+            DOMCache.get("search_input").value=""
+            AppState.setFiles(result.data);
+            await fileRenderer.render(result.data,null,ani);
+            if(last_group!="" || last_group!="全部"){
+                change_class(last_group)
+            }
+            console.log(result)
+            resolve(true);
+        });
     },
 
     async updateBreadcrumb(path) {
@@ -641,15 +828,32 @@ const NavigationManager = {
 
 // ========== 搜索管理器 ==========
 const SearchManager = {
-    async performSearch() {
-        const key = DOMCache.get("search_input").value;
+    async performSearch(searchKey=null,render=true) {
+        let key = ""
+        if(searchKey==null){
+            key = DOMCache.get("search_input").value;
+        }else{
+            key = searchKey;
+        }
 
         if (key === "") {
-            await fileRenderer.render(AppState.files_data);
+            await fileRenderer.render(AppState.files_data,null,false);
             return;
         }
 
-        const pyData = await ApiHelper.loadSearchIndex(AppState.files_data);
+        const groups = AppState.files_data.filter(f => f.isGroup);
+        let group_data = []
+        for (const group of groups) {
+            try {
+                const contents = await ApiHelper.call('get_group_contents', group.groupId);
+                if (contents.data) {
+                    contents.data.forEach(file => {
+                        group_data.push(file);
+                    });
+                }
+            } catch (e) { /* 忽略 */ }
+        }
+        const pyData = await ApiHelper.loadSearchIndex([...AppState.files_data,...group_data]);
         const outData = [];
         const dealKey = Utils.checkChineseChars(key);
 
@@ -672,7 +876,36 @@ const SearchManager = {
             });
         }
 
-        await fileRenderer.render(outData);
+        // 同时搜索组内文件
+        for (const group of groups) {
+            if (outData.find(f => f.filePath === group.filePath)) continue;
+            try {
+                const contents = await ApiHelper.call('get_group_contents', group.groupId);
+                if (contents.data) {
+                    contents.data.forEach(file => {
+                        if(dealKey.have_cn){
+                            // console.log(file)
+                            if (Utils.contains(file.fileName, dealKey.origin) ||
+                                Utils.contains(file.fileName, dealKey.fix)) {
+                                outData.push(file);
+                            }
+                        }else{
+                            const fileData = pyData[file.fileName];
+                            if (fileData && (
+                                Utils.contains(fileData.sxpy, key) ||
+                                Utils.contains(fileData.py, key)
+                            )) {
+                                outData.push(file);
+                            }
+                        }
+                        
+                    });
+                }
+            } catch (e) { /* 忽略 */ }
+        }
+
+        if(render==true)await fileRenderer.render(outData,null,false);
+        return outData;
     }
 };
 
@@ -769,7 +1002,8 @@ const FileOperationManager = {
     },
 
     async refreshAndRemindFile(result) {
-        await NavigationManager.refreshCurrentPath();
+        console.log(result)
+        await NavigationManager.refreshCurrentPath(false,false);
 
         if (result.file) {
             setTimeout(() => {
@@ -780,6 +1014,313 @@ const FileOperationManager = {
                 }
             }, 200);
         }
+    }
+};
+
+// ========== 应用组管理器 ==========
+const groupContainer = document.querySelector('.group-view-container');
+const GroupManager = {
+    currentOpenGroup: null,
+    currentGroupName: '',
+    isDialogActive: false,  // 标记组对话框是否活跃，防止原始重命名逻辑触发
+
+    async openGroup(groupId, groupName) {
+        this.currentOpenGroup = groupId;
+        this.currentGroupName = groupName || '';
+        const overlay = DOMCache.get('groupViewOverlay');
+        const title = DOMCache.get('groupViewTitle');
+        const container = DOMCache.get('groupFilesContainer');
+
+        title.textContent = groupName || '应用组';
+        container.innerHTML = '<div class="loading-indicator">加载中...</div>';
+        // overlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(overlay, "flex",true)
+        // UIUtils.disableScroll();
+
+        try {
+            const result = await ApiHelper.call('get_group_contents', groupId);
+            container.innerHTML = '';
+            if (result.data && result.data.length > 0) {
+                for (const file of result.data) {
+                    file.index = 0;
+                    const el = await fileRenderer.createFileElement(file, true);
+                    el.dataset.file_path = file.filePath;
+                    el.dataset.gid = groupId;
+                    // 为组内文件添加"从组中移除"的右键菜单
+                    el.addEventListener('contextmenu', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showGroupItemContextMenu(e, file, groupId);
+                    });
+                    // 拖拽到组窗口外 = 移出组
+                    // el.addEventListener('dragend', (e) => {
+                    //     const rect = groupContainer.getBoundingClientRect();
+                    //     if (e.clientX < rect.left || e.clientX > rect.right ||
+                    //         e.clientY < rect.top || e.clientY > rect.bottom) {
+                    //         const fp = el.dataset.file_path;
+                    //         if (fp) this.removeFromGroup(groupId, fp);
+                    //     }
+                    // });
+                    container.appendChild(el);
+                }
+            } else {
+                container.innerHTML = '<div class="loading-indicator">组内没有文件</div>';
+            }
+        } catch (err) {
+            console.error('加载组内容失败:', err);
+            container.innerHTML = '<div class="loading-indicator">加载失败</div>';
+        }
+    },
+
+    closeGroup() {
+        const overlay = DOMCache.get('groupViewOverlay');
+        overlay.style.display = 'none';
+        this.currentOpenGroup = null;
+        UIUtils.enableScroll();
+    },
+
+    async createGroup() {
+        this.isDialogActive = true;
+        DialogManager.lockWindowVisibility();
+        const renameOverlay = DOMCache.get('renameOverlay');
+        const renameInput = DOMCache.get('renameInput');
+        const h3 = renameOverlay.querySelector('h3');
+        const origTitle = h3.textContent;
+        h3.textContent = '新建组';
+        renameInput.value = '';
+        // renameOverlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(renameOverlay, "flex",true)
+        renameInput.focus();
+
+        const confirmBtn = DOMCache.get('renameConfirm');
+        const handler = async () => {
+            const name = renameInput.value.trim();
+            if (!name) return;
+            var r = await ApiHelper.call('create_group', name);
+            renameOverlay.style.display = 'none';
+            h3.textContent = origTitle;
+            confirmBtn.removeEventListener('click', handler);
+            cancelBtn.removeEventListener('click', cancelHandler);
+            this.isDialogActive = false;
+            DialogManager.releaseWindowVisibility();
+            FileOperationManager.refreshAndRemindFile({file:"__group__:"+r.groupId})
+        };
+        confirmBtn.addEventListener('click', handler);
+
+        const cancelBtn = DOMCache.get('renameCancel');
+        const cancelHandler = () => {
+            h3.textContent = origTitle;
+            confirmBtn.removeEventListener('click', handler);
+            cancelBtn.removeEventListener('click', cancelHandler);
+            this.isDialogActive = false;
+        };
+        cancelBtn.addEventListener('click', cancelHandler);
+    },
+
+    async editGroupOrder() {
+        const ctn = DOMCache.get('groupFilesContainer');
+        var paths = [];
+        for(let p of ctn.children){
+            paths.push(p.dataset.file_path)
+        }
+        await ApiHelper.call('edit_group_order', this.currentOpenGroup, paths);
+        NavigationManager.refreshCurrentPath();
+    },
+
+    async renameGroup(groupId) {
+        this.isDialogActive = true;
+        DialogManager.lockWindowVisibility();
+        const renameOverlay = DOMCache.get('renameOverlay');
+        const renameInput = DOMCache.get('renameInput');
+        const h3 = renameOverlay.querySelector('h3');
+        const origTitle = h3.textContent;
+        h3.textContent = '重命名组';
+        renameInput.value = this.currentGroupName;
+        // renameOverlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(renameOverlay, "flex",true)
+        renameInput.focus();
+
+        const confirmBtn = DOMCache.get('renameConfirm');
+        const handler = async () => {
+            const name = renameInput.value.trim();
+            if (!name) return;
+            await ApiHelper.call('rename_group', groupId, name);
+            renameOverlay.style.display = 'none';
+            h3.textContent = origTitle;
+            confirmBtn.removeEventListener('click', handler);
+            cancelBtn.removeEventListener('click', cancelHandler);
+            this.isDialogActive = false;
+            DialogManager.releaseWindowVisibility();
+            NavigationManager.refreshCurrentPath();
+        };
+        confirmBtn.addEventListener('click', handler);
+
+        const cancelBtn = DOMCache.get('renameCancel');
+        const cancelHandler = () => {
+            h3.textContent = origTitle;
+            confirmBtn.removeEventListener('click', handler);
+            cancelBtn.removeEventListener('click', cancelHandler);
+            this.isDialogActive = false;
+        };
+        cancelBtn.addEventListener('click', cancelHandler);
+    },
+
+    async deleteGroup(groupId) {
+        return this.confirmAndDeleteGroup(groupId, this.currentGroupName);
+    },
+
+    async confirmAndDeleteGroup(groupId, groupName = '') {
+        const overlay = DOMCache.get('groupDeleteConfirm');
+        const groupDeleteName = DOMCache.get('groupDeleteName');
+        const cancelBtn = DOMCache.get('groupDeleteCancel');
+        const confirmBtn = DOMCache.get('groupDeleteConfirmBtn');
+
+        groupDeleteName.textContent = groupName || this.currentGroupName || '未命名应用组';
+        // overlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(overlay, "flex",true)
+        UIUtils.disableScroll();
+        DialogManager.lockWindowVisibility();
+
+        const confirmed = await new Promise((resolve) => {
+            let settled = false;
+
+            const cleanup = (result) => {
+                if (settled) return;
+                settled = true;
+                overlay.style.display = 'none';
+                cancelBtn.removeEventListener('click', handleCancel);
+                confirmBtn.removeEventListener('click', handleConfirm);
+                overlay.removeEventListener('click', handleOverlayClick);
+                document.removeEventListener('keydown', handleKeyDown, true);
+                if (DOMCache.get('groupViewOverlay').style.display !== 'flex') {
+                    UIUtils.enableScroll();
+                }
+                DialogManager.releaseWindowVisibility();
+                resolve(result);
+            };
+
+            const handleCancel = () => cleanup(false);
+            const handleConfirm = () => cleanup(true);
+            const handleOverlayClick = (e) => {
+                if (e.target.id === 'groupDeleteConfirm') {
+                    cleanup(false);
+                }
+            };
+            const handleKeyDown = (e) => {
+                if (overlay.style.display !== 'flex') return;
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    cleanup(true);
+                    return;
+                }
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    cleanup(false);
+                }
+            };
+
+            cancelBtn.addEventListener('click', handleCancel);
+            confirmBtn.addEventListener('click', handleConfirm);
+            overlay.addEventListener('click', handleOverlayClick);
+            document.addEventListener('keydown', handleKeyDown, true);
+            confirmBtn.focus();
+        });
+
+        if (!confirmed) return;
+        await ApiHelper.call('delete_group', groupId);
+        this.closeGroup();
+        NavigationManager.refreshCurrentPath();
+    },
+
+    async addToGroup(groupId, filePaths) {
+        await ApiHelper.call('add_to_group', groupId, filePaths);
+        await NavigationManager.refreshCurrentPath();
+        UIUtils.showMessage("已添加到组",false)
+    },
+
+    async removeFromGroup(groupId, filePath) {
+        await ApiHelper.call('remove_from_group', groupId, filePath);
+        // 如果组视图是打开的，刷新组视图
+        if (this.currentOpenGroup === groupId) {
+            this.openGroup(groupId, this.currentGroupName);
+        }
+        NavigationManager.refreshCurrentPath();
+    },
+
+    showGroupContextMenu(e, file) {
+        MenuManager.hideAllMenus();
+        const menu = DOMCache.get('groupContextMenu');
+        // menu.style.display = 'block';
+        Utils.uiBoxDisplayChange(menu,block,true)
+        menu.style.left = `${e.pageX}px`;
+        menu.style.top = `${e.pageY}px`;
+
+        // 绑定事件
+        DOMCache.get('menuGroupOpen').onclick = () => {
+            menu.style.display = 'none';
+            this.openGroup(file.groupId, file.fileName);
+        };
+        DOMCache.get('menuGroupRename').onclick = () => {
+            menu.style.display = 'none';
+            this.currentGroupName = file.fileName;
+            this.renameGroup(file.groupId);
+        };
+        DOMCache.get('menuGroupDelete').onclick = () => {
+            menu.style.display = 'none';
+            this.currentGroupName = file.fileName;
+            this.confirmAndDeleteGroup(file.groupId, file.fileName);
+        };
+
+        disableScroll();
+    },
+
+    showGroupItemContextMenu(e, file, groupId) {
+        // 复用主右键菜单但添加"从组中移除"选项
+        MenuManager.hideAllMenus();
+        AppState.setSelectedFile(file);
+
+        const contextMenu = DOMCache.get('contextMenu');
+        // contextMenu.style.display = 'block';
+        Utils.uiBoxDisplayChange(contextMenu,block,true)
+        // 提升 z-index 使右键菜单显示在组视图 overlay 之上
+        contextMenu.style.zIndex = '4000';
+
+        // 缩放感知定位 + 边界检测
+        const scale = document.body.style.zoom ? parseFloat(document.body.style.zoom) : 1;
+        let posX = e.pageX / scale;
+        let posY = e.pageY / scale;
+        if (posX > (window.innerWidth - contextMenu.offsetWidth) / scale) {
+            posX = (window.innerWidth - contextMenu.offsetWidth) / scale;
+        }
+        if (posY > (window.innerHeight - contextMenu.offsetHeight) / scale) {
+            posY = (window.innerHeight - contextMenu.offsetHeight) / scale;
+        }
+        contextMenu.style.left = `${posX}px`;
+        contextMenu.style.top = `${posY}px`;
+
+        // 隐藏"添加到组"，显示"从组中移除"
+        const addToGroupItem = DOMCache.get('menuAddToGroup');
+        if (addToGroupItem) addToGroupItem.style.display = 'none';
+
+        // 临时添加"从组中移除"菜单项
+        let removeItem = document.getElementById('menuGroupRemoveItem');
+        if (!removeItem) {
+            removeItem = document.createElement('div');
+            removeItem.className = 'context-menu-item group-remove';
+            removeItem.id = 'menuGroupRemoveItem';
+            removeItem.innerHTML = '<i class="fas fa-minus-circle"></i><span>从组中移除</span>';
+            contextMenu.appendChild(removeItem);
+        }
+        // removeItem.style.display = 'flex';
+        Utils.uiBoxDisplayChange(removeItem,"flex",true)
+        removeItem.onclick = () => {
+            this.removeFromGroup(groupId, file.filePath);
+            MenuManager.hideContextMenu();
+        };
+
+        disableScroll();
     }
 };
 
@@ -813,29 +1354,28 @@ const EventManager = {
     },
 
     initViewToggle() {
-        DOMCache.get('gridViewBtn').addEventListener('click', async () => {
-            this.switchToGridView();
-            await ApiHelper.updateConfig("view", "block");
+        DOMCache.get('displayToggleBtn').addEventListener('click', async () => {
+            DisplayModeManager.toggleDisplayMode();
         });
 
-        DOMCache.get('listViewBtn').addEventListener('click', async () => {
-            this.switchToListView();
-            await ApiHelper.updateConfig("view", "list");
-        });
+        // DOMCache.get('listViewBtn').addEventListener('click', async () => {
+        //     this.switchToListView();
+        //     await ApiHelper.updateConfig("view", "list");
+        // });
     },
 
     switchToGridView() {
         DOMCache.get('filesContainer').style.display = 'grid';
         DOMCache.get('filesListContainer').style.display = 'none';
-        DOMCache.get('gridViewBtn').classList.add('active');
-        DOMCache.get('listViewBtn').classList.remove('active');
+        // DOMCache.get('gridViewBtn').classList.add('active');
+        // DOMCache.get('listViewBtn').classList.remove('active');
     },
 
     switchToListView() {
         DOMCache.get('filesContainer').style.display = 'none';
         DOMCache.get('filesListContainer').style.display = 'block';
-        DOMCache.get('gridViewBtn').classList.remove('active');
-        DOMCache.get('listViewBtn').classList.add('active');
+        // DOMCache.get('gridViewBtn').classList.remove('active');
+        // DOMCache.get('listViewBtn').classList.add('active');
     },
 
     initSearchEvents() {
@@ -849,6 +1389,10 @@ const EventManager = {
     initMenuEvents() {
         // 文件右键菜单
         DOMCache.get('menuOpen').addEventListener('click', () => {
+            // 从组视图内通过右键菜单打开文件时，先关闭组视图
+            if (GroupManager.currentOpenGroup !== null) {
+                GroupManager.closeGroup();
+            }
             if (AppState.selectedFile.game) {
                 ApiHelper.call('open_mhyGame', AppState.selectedFile.filePath, AppState.selectedFile.game);
             } else {
@@ -874,12 +1418,61 @@ const EventManager = {
         DOMCache.get('menuDelete').addEventListener('click', this.showDeleteConfirm);
         DOMCache.get("menuCustomIcon").addEventListener('click',this.setIcon)
 
+        // 添加到组 - 鼠标悬停时展示子菜单
+        DOMCache.get('menuAddToGroup').addEventListener('mouseenter', async function() {
+            const subMenu = DOMCache.get('groupSubMenu');
+            const result = await ApiHelper.call('get_groups');
+            const groups = result.data || {};
+            const keys = Object.keys(groups);
+
+            subMenu.innerHTML = '';
+            if (keys.length === 0) {
+                const emptyItem = document.createElement('div');
+                emptyItem.className = 'context-menu-item';
+                emptyItem.innerHTML = '<span style="color:#999">暂无组，请先新建</span>';
+                subMenu.appendChild(emptyItem);
+            } else {
+                keys.forEach(gid => {
+                    const item = document.createElement('div');
+                    item.className = 'context-menu-item';
+                    item.innerHTML = `<i class="fas fa-layer-group"></i><span>${groups[gid].name}</span>`;
+                    item.addEventListener('click', async () => {
+                        await GroupManager.addToGroup(gid, [AppState.selectedFile.filePath]);
+                        MenuManager.hideAllMenus();
+                    });
+                    subMenu.appendChild(item);
+                });
+            }
+
+            // 定位子菜单到"添加到组"右侧，若超出窗口则放左侧
+            const parentRect = DOMCache.get('menuAddToGroup').getBoundingClientRect();
+            const contextMenuRect = DOMCache.get('contextMenu').getBoundingClientRect();
+            const scale = document.body.style.zoom ? parseFloat(document.body.style.zoom) : 1;
+            subMenu.style.display = 'block';
+            const subMenuWidth = subMenu.offsetWidth;
+            if ((parentRect.right + subMenuWidth) > window.innerWidth) {
+                subMenu.style.left = ((contextMenuRect.left - subMenuWidth) / scale) + 'px';
+            } else {
+                subMenu.style.left = (parentRect.right / scale) + 'px';
+            }
+            subMenu.style.top = (parentRect.top / scale) + 'px';
+        });
+        DOMCache.get('menuAddToGroup').addEventListener('mouseleave', function(e) {
+            // 延迟隐藏，允许鼠标移到子菜单上
+            setTimeout(() => {
+                const subMenu = DOMCache.get('groupSubMenu');
+                if (!subMenu.matches(':hover')) {
+                    subMenu.style.display = 'none';
+                }
+            }, 200);
+        });
+
         // 空白区域右键菜单
         DOMCache.get('menuPaste').addEventListener('click', async () => {
             try {
                 const result = await FileOperationManager.pasteFiles();
                 if (result.success === false) {
-                    UIUtils.showError(result.message);
+                    UIUtils.showMessage(result.message);
                 }
             } catch (error) {
                 console.error('粘贴失败:', error);
@@ -888,33 +1481,52 @@ const EventManager = {
         });
 
         DOMCache.get('menuNew').addEventListener('click', () => {
-            ApiHelper.call('lock_window_visibility');
-            DOMCache.get('newFileOverlay').style.display = 'flex';
-            DOMCache.get('blankMenu').style.display = 'none';
+            DialogManager.lockWindowVisibility();
+            // DOMCache.get('newFileOverlay').style.display = 'flex';
+            Utils.uiBoxDisplayChange(DOMCache.get('newFileOverlay'), 'flex',true);
+            // DOMCache.get('blankMenu').style.display = 'none';
+            Utils.uiBoxDisplayChange(DOMCache.get('blankMenu'),"none", false);
+        });
+
+        DOMCache.get('menuNewGroup').addEventListener('click', () => {
+            // DOMCache.get('blankMenu').style.display = 'none';
+            Utils.uiBoxDisplayChange(DOMCache.get('blankMenu'),"none", false);
+            GroupManager.createGroup();
+        });
+
+        // 组视图关闭
+        DOMCache.get('closeGroupView').addEventListener('click', () => {
+            GroupManager.closeGroup();
+        });
+        DOMCache.get('groupViewOverlay').addEventListener('click', (e) => {
+            if (e.target.id === 'groupViewOverlay') {
+                GroupManager.closeGroup();
+            }
         });
     },
 
     initDialogEvents() {
         // 重命名对话框
         DOMCache.get('renameCancel').addEventListener('click', () => {
-            ApiHelper.call('unlock_window_visibility');
+            DialogManager.releaseWindowVisibility();
             DOMCache.get('renameOverlay').style.display = 'none';
             AppState.dealing = false;
         });
 
         DOMCache.get('renameConfirm').addEventListener('click', async () => {
+            // 组操作使用对话框时跳过文件重命名逻辑
+            if (GroupManager.isDialogActive) return;
             if (AppState.dealing) return;
             AppState.dealing = true;
             try{
-                ApiHelper.call('unlock_window_visibility');
-
                 const newName = DOMCache.get('renameInput').value.trim();
                 if (newName) {
                     try{
                         await FileOperationManager.renameFile(AppState.selectedFile.filePath, newName);
                         DOMCache.get('renameOverlay').style.display = 'none';
+                        DialogManager.releaseWindowVisibility();
                     }catch(e){
-                        UIUtils.showError(e);
+                        UIUtils.showMessage(e);
                     }
                 }
             }catch(e){}
@@ -931,7 +1543,7 @@ const EventManager = {
             AppState.dealing = true;
             const result = await FileOperationManager.removeFile(AppState.selectedFile.filePath);
             if (result.success === false) {
-                UIUtils.showError(result.message);
+                UIUtils.showMessage(result.message);
             }
             DOMCache.get('deleteConfirm').style.display = 'none';
             AppState.dealing = false;
@@ -941,7 +1553,7 @@ const EventManager = {
             AppState.dealing = true;
             const result = await FileOperationManager.removeFile(AppState.selectedFile.filePath, "rubbish");
             if (result.success === false) {
-                UIUtils.showError(result.message);
+                UIUtils.showMessage(result.message);
             }
             DOMCache.get('deleteConfirm').style.display = 'none';
             AppState.dealing = false;
@@ -949,24 +1561,30 @@ const EventManager = {
 
         // 新建文件对话框
         DOMCache.get('newFileCancel').addEventListener('click', () => {
-            ApiHelper.call('unlock_window_visibility');
+            DialogManager.releaseWindowVisibility();
             DOMCache.get('newFileOverlay').style.display = 'none';
         });
 
         DOMCache.get('newFileConfirm').addEventListener('click', async () => {
-            ApiHelper.call('unlock_window_visibility');
             const selectedType = DOMCache.get('newFileTypeSelect').value;
             if (selectedType) {
                 await FileOperationManager.createNewFile(selectedType);
                 DOMCache.get('newFileOverlay').style.display = 'none';
+                DialogManager.releaseWindowVisibility();
             }
         });
 
         // 重命名输入框回车确认
-        DOMCache.get('renameInput').addEventListener('keyup', (e) => {
-            ApiHelper.call('unlock_window_visibility');
+        DOMCache.get('renameInput').addEventListener('keydown', (e) => {
+            e.stopPropagation();
             if (e.key === 'Enter') {
+                e.preventDefault();
                 DOMCache.get('renameConfirm').click();
+                return;
+            }
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                DOMCache.get('renameCancel').click();
             }
         });
     },
@@ -978,14 +1596,15 @@ const EventManager = {
 
         settingsBtn.addEventListener('click', () => {
 
-            themePanel.style.display = themePanel.style.display === 'flex' ? 'none' : 'flex';
-            ApiHelper.call("disable_autoClose")
+            // themePanel.style.display = themePanel.style.display === 'flex' ? 'none' : 'flex';
+            Utils.uiBoxDisplayChange(themePanel, themePanel.style.display === 'flex' ? 'none' : 'flex',true);
+            ApiHelper.call("lock_window_visibility")
         });
 
         closeBtn.addEventListener('click', () => {
             UIUtils.enableScroll();
             themePanel.style.display = 'none';
-            ApiHelper.call("enable_autoClose")
+            ApiHelper.call("unlock_window_visibility")
         });
 
         this.initToggleSettings();
@@ -1050,6 +1669,9 @@ const EventManager = {
         });
         DOMCache.get("outPos_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('outPos', this.value);
+        });
+        DOMCache.get("dbc_action_toggle").addEventListener('change', function () {
+            ApiHelper.updateConfig('dbc_action', this.value);
         });
         DOMCache.get("bgType_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('bgType', this.value);
@@ -1188,7 +1810,9 @@ const EventManager = {
             if (document.activeElement.id !== 'search_input') {
                 const searchInput = DOMCache.get('search_input');
                 if (DOMCache.get("renameOverlay").style.display === "flex") return;
+                if (DOMCache.get("groupDeleteConfirm").style.display === "flex") return;
                 if(document.activeElement.id == "categoryInput") return
+                if(document.getElementById("fileSelectionDialog").style.display!="none")return;
                 if(window_state==false)return
 
                 if (searchInput && !event.ctrlKey && !event.altKey && !event.metaKey && event.key.length === 1) {
@@ -1200,41 +1824,61 @@ const EventManager = {
 
     initClickEvents() {
         document.addEventListener('click', (event) => {
+            if(event.target.id=="menuAddToGroup")return
+            try{if(event.target.parentNode.id=="menuAddToGroup")return}catch(e){}
             MenuManager.hideAllMenus();
 
             if (["content_box", "main"].includes(event.target.id)) {
                 ApiHelper.call('close_fullscreen_window');
             }
         });
-
+        document.addEventListener('contextmenu', (e) => {
+            // this.handleBlankContextMenu(e);
+            console.log(e.target)
+            if(config.df_dir==AppState.currentPath){
+                console.log("当前目录")
+                // document.getElementById("menuNewGroup").style.display="block"
+                // document.getElementById("menuAddToGroup").style.display="block"
+                Utils.uiBoxDisplayChange(document.getElementById("menuNewGroup"),block,true)
+                Utils.uiBoxDisplayChange(document.getElementById("menuAddToGroup"),block,true)
+            }else{
+                console.log("非当前目录")
+                // document.getElementById("menuNewGroup").style.display="none"
+                // document.getElementById("menuAddToGroup").style.display="none"
+                Utils.uiBoxDisplayChange(document.getElementById("menuNewGroup"),none,true)
+                Utils.uiBoxDisplayChange(document.getElementById("menuAddToGroup"),none,true)
+            }
+        });
         // 空白区域右键菜单
-        DOMCache.getBySelector('.files-grid').addEventListener('contextmenu', (e) => {
+        DOMCache.getBySelector('.content_box').addEventListener('contextmenu', (e) => {
             this.handleBlankContextMenu(e);
         });
 
-        DOMCache.getBySelector('.files-list').addEventListener('contextmenu', (e) => {
-            this.handleBlankContextMenu(e);
-        });
+        // DOMCache.getBySelector('.content_box').addEventListener('contextmenu', (e) => {
+        //     this.handleBlankContextMenu(e);
+        // });
     },
 
     handleBlankContextMenu(e) {
-        if (e.target.classList.contains('files-grid') || e.target.classList.contains('files-list')) {
+        if (e.target.classList.contains('files-grid') || e.target.classList.contains('files-list') || e.target.classList.contains('content_box')) {
             e.preventDefault();
             MenuManager.hideContextMenu();
             const blankMenu = DOMCache.get('blankMenu');
-            blankMenu.style.display = 'block';
+            // blankMenu.style.display = 'block';
+            Utils.uiBoxDisplayChange(blankMenu,block,true)
             blankMenu.style.left = `${e.pageX}px`;
             blankMenu.style.top = `${e.pageY}px`;
         }
     },
 
     showRenameDialog() {
-        ApiHelper.call('lock_window_visibility');
+        DialogManager.lockWindowVisibility();
         const renameOverlay = DOMCache.get('renameOverlay');
         const renameInput = DOMCache.get('renameInput');
 
         renameInput.value = AppState.selectedFile.fileName;
-        renameOverlay.style.display = 'flex';
+        // renameOverlay.style.display = 'flex';
+        Utils.uiBoxDisplayChange(renameOverlay,"flex",true)
         renameInput.focus();
 
         MenuManager.hideContextMenu();
@@ -1245,7 +1889,8 @@ const EventManager = {
         const deleteFileName = DOMCache.get('deleteFileName');
 
         deleteFileName.textContent = AppState.selectedFile.fileName;
-        deleteConfirm.style.display = 'flex';
+        // deleteConfirm.style.display = 'flex';
+        Utils.uiBoxDisplayChange(deleteConfirm,"flex",true)
 
         MenuManager.hideContextMenu();
     },
@@ -1289,7 +1934,7 @@ function getFileType(fileName, fileType) {
 async function showFileSelectionDialog(class_name=null) {
     return new Promise(async (resolve) => {
         setTimeout(enableScroll,200)
-        ApiHelper.call("disable_autoClose")
+        ApiHelper.call("unlock_window_visibility")
         let del_btn = document.getElementById("fileSelectionDelete")
         let list_data = []
         if(class_name!=null){
@@ -1328,7 +1973,8 @@ async function showFileSelectionDialog(class_name=null) {
         categoryErrorMsg.textContent = '';
 
         // 显示对话框
-        dialogContainer.style.display = 'flex';
+        // dialogContainer.style.display = 'flex';
+        Utils.uiBoxDisplayChange(dialogContainer,"flex",true)
 
         // 禁用背景滚动
         UIUtils.disableScroll();
@@ -1383,9 +2029,9 @@ async function showFileSelectionDialog(class_name=null) {
                 });
 
                 // 图标
-                const icon = document.createElement('img');
-                icon.src = item.ico;
-                icon.className = 'file-icon';
+                icon = document.createElement('img');
+                icon.src = item.fileType=="应用组"?"./resources/imgs/group.png":item.ico;
+                
 
                 // 文件名
                 const fileName = document.createElement('div');
@@ -1402,6 +2048,7 @@ async function showFileSelectionDialog(class_name=null) {
                 listItem.appendChild(icon);
                 listItem.appendChild(fileName);
                 listItem.appendChild(fileType);
+                listItem.dataset.filePath = item.filePath;
                 fileSelectionList.appendChild(listItem);
             });
 
@@ -1421,7 +2068,7 @@ async function showFileSelectionDialog(class_name=null) {
             dialogContainer.style.display = 'none';
             UIUtils.enableScroll();
             resolve({files_data: [], title: ''});
-            ApiHelper.call("enable_autoClose")
+            ApiHelper.call("unlock_window_visibility")
         }
 
         // 确定按钮事件
@@ -1457,7 +2104,7 @@ async function showFileSelectionDialog(class_name=null) {
             dialogContainer.style.display = 'none';
             UIUtils.enableScroll();
             resolve({files_data: selectedItems, title: categoryTitle});
-            ApiHelper.call("enable_autoClose")
+            ApiHelper.call("unlock_window_visibility")
         }
 
         // 点击对话框外部关闭
@@ -1466,7 +2113,7 @@ async function showFileSelectionDialog(class_name=null) {
                 dialogContainer.style.display = 'none';
                 UIUtils.enableScroll();
                 resolve({files_data: [], title: ''});
-                ApiHelper.call("enable_autoClose")
+                ApiHelper.call("unlock_window_visibility")
             }
         }
 
@@ -1494,6 +2141,29 @@ async function showFileSelectionDialog(class_name=null) {
 
         observer.observe(dialogContainer, { attributes: true });
     });
+}
+async function run_fileSelector_search(){
+    const fileSelectionList = document.getElementById('fileSelectionList');
+    const input_box = document.getElementById('cs_search_box');
+    if(input_box.value==""){
+        for(let c of fileSelectionList.children){
+            c.style.display = "flex";
+        }
+    }else{
+        let result =  await SearchManager.performSearch(input_box.value,false)
+        // 转为列表
+        result_list = []
+        for(let i of result){
+            result_list.push(i.filePath)
+        }
+        for(let c of fileSelectionList.children){
+            if(result_list.includes(c.dataset.filePath)){
+                c.style.display = "flex";
+            }else{
+                c.style.display = "none";
+            }
+        }
+    }
 }
 
 function open_file(filePath) {
@@ -1601,13 +2271,6 @@ async function change_cl_state(filePath, cl){
     await ApiHelper.call('change_cl_state', filePath, cl);
     NavigationManager.refreshCurrentPath();
 }
-async function grid_view() {
-    EventManager.switchToGridView();
-}
-
-async function list_view() {
-    EventManager.switchToListView();
-}
 
 async function set_scale(value) {
     await ConfigManager.updateScale(value);
@@ -1685,7 +2348,7 @@ async function initBackgroundSettings() {
 }
 
 function showError(code) {
-    UIUtils.showError(code);
+    UIUtils.showMessage(code);
 }
 
 function checkChineseChars(str) {
@@ -1701,7 +2364,7 @@ async function load_search() {
 }
 
 async function load_theme(theme,from_fit) {
-    try {
+
         // 参数验证
         if (!theme) {
             console.warn('load_theme: 主题参数不能为空');
@@ -1746,10 +2409,7 @@ async function load_theme(theme,from_fit) {
         if(config["bgType"]=="3")load_bgType(config["bgType"])
         ThemeManager.applyBackgroundSettings(config);
         return true;
-    } catch (error) {
-        console.error('load_theme: 加载主题时发生错误', error);
-        return false;
-    }
+
 }
 async function load_bgType(tid){
     if(tid=="1"){
@@ -1868,7 +2528,7 @@ const fileRenderer = new FileRenderer();
 
 // 页面加载完成后执行
 window.addEventListener('pywebviewready', async function () {
-    try {
+
         // 初始化事件管理器
         EventManager.init();
 
@@ -1913,6 +2573,7 @@ window.addEventListener('pywebviewready', async function () {
             DOMCache.get('cf_type_toggle').value = config.cf_type;
             DOMCache.get('out_cf_type_toggle').value = config.out_cf_type;
             DOMCache.get('outPos_toggle').value = config.outPos;
+            DOMCache.get('dbc_action_toggle').value = config.dbc_action;
             DOMCache.get("bgType_toggle").value = config.bgType;
             DOMCache.get("themeChangeType_toggle").value = config.themeChangeType;
             // EventManager.updateThemeCardInteraction();
@@ -1980,10 +2641,6 @@ window.addEventListener('pywebviewready', async function () {
         }, 100);
         // setInterval(check_dirChange,1000);
 
-    } catch (error) {
-        console.error('应用初始化失败:', error);
-        ApiHelper.call('bug_report', 'init', error.toString());
-    }
     render_class_btn()
 });
 
@@ -2125,6 +2782,10 @@ document.getElementById("class_bar_btn").addEventListener("click", add_class);
 let enter_click = false;
 window.addEventListener("keydown", function(event) {
     if (event.key === 'Enter') {
+        // 输入框活跃或对话框打开时不触发文件点击
+        // if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+        if (DOMCache.get("renameOverlay").style.display === "flex") return;
+        if (DOMCache.get("groupDeleteConfirm").style.display === "flex") return;
         for(let e of [...document.getElementById("filesContainer").children,...document.getElementById("filesListContainer").children]){
             if(e.style.display != "none" && enter_click==false){
                 enter_click = true
@@ -2139,17 +2800,33 @@ window.addEventListener("keydown", function(event) {
 });
 
 let dragging = false
-boxs = [document.getElementById("filesContainer"),document.getElementById("filesListContainer"),document.getElementById("class_bar")]
+boxs = [
+    document.getElementById("filesContainer"),
+    document.getElementById("filesListContainer"),
+    document.getElementById("class_bar"),
+    document.getElementById("groupFilesContainer")
+]
 content_box = document.getElementById("content_box")
 boxs[0].dataset.other = "list"
 boxs[1].dataset.other = "grid"
 pos_move_dt = null
 pos_move_pc = null
-async function move_ctn(num){
-    content_box.scrollTo({
-        top: content_box.scrollTop + num,
-        behavior: 'smooth',
-    })
+const drag_move = {
+    last_time : null,
+    move_ctn:async function(num){
+        // 防过高频触发
+        if(this.last_time!=null){
+            if (Date.now() - this.last_time < 50) {
+                return;
+            }
+        }
+
+        content_box.scrollTo({
+            top: content_box.scrollTop + num,
+            behavior: 'smooth',
+        })
+        this.last_time = Date.now()
+    }
 }
 async function detect_posMove(){
     r = await ApiHelper.call("drag_posMoveAction")
@@ -2157,15 +2834,15 @@ async function detect_posMove(){
         if(r=="bottom"){
             if(pos_move_pc!=null)return
             pos_move_pc = setInterval(async function(){
-                move_ctn(200)
+                drag_move.move_ctn(50)
             },50)
         }else if(r=="top"){
             if(pos_move_pc!=null)return
             pos_move_pc = setInterval(async function(){
-                move_ctn(-200)
+                drag_move.move_ctn(-50)
             },50)
         }
-    }else{
+    }else{ 
         if(pos_move_pc!=null){
             clearInterval(pos_move_pc)
             pos_move_pc = null
@@ -2196,6 +2873,7 @@ for(let list of boxs){
         pos_move_dt = setInterval(async function(){
             detect_posMove()
         },100)
+        ApiHelper.call("lock_window_visibility")
     })
     list.addEventListener('dragenter',(e)=>{
         e.preventDefault()
@@ -2203,6 +2881,16 @@ for(let list of boxs){
         if(e.target === currentLi||e.target === list){
             return
         }
+
+        // 拖拽到组项目上：高亮但不排序
+        let targetEl = e.target.closest('.file-group-item');
+        if (targetEl && !currentLi.classList.contains('file-group-item')) {
+            targetEl.classList.add('drag-over-group');
+            return;
+        }
+        // 移出组项目时移除高亮
+        list.querySelectorAll('.drag-over-group').forEach(el => el.classList.remove('drag-over-group'));
+
         try{
             if(currentLi.classList.contains("class_bar_btn")){
                 if(e.target.classList.contains("class_bar_btn")==false || e.target.draggable!=true){
@@ -2226,11 +2914,48 @@ for(let list of boxs){
     list.addEventListener('dragover',(e)=>{
         e.preventDefault()
         dragging = true
+        // 持续检测组目标，确保拖拽到组上时高亮稳定
+        if (currentLi && !currentLi.classList.contains('file-group-item')) {
+            let targetEl = e.target.closest('.file-group-item');
+            if (targetEl) {
+                list.querySelectorAll('.drag-over-group').forEach(el => {
+                    if (el !== targetEl) el.classList.remove('drag-over-group');
+                });
+                targetEl.classList.add('drag-over-group');
+            } else {
+                list.querySelectorAll('.drag-over-group').forEach(el => el.classList.remove('drag-over-group'));
+            }
+        }
+    })
+    list.addEventListener('dragleave',(e)=>{
+        let targetEl = e.target.closest('.file-group-item');
+        if (targetEl) {
+            // 仅在鼠标真正离开组项目时移除高亮（排除子元素间的切换）
+            if (!e.relatedTarget || !targetEl.contains(e.relatedTarget)) {
+                targetEl.classList.remove('drag-over-group');
+            }
+        }
     })
     list.addEventListener('dragend',async(e)=>{
+        ApiHelper.call("unlock_window_visibility")
         currentLi.classList.remove('moving')
         dragging = false
         stop_moveAction()
+
+        // 检查是否拖入了组
+        const groupTarget = list.querySelector('.drag-over-group');
+        if (groupTarget && currentLi && !currentLi.classList.contains('file-group-item')) {
+            groupTarget.classList.remove('drag-over-group');
+            const groupId = groupTarget.dataset.group_id;
+            const fileIndex = currentLi.dataset.list_index;
+            const fileData = AppState.files_data[fileIndex];
+            if (groupId && fileData && fileData.filePath) {
+                await GroupManager.addToGroup(groupId, [fileData.filePath]);
+                return;
+            }
+        }
+        // 清除所有高亮
+        list.querySelectorAll('.drag-over-group').forEach(el => el.classList.remove('drag-over-group'));
         if(e.target.classList.contains("class_bar_btn")){
             var order = []
             for(let item of boxs[2].children){
@@ -2238,6 +2963,15 @@ for(let list of boxs){
                 order.push(item.id)
             }
             await ApiHelper.call("save_classOrder",order)
+        }else if(e.target.parentNode.id=="groupFilesContainer"){
+            const rect = groupContainer.getBoundingClientRect();
+            if (e.clientX < rect.left || e.clientX > rect.right ||
+                e.clientY < rect.top || e.clientY > rect.bottom) {
+                const fp = currentLi.dataset.file_path;
+                if (fp) GroupManager.removeFromGroup(currentLi.dataset.gid, fp);
+            }else{
+                await GroupManager.editGroupOrder()
+            }
         }else{
             await save_new_order(list.dataset.other)
         }

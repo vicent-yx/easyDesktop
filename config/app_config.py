@@ -7,7 +7,7 @@ import sys
 import json
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "2.3.1"
+APP_VERSION = "2.4.0"
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop_Main"
 
@@ -24,6 +24,7 @@ FILE_ICO_PATH = "./resources/file_icos/"
 CONFIG_FILE = "config.json"
 CL_DATA_FILE = "cl_data.json"
 USER_CLASS_FILE = "user_class.json"
+USER_GROUPS_FILE = "user_groups.json"
 BUGS_REPORT_DIR = "bugs_report"
 EMPTY_XLSX_TEMPLATE = "resources/empty.xlsx"
 
@@ -133,6 +134,7 @@ FILE_ICO = {
     ".css": "./resources/file_icos/css.png",
     ".js": "./resources/file_icos/js.png",
     ".bat": "./resources/file_icos/bat.png",
+    ".lnk":"./resources/file_icos/lnk.png",
     "unkonw": "./resources/file_icos/unkonw.png",
 }
 DEFAULT_EXE_ICON = "./resources/file_icos/exe.png"
@@ -170,7 +172,7 @@ def get_default_config(width, height):
         "cf_hotkey":"",
         "out_cf_type": "2",
         "show_sysApp": False,
-        "scale": 90,
+        "scale": 80,
         "df_dir": "desktop",
         "df_dir_name": "桌面",
         "of_s": True,
@@ -181,7 +183,8 @@ def get_default_config(width, height):
         'blur_effect':30,
         "dir_order":{},
         "class_order":[],
-        "ico":{}
+        "ico":{},
+        "dbc_action":"1"
     }
 
 # ===== 系统应用程序配置 =====

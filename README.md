@@ -9,7 +9,11 @@
 ## 🔧 开发信息
  软件使用pywebview开发，界面使用html+css+js实现，实际操作（如打开文件、新建文件等）由python实现（js通过pywebview调用）
  
- 特别感谢[@CassianVale](https://gitee.com/ALX4890)对代码进行了模块化重构，感谢大佬！
+
+ 特别感谢[@CassianVale](https://gitee.com/ALX4890)对代码进行了模块化重构
+ 
+ 特别感谢[@achilng](https://gitee.com/achilng)为项目添加了应用组功能！
+
 
 
 ## ✨ 核心功能
@@ -64,19 +68,10 @@
 ### 多主题预览
 | 效果展示 | theme |
 |----------|----------|
-| ![浅色主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/main.jpg) | 浅色主题 |
-| ![深色主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/dark_theme.jpg) | 深色主题 |
-| ![3Z主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/3z_theme.jpg) | 3Z主题 |
+| ![浅色主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/light_theme.png) | 浅色主题 |
+| ![深色主题](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/dark_theme.png) | 深色主题 |
+| 
 注意：本软件不自带桌面壁纸，请自行下载壁纸并设置背景。
-
-### 操作界面
-| 右键菜单 | 新建文件 |
-|----------|----------|
-| ![右键菜单](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/menu.jpg) | ![新建文件](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/new_file.jpg)
-
-| 文件粘贴 | 主题设置 |
-|----------|----------|
-| ![文件粘贴](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/put_file.jpg) | ![主题设置](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/theme_settings.jpg) |
 
 ## 🚀 快速开始
 
@@ -98,6 +93,15 @@
 
 欢迎提交 Pull Request！喵。
 
+
+## 联系方式
+
+- 欢迎加入用户QQ群：**[EasyDesktop](https://qm.qq.com/q/gs8eVn4OLC)**
+
+![QQ](https://gitee.com/codevicent/easy-desktop/raw/main/README_RES/qrcode_1773930356930.jpg)
+
 ---
 
 **如果喜欢这个项目，请点个 Star 支持一下呀！** 
+
+或者 [赞助作者](https://codevicent.xyz/give/)。

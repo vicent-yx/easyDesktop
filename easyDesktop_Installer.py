@@ -66,6 +66,8 @@ class userFileUpdateMgr:
                 config["dir_order"][path_key] = order_list
         json.dump(config, open(os.path.join(self.install_path,"config.json"),"w",encoding="utf-8"))
     def updateAction(self):
+        if not hasattr(self, "user_config"):
+            return
         actions = {
             230:self.update_230,
         }
