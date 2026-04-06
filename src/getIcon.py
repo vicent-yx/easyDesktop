@@ -1,16 +1,115 @@
 import os
 import time
 import re
+import shutil
+import tempfile
+import ctypes
+from ctypes import wintypes
+
 import config as cfg
 import win32com.client
 import win32gui
-import shutil
-from PIL import Image
 import win32api
 import win32con
-import win32gui
 import win32ui
+from PIL import Image
 from icoextract import IconExtractor
+
+def _ensure_dir(path: str):
+    if not os.path.exists(path):
+        os.makedirs(path, exist_ok=True)
+
+def _hicon_to_pil_image(hicon) -> Image.Image:
+    ico_x = win32api.GetSystemMetrics(win32con.SM_CXICON)
+    ico_y = win32api.GetSystemMetrics(win32con.SM_CYICON)
+
+    try:
+        icon_info = win32gui.GetIconInfo(hicon)
+        hbm_color = icon_info[4]  # hbmColor
+        if hbm_color:
+            bmp = win32ui.CreateBitmapFromHandle(hbm_color)
+            bmp_info = bmp.GetInfo()
+            ico_x = bmp_info["bmWidth"]
+            ico_y = bmp_info["bmHeight"]
+            # 释放对象
+            try:
+                win32gui.DeleteObject(hbm_color)
+            except Exception:
+                pass
+        try:
+            if icon_info[3]:
+                win32gui.DeleteObject(icon_info[3])
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    hdc_screen = win32ui.CreateDCFromHandle(win32gui.GetDC(0))
+    hbmp = win32ui.CreateBitmap()
+    hbmp.CreateCompatibleBitmap(hdc_screen, ico_x, ico_y)
+
+    hdc_mem = hdc_screen.CreateCompatibleDC()
+    hdc_mem.SelectObject(hbmp)
+    hdc_mem.DrawIcon((0, 0), hicon)
+
+    bmp_info = hbmp.GetInfo()
+    bmp_bytes = hbmp.GetBitmapBits(True)
+
+    img = Image.frombuffer(
+        "RGBA",
+        (bmp_info["bmWidth"], bmp_info["bmHeight"]),
+        bmp_bytes,
+        "raw",
+        "BGRA",
+        0,
+        1
+    )
+
+    # 清理 GDI 资源
+    try:
+        del hdc_mem
+        del hbmp
+        del hdc_screen
+    except Exception:
+        pass
+
+    return img
+
+def _extract_icon_privateextracticons(exe_path: str, size: int = 256):
+    # 使用 Win32 PrivateExtractIconsW 提取指定尺寸的图标
+    shell32 = ctypes.WinDLL("shell32", use_last_error=True)
+    user32 = ctypes.WinDLL("user32", use_last_error=True)
+
+    PrivateExtractIconsW = shell32.PrivateExtractIconsW
+    PrivateExtractIconsW.argtypes = [
+        wintypes.LPCWSTR,  # szFileName
+        ctypes.c_int,      # nIconIndex
+        ctypes.c_int,      # cxIcon
+        ctypes.c_int,      # cyIcon
+        ctypes.POINTER(wintypes.HICON),  # phicon
+        ctypes.POINTER(wintypes.UINT),   # piconid
+        wintypes.UINT,     # nIcons
+        wintypes.UINT      # flags
+    ]
+    PrivateExtractIconsW.restype = wintypes.UINT
+
+    hicons = (wintypes.HICON * 1)()
+    ids = (wintypes.UINT * 1)()
+
+    # nIconIndex=0：通常取主图标
+    n = PrivateExtractIconsW(exe_path, 0, size, size, hicons, ids, 1, 0)
+    if n == 0 or not hicons[0]:
+        return None
+
+    hicon = hicons[0]
+    try:
+        img = _hicon_to_pil_image(hicon)
+        return img
+    finally:
+        try:
+            user32.DestroyIcon(hicon)
+        except Exception:
+            pass
 
 def turn_png(file_path):
     # try:
@@ -24,9 +123,9 @@ def turn_png(file_path):
         else:
             time.sleep(0.1)
             range_time += 1
-            if range_time>100:
+            if range_time > 100:
                 break
-    if file_ok==False:
+    if file_ok == False:
         print(f"错误：文件 '{file_path}' 不存在")
         return False
 
@@ -41,7 +140,6 @@ def turn_png(file_path):
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", UserWarning)
         with Image.open(file_path) as img:
-            # 获取最大尺寸的图标
             if hasattr(img, "size") and img.size[0] > 0:
                 png_path = os.path.splitext(file_path)[0] + ".webp"
                 img.save(png_path, "WEBP")
@@ -49,12 +147,7 @@ def turn_png(file_path):
             else:
                 return "./resources/file_icos/exe.png"
 
-
-    # except Exception as e:
-    #     print(f"转换ICO到PNG过程中发生错误: {str(e)}")
-    #     return "./resources/file_icos/exe.png"
-
-def get_shortcut_icon_win32(lnk_path,name):
+def get_shortcut_icon_win32(lnk_path, name):
     try:
         shell = win32com.client.Dispatch("WScript.Shell")
         shortcut = shell.CreateShortCut(lnk_path)
@@ -62,93 +155,126 @@ def get_shortcut_icon_win32(lnk_path,name):
         # 获取图标位置
         icon_location = shortcut.IconLocation
         if icon_location:
-            if ',' in icon_location:
-                path_part, index_part = icon_location.rsplit(',', 1)
+            if "," in icon_location:
+                path_part, index_part = icon_location.rsplit(",", 1)
                 result = path_part.strip()
             else:
                 result = icon_location.strip()
-        
+
         if result:
-            if result.split(".")[-1] in ["ico","png","jpg","jpeg"]:
+            if result.split(".")[-1] in ["ico", "png", "jpg", "jpeg"]:
                 dir_name = os.path.dirname(lnk_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
-                if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
-                    os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
-                output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"
+                out_dir = os.path.join(cfg.DESKTOP_ICO_PATH, dir_name)
+                _ensure_dir(out_dir)
+
+                output_ico = os.path.join(out_dir, f"{name}.ico")
                 relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"
-                shutil.copyfile(result, output_path)
-                output_path = turn_png(output_path)
+
+                shutil.copyfile(result, output_ico)
+                turn_png(output_ico)
+                # 清理 ico（保持和 exe 逻辑一致）
+                try:
+                    if os.path.exists(output_ico):
+                        os.remove(output_ico)
+                except Exception:
+                    pass
                 return relative_path
-            elif result.split(".")[-1] in ["exe",".EXE"]:
-                return get_icon(result,name)
+            elif result.split(".")[-1] in ["exe", ".EXE"]:
+                return get_icon(result, name)
             else:
                 return None
-        
+
         return None
     except Exception as e:
         print(f"处理快捷方式 {lnk_path} 时出错: {e}")
         return None
 
-def _read_file_bytes(file_path: str) -> bytes:
-    """
-    将 exe 读入内存，避免 icoextract/pefile 在 Windows 上持有文件句柄导致 exe 被占用。
-    """
-    with open(file_path, "rb") as f:
-        return f.read()
-
 def get_icon(exe_path, name):
     try:
         dir_name = os.path.dirname(exe_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
-        if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
-            os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
-        ico_path = output_path = cfg.DESKTOP_ICO_PATH + dir_name + "/" + name + ".ico"       
-        relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"      
+        out_dir = os.path.join(cfg.DESKTOP_ICO_PATH, dir_name)
+        _ensure_dir(out_dir)
 
-        if(os.path.exists(relative_path)):
+        webp_path = os.path.join(out_dir, f"{name}.webp")
+        relative_path = cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + name + ".webp"
+
+        # 缓存命中
+        if os.path.exists(webp_path):
             return relative_path
 
-        if os.path.exists(relative_path):
-            return relative_path
-
-        # 检查exe文件是否存在
+        # 检查 exe 文件是否存在
         if not os.path.exists(exe_path):
             print(f"警告：EXE文件不存在 {exe_path}")
             return None
 
+        # 1) 优先Win32提取图标
+        try:
+            img = _extract_icon_privateextracticons(exe_path, size=256)
+            if img is not None:
+                img.save(webp_path, "WEBP")
+                try:
+                    img.close()
+                except Exception:
+                    pass
+                return relative_path
+        except Exception as e:
+            # Win32 失败 fallback（不要直接返回）
+            print(f"Win32 提取图标失败，准备 fallback: {e} - {exe_path}")
+
+        # 2) fallback：复制到临时文件再用 icoextract（避免锁原 exe，且不吃大内存）
+        tmp_path = None
+        ico_path = os.path.join(out_dir, f"{name}.ico")
         extractor = None
         try:
-            # 关键修复：使用 data=bytes 模式，避免 Windows 上的文件句柄占用问题
-            exe_data = _read_file_bytes(exe_path)
-            extractor = IconExtractor(data=exe_data)
+            fd, tmp_path = tempfile.mkstemp(suffix=".exe")
+            os.close(fd)
+            shutil.copy2(exe_path, tmp_path)
 
-            extractor.export_icon(output_path)
-            output_path = turn_png(output_path)
-            if os.path.exists(ico_path):
-                os.remove(ico_path)
-            if output_path!=False and output_path != "./resources/file_icos/exe.png":        
+            extractor = IconExtractor(tmp_path)
+            extractor.export_icon(ico_path)
+
+            out_webp = turn_png(ico_path)
+            # 删除 ico
+            try:
+                if os.path.exists(ico_path):
+                    os.remove(ico_path)
+            except Exception:
+                pass
+
+            if out_webp and out_webp != "./resources/file_icos/exe.png":
+                # turn_png 会输出 webp_path（同名），此处用实际缓存文件判断更稳
+                if os.path.exists(webp_path):
+                    return relative_path
+                # 若 turn_png 保存到了别处（理论上不会），也兜底返回相对路径
                 return relative_path
-            else:
-                # 如果转换失败，使用默认图标
-                print(f"图标转换失败，使用默认图标: {exe_path}")
-                return None
+
+            print(f"图标转换失败，使用默认图标: {exe_path}")
+            return None
+
         except Exception as extract_error:
             print(f"exe图标提取失败: {extract_error} - {exe_path}")
             return None
         finally:
-            # 兜底释放 pefile 相关资源（即使 data 模式通常也不会持有文件句柄）
+            # 兜底释放 pefile 相关资源（若 icoextract 内部有）
             try:
                 pe = getattr(extractor, "_pe", None)
                 if pe is not None and hasattr(pe, "close"):
                     pe.close()
             except Exception:
                 pass
+            # 清理临时复制文件
+            if tmp_path and os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
 
     except Exception as e:
         print(f"获取图标时发生未知错误: {e} - {exe_path}")
         return None
 
-
 def get_url_icon(url_path):
-    print("new "+url_path)
+    print("new " + url_path)
     dir_name = os.path.dirname(url_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
 
     # 解析 .url 文件
@@ -201,15 +327,16 @@ def get_url_icon(url_path):
         win32gui.DestroyIcon(hicon)
         del hdc
         del hbmp
-        if not os.path.exists(cfg.DESKTOP_ICO_PATH + dir_name):
-            os.makedirs(cfg.DESKTOP_ICO_PATH + dir_name)
-        image.save(cfg.DESKTOP_ICO_PATH + dir_name + "/" + os.path.basename(url_path) + ".webp")
+        out_dir = os.path.join(cfg.DESKTOP_ICO_PATH, dir_name)
+        _ensure_dir(out_dir)
+
+        out_path = os.path.join(out_dir, os.path.basename(url_path) + ".webp")
+        image.save(out_path)
         image.close()
         return cfg.DESKTOP_ICO_RELATIVE_PATH + dir_name + "/" + os.path.basename(url_path) + ".webp"
     except Exception as e:
         print(f"提取图标失败: {e}")
         return None
-
 
 def get_shortcut_target(shortcut_path):
     if not os.path.exists(shortcut_path):
@@ -219,9 +346,8 @@ def get_shortcut_target(shortcut_path):
     shortcut = shell.CreateShortcut(shortcut_path)
     return shortcut.TargetPath
 
-
 def match_ico(file_name):
-    print("match_ico "+file_name)
+    print("match_ico " + file_name)
     extension = os.path.splitext(file_name)[1]
     if extension in cfg.FILE_ICO:
         return cfg.FILE_ICO[extension]
@@ -229,36 +355,24 @@ def match_ico(file_name):
         return "./resources/file_icos/script.png"
     else:
         return cfg.FILE_ICO["unkonw"]
-    
+
 def get_file_icon_path(extension):
     """
     获取特定后缀名文件关联的图标路径
-    
     Args:
         extension: 文件后缀，如 '.txt', '.py', '.exe'
-    
     Returns:
         图标文件的路径，如果没有关联则返回None
     """
     try:
-        # 获取文件关联的命令
-        command = win32api.RegQueryValue(
-            win32con.HKEY_CLASSES_ROOT, 
-            extension
-        )
-        
-        # 获取默认图标
+        command = win32api.RegQueryValue(win32con.HKEY_CLASSES_ROOT, extension)
         icon_path = win32api.RegQueryValue(
             win32con.HKEY_CLASSES_ROOT,
             f"{command}\\DefaultIcon"
         )
-        
-        # 解析图标路径（可能包含索引，如 "C:\\path\\file.dll,0"）
-        if ',' in icon_path:
-            icon_path = icon_path.split(',')[0].strip()
-        
+        if "," in icon_path:
+            icon_path = icon_path.split(",")[0].strip()
         return icon_path
-        
     except Exception as e:
         print(f"获取图标失败: {e}")
         return None
@@ -267,31 +381,20 @@ def get_file_icon_path(file_path):
     extension = os.path.splitext(file_path)[1]
     """
     获取特定后缀名文件关联的图标路径
-    
     Args:
         file_path: 文件路径
     Returns:
         图标文件的路径，如果没有关联则返回None
     """
     try:
-        # 获取文件关联的命令
-        command = win32api.RegQueryValue(
-            win32con.HKEY_CLASSES_ROOT, 
-            extension
-        )
-        
-        # 获取默认图标
+        command = win32api.RegQueryValue(win32con.HKEY_CLASSES_ROOT, extension)
         icon_path = win32api.RegQueryValue(
             win32con.HKEY_CLASSES_ROOT,
             f"{command}\\DefaultIcon"
         )
-        
-        # 解析图标路径（可能包含索引，如 "C:\\path\\file.dll,0"）
-        if ',' in icon_path:
-            icon_path = icon_path.split(',')[0].strip()
-        
+        if "," in icon_path:
+            icon_path = icon_path.split(",")[0].strip()
         return icon_path
-        
     except Exception as e:
         print(f"获取图标失败: {e}")
         return None
