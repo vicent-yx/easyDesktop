@@ -28,6 +28,7 @@ from src.ucfg import ucfg
 from src import screen
 from src import api
 from src.shutdown import ShutdownHandler
+from src.appAction import app_action
 
 print(f"Starting {cfg.APP_NAME}...")
 # keyboard_monitor = kb_tool.KeyboardMonitor()
@@ -207,37 +208,6 @@ def sys_theme():
     else:
         window.evaluate_js("load_theme('light')")
 
-
-def check_update():
-    # global ucfg.data
-    try:
-        r = requests_get("https://api.codevicent.xyz/app_inf/ed")
-    except:
-        print("无法访问更新服务器")
-        return
-    if r.status_code != 200:
-        print("无法访问更新服务器")
-        return
-    r = json.loads(str(r.content, "utf-8"))
-    if r["v"] != cfg.APP_VERSION:
-        print("有新版本")
-        if ucfg.data["ign_update"] == r["v"]:
-            return
-        ask = buttonbox(
-            f"{cfg.APP_NAME}有新版本，是否前往更新？\n" + r["update_inf"],
-            f"{cfg.APP_NAME}更新检查",
-            choices=("前往更新", "忽略此版本", "取消"),
-        )
-        if ask == "前往更新":
-            webbrowser.open(r["download_url"])
-        elif ask == "忽略此版本":
-            ucfg.update_config("ign_update", r["v"])
-        else:
-            pass
-    else:
-        print("无新版本")
-
-
 def on_loaded():
     # global hwnd, ucfg.data,window
     windowMgr.update_hwnd()
@@ -245,7 +215,7 @@ def on_loaded():
     if ucfg.data["full_screen"] == True:
         window.resize(screen_width, screen_height)
     hotkeyReg.hotkey_init()
-    Thread(target=check_update).start()
+    Thread(target=app_action.main).start()
     Thread(target=stray).start()
     # Thread(target=hotkey_detect).start()
     start_pipe_server()
