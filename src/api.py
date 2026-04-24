@@ -18,6 +18,7 @@ from src.windowMgr import windowMgr,resize_win
 from src import tool
 from src.ucfg import ucfg
 from src.res_load import itmeRes,imagePreView
+from .appAction.report import bugs_report
 
 SWP_NOMOVE = 0x0002
 SWP_NOZORDER = 0x0004
@@ -50,7 +51,7 @@ def open_sysApp_action(component_name):
 class AppAPI:
     file_info_temp = [],
     def bug_report(self, part, data):
-        tool.bugs_report(
+        bugs_report(
             part,
             data
         )
@@ -569,3 +570,11 @@ class AppAPI:
             ucfg.data["ico"][file_path] = os.path.join("icon_set",os.path.basename(icon_path))
             json.dump(ucfg.data,open("ucfg.data.json","w"))
             return {"success":True}
+        
+    def clean_temp(self):
+        if os.path.exists("desktopICO"):
+            shutil.rmtree("desktopICO")
+        if os.path.exists("itemsTemp.json"):
+            os.remove("itemsTemp.json")
+        from src.res_load import itmeRes
+        itmeRes.temp={}

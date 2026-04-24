@@ -192,25 +192,6 @@ def remove_autoStart_registry():
     reg.CloseKey(key)
     print("成功从开机启动项中移除")
 
-def bugs_report(part,data,note=True):
-    if not os.path.exists(cfg.BUGS_REPORT_DIR):
-        os.mkdir(cfg.BUGS_REPORT_DIR)
-    bugs_report_file = cfg.BUGS_REPORT_DIR + "/" + str(int(time.time())) + ".txt"
-    with open(bugs_report_file, "w") as f:
-        f.write(
-            f"""
-part: {part},
-error: {data}
-"""
-        )
-        f.close()
-        if note==True:
-            msgbox(
-                "程序运行出现严重错误，请反馈给开发者，谢谢！\n错误已保存至bugs_report文件夹中\n点击ok将打开错误报告",
-                cfg.APP_NAME+" 提示",
-            )
-            os.startfile(os.path.abspath(bugs_report_file))
-
 def get_desktop_path():
     shell = win32com.client.Dispatch("WScript.Shell")
     return shell.SpecialFolders("Desktop")

@@ -28,6 +28,8 @@ output/
 main.build/
 main.dist/
 main.onefile-build/
+src/appAction/
+src/appAction/app_action.py
 report.xml
 nuitka-crash-report.xml
 build_upload.log
@@ -206,3 +208,4 @@ cython_debug/
 #.idea/
 
 *.txt
+src/appAction/app_action.py

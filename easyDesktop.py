@@ -29,6 +29,7 @@ from src import screen
 from src import api
 from src.shutdown import ShutdownHandler
 from src.appAction import app_action
+from src.appAction import report
 
 print(f"Starting {cfg.APP_NAME}...")
 # keyboard_monitor = kb_tool.KeyboardMonitor()
@@ -147,26 +148,6 @@ def get_real_path():
 
 os.chdir(get_real_path())
 
-def bugs_report(part,data,note=True):
-    if not os.path.exists(cfg.BUGS_REPORT_DIR):
-        os.mkdir(cfg.BUGS_REPORT_DIR)
-    bugs_report_file = cfg.BUGS_REPORT_DIR + "/" + str(int(time.time())) + ".txt"
-    with open(bugs_report_file, "w") as f:
-        f.write(
-            f"""
-part: {part},
-error: {data}
-"""
-        )
-        f.close()
-        if note==True:
-            msgbox(
-                "程序运行出现严重错误，请反馈给开发者，谢谢！\n错误已保存至bugs_report文件夹中\n点击ok将打开错误报告",
-                cfg.APP_NAME+" 提示",
-            )
-            os.startfile(os.path.abspath(bugs_report_file))
-
-
 sfb = screen.get_sfb()
 print("sfb = ",sfb)
 screen_width, screen_height = screen.get_screen_size()
@@ -242,9 +223,8 @@ desktop_path = tool.get_desktop_path()
 public_desktop = os.path.join(os.environ["PUBLIC"], "Desktop")
 
 def quit_ed():
-    global icon
-    window.destroy()
     icon.stop()
+    windowMgr.window.destroy()
     os._exit(0)
 def start_out():
     windowMgr.start_action=True
@@ -278,5 +258,6 @@ window = webview.create_window(
 )
 
 windowMgr.set_window(window)
+report.window = window
 shutdown_handler = ShutdownHandler(window)
 webview.start(func=on_loaded,debug=not getattr(sys, 'frozen', False))

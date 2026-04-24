@@ -3,6 +3,8 @@ from . import getIcon # 本地模块源
 import config as cfg
 import subprocess
 import json
+from .appAction.report import bugs_report
+import traceback
 class icon_mgr():
     def __init__(self):
         self.icon_cache = {}
@@ -17,7 +19,16 @@ class icon_mgr():
             capture_output=True,
             text=True
         )
-        return result
+        if result.returncode == 0:
+            lines = result.stdout.strip().split('\n')
+            last_line = lines[-1]
+            try:
+                data = json.loads(last_line)
+            except Exception as e:
+                bugs_report("python-iconGetter_parse", f"图标获取器返回数据解析失败: {traceback.format_exc()}",True,result.stdout.strip())
+        else:
+            data = None
+        return data
     def update(self,path,temp=True):
         # 先验证有无exe图标
         r = False
@@ -37,8 +48,8 @@ class icon_mgr():
             return None
 
         result = self.call_iconGetter(path,temp)
-        if result.returncode == 0:
-            data = json.loads(result.stdout.strip())
+        if result!=None:
+            data = result
             if not "error" in data:
                 for item in data:
                     if data[item]==None:
@@ -60,8 +71,8 @@ class icon_mgr():
         if file_path in self.icon_cache:
             return self.icon_cache[file_path]
         icon_r = self.call_iconGetter(file_path)
-        if icon_r.returncode == 0:
-            icon_r = json.loads(icon_r.stdout.strip())[file_path]
+        if icon_r!=None:
+            icon_r = icon_r[file_path]
             self.save_cache(file_path,icon_r)
             return icon_r
         else:

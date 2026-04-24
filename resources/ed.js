@@ -256,7 +256,12 @@ const ApiHelper = {
 
     async loadSearchIndex(data) {
         return await this.call('load_search_index', data);
-    }
+    },
+
+    async cleanTemp() {
+        await this.call('clean_temp');
+        UIUtils.showMessage("缓存清理完成",false)
+    },
 };
 
 // ========== UI工具类 ==========
@@ -272,7 +277,7 @@ const loadingUI = {
         var wid = setTimeout(()=>{
             var close_func = this.loading_action(container)
             this.closeList.push(close_func);
-        },300)
+        },500)
         this.wait[container.id] = wid;
     },
     sets(area,view){
