@@ -245,10 +245,12 @@ class mouse_state:
     def __init__(self):
         self.had_click = False
         self.receive = False
-        Thread(target=self.reg_listener).start()
+        self.listener = None
+        Thread(target=self.reg_listener, daemon=True).start()
     def reg_listener(self):
-        with mouse.Listener(on_click=self.onclick) as listener:
-            listener.join()
+        self.listener = mouse.Listener(on_click=self.onclick)
+        self.listener.start()
+        self.listener.join()
 
     def onclick(self):
         if self.receive==True:
@@ -264,5 +266,12 @@ class mouse_state:
     def reset(self):
         self.had_click = False
         self.receive = True
+    def stop(self):
+        self.receive = False
+        try:
+            if self.listener:
+                self.listener.stop()
+        except:
+            pass
 
 mouseState = mouse_state()

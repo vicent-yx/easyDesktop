@@ -28,6 +28,7 @@ from src.ucfg import ucfg
 from src import screen
 from src import api
 from src.shutdown import ShutdownHandler
+from src.nonblocking import nonblocking
 
 print(f"Starting {cfg.APP_NAME}...")
 # keyboard_monitor = kb_tool.KeyboardMonitor()
@@ -245,8 +246,8 @@ def on_loaded():
     if ucfg.data["full_screen"] == True:
         window.resize(screen_width, screen_height)
     hotkeyReg.hotkey_init()
-    Thread(target=check_update).start()
-    Thread(target=stray).start()
+    Thread(target=check_update, daemon=True).start()
+    Thread(target=stray, daemon=True).start()
     # Thread(target=hotkey_detect).start()
     start_pipe_server()
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
@@ -273,9 +274,31 @@ public_desktop = os.path.join(os.environ["PUBLIC"], "Desktop")
 
 def quit_ed():
     global icon
-    window.destroy()
-    icon.stop()
-    os._exit(0)
+    try:
+        tool.mouseState.stop()
+    except:
+        pass
+    try:
+        import keyboard as _kb
+        _kb.unhook_all()
+    except:
+        pass
+    try:
+        window.destroy()
+    except:
+        pass
+    try:
+        if icon:
+            icon.stop()
+    except:
+        pass
+    try:
+        def _force_exit():
+            time.sleep(0.6)
+            os._exit(0)
+        Thread(target=_force_exit, daemon=True).start()
+    except:
+        return
 def start_out():
     windowMgr.start_action=True
 
@@ -283,7 +306,7 @@ def stray():
     global icon
     image = Image.open("ed_logo.png")
     icon = pystray.Icon("name", image, "title")
-    menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", quit_ed))
+    menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", nonblocking(quit_ed)))
     icon.menu = menu
     icon.title = "EasyDesktop"
     icon.run()
