@@ -10,6 +10,7 @@ dependencies = [
     "icoextract==0.2.0",
     "keyboard==0.13.5",
     "pillow==12.1.1",
+    "pynput==1.8.1",
     "pypinyin==0.55.0",
     "pystray==0.19.5",
     "pywebview==6.1",

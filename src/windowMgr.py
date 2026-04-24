@@ -11,6 +11,7 @@ from . import screen
 import webview
 from ctypes import windll
 import keyboard
+from threading import Thread
 
 
 SWP_NOMOVE = 0x0002
@@ -206,7 +207,7 @@ class windowMgr_main():
         win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
         win32gui.UpdateWindow(hwnd)
 
-        self.fit_blur_effect()
+        Thread(target=self.fit_blur_effect, daemon=True).start()
 
         self.window.show()
         time.sleep(0.1)
