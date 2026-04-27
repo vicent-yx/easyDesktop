@@ -311,7 +311,7 @@ class windowMgr_main():
                 self.out_window()
                 break
             else:
-                if tool.is_desktop_and_mouse_in_corner() and ucfg.data["cf_type"] == "1":
+                if tool.is_desktop_and_mouse_in_corner(wait=0.2) and ucfg.data["cf_type"] == "1":
                     self.out_window()
                     break
             if self.window_state == True:

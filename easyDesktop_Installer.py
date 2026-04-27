@@ -14,6 +14,9 @@ from time import sleep
 import psutil
 import json
 import win32com
+import subprocess
+from appAction import report
+import traceback
 progressbar=""
 
 
@@ -209,41 +212,42 @@ def judgeprocess(process_name):
     return False
 def un_install():
     global download_inf_var,install_started,progressbar,install_path
-    # try:
-    progressbar["mode"]="indeterminate"
-    progressbar["orient"]=tkinter.HORIZONTAL
-    download_inf_var.set("检测进程...")
-    exe_list = ["easyDesktop.exe"]
-    for exe in exe_list:
-        if judgeprocess(exe)==True:
-            os.popen("taskkill /F /im "+exe)
-            download_inf_var.set("正在删除文件 停止进程"+exe)
-            while True:
-                if judgeprocess(exe)==False:
-                    break
-                sleep(0.5)
-    download_inf_var.set("正在删除文件")
-    shutil.rmtree(check_registry_key())
-    pythoncom.CoInitialize()
-    if os.path.exists(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk")):
-        os.remove(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk"))
-    pythoncom.CoUninitialize()
-    download_inf_var.set("正在删除注册表项:")
     try:
-        # 打开父键（HKEY_CURRENT_USER\Software）
-        parent_path = r"Software"
-        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, parent_path, 0, winreg.KEY_WRITE) as parent_key:
-            # 删除目标键（easydesktop）
-            winreg.DeleteKey(parent_key, "easydesktop")
-            print("注册表项已成功删除")
-    except:
-        print("注册表项删除失败")
+        progressbar["mode"]="indeterminate"
+        progressbar["orient"]=tkinter.HORIZONTAL
+        download_inf_var.set("检测进程...")
+        exe_list = ["easyDesktop.exe","exeIconGet.exe"]
+        for exe in exe_list:
+            if judgeprocess(exe)==True:
+                subprocess.run("taskkill /F /im "+exe)
+                download_inf_var.set("正在删除文件 停止进程"+exe)
+                while True:
+                    if judgeprocess(exe)==False:
+                        break
+                    sleep(0.5)
+        download_inf_var.set("正在删除文件")
+        shutil.rmtree(check_registry_key())
+        pythoncom.CoInitialize()
+        if os.path.exists(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk")):
+            os.remove(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk"))
+        pythoncom.CoUninitialize()
+        download_inf_var.set("正在删除注册表项:")
+        try:
+            # 打开父键（HKEY_CURRENT_USER\Software）
+            parent_path = r"Software"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, parent_path, 0, winreg.KEY_WRITE) as parent_key:
+                # 删除目标键（easydesktop）
+                winreg.DeleteKey(parent_key, "easydesktop")
+                print("注册表项已成功删除")
+        except:
+            print("注册表项删除失败")
 
-    download_inf_var.set("卸载完成")
-    install_started=False
-    show_finish()
-    # except Exception:
-    #     download_inf_var.set("卸载失败")
+        download_inf_var.set("卸载完成")
+        install_started=False
+        show_finish()
+    except Exception:
+        download_inf_var.set("卸载失败")
+        report.bugs_report("installer_uninstall",traceback.format_exc(),False,None)
 def install():
     global download_inf_var,install_started,progressbar
     try:
@@ -276,10 +280,10 @@ def install():
         progressbar["orient"]=tkinter.HORIZONTAL
         if os.listdir(install_path)!=[]:
             download_inf_var.set("正在删除文件")
-            exe_list = ["easyDesktop.exe"]
+            exe_list = ["easyDesktop.exe", "exeIconGet.exe"]
             for exe in exe_list:
                 if judgeprocess(exe)==True:
-                    os.popen("taskkill /F /im "+exe)
+                    subprocess.run("taskkill /F /im "+exe)
                     download_inf_var.set("正在删除文件 停止进程"+exe)
                     while True:
                         if judgeprocess(exe)==False:
@@ -362,19 +366,28 @@ def install():
         install_started=False
     except Exception as e:
         messagebox.showerror("EasyDesktop - 安装时出现错误",e)
+        report.bugs_report("installer_install",traceback.format_exc(),False,None)
     install_started=False
 def out():
     window.quit()
 def out_and_open():
-    os.startfile(os.path.join(install_path,"easyDesktop.exe"))
-    while True:
-        if judgeprocess("easyDesktop.exe")==True:
-            break
-        sleep(0.5)
-    os.startfile(os.path.join(install_path,"easyDesktop.exe"))
+    global is_update
+    OS_APPDATA = os.environ.get('LOCALAPPDATA')
+    APP_TEMP =  os.path.join(OS_APPDATA, "EasyDesktop")
+    UPDATE_DATA = os.path.join(APP_TEMP, "update.json")
+    if os.path.exists(UPDATE_DATA) and is_update==True:
+        with open(UPDATE_DATA,"r",encoding="utf-8") as f:
+            update_data = json.load(f)
+        update_data["install_ok"]=True
+        with open(UPDATE_DATA,"w",encoding="utf-8") as f:
+            json.dump(update_data, f, ensure_ascii=False, indent=4)
+        open_cmd = [f"{os.path.join(install_path,'easyDesktop.exe')}","update_ok"]
+    else:
+        open_cmd = [f"{os.path.join(install_path,'easyDesktop.exe')}"]
+    subprocess.Popen(open_cmd)
     window.quit()
 def show_finish():
-    global install_path, main_frame, install_type
+    global install_path, main_frame, install_type ,is_update
     
     # 清除进度相关组件
     for widget in main_frame.winfo_children():
@@ -412,6 +425,10 @@ def show_finish():
         
     else:
         # 安装完成界面
+        if is_update==True:
+            out_and_open()
+            return
+
         # 创建图标容器确保居中
         icon_frame = tkinter.Frame(finish_frame, bg="white")
         icon_frame.pack(fill="x", pady=(30, 0))
@@ -449,6 +466,14 @@ def closeWindow():
         messagebox.showerror("警告","正在进行安装，请不要退出")
         return
     window.quit()
+
+is_update=False
+def update_state():
+    global is_update
+    if len(sys.argv)>1:
+        if sys.argv[1]=="update":
+            is_update=True
+            go_install()
 
 have_network=False
 install_path = "D:/easydesktop"
@@ -519,4 +544,5 @@ copyright_label = tkinter.Label(main_frame, text="EasyDesktop © 2025     Made b
 copyright_label.pack(side="bottom", pady=10)
 
 window.protocol('WM_DELETE_WINDOW', closeWindow)
+_thread.start_new_thread(update_state, ())
 window.mainloop()

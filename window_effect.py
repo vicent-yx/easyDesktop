@@ -77,10 +77,6 @@ class WindowEffect_main():
         self.winCompAttrData.Attribute = WINDOWCOMPOSITIONATTRIB.WCA_ACCENT_POLICY.value[0]
         self.winCompAttrData.SizeOfData = sizeof(self.accentPolicy)
         self.winCompAttrData.Data = pointer(self.accentPolicy)
-
-    def setAcrylicEffect(self, hWnd: int, gradient_color: str = 'F2F2F2',effect:int=30,
-                         isEnableShadow: bool = True, animationId: int = 0):
-        pass
     def setLightBlurEffect(self, hWnd: int, 
                        effect: int = 48,
                        isEnableShadow: bool = True, 
@@ -116,9 +112,6 @@ class WindowEffect_main():
         set_window_rounded_corners(hWnd)
         print(f"setLightBlurEffect success (effect={effect})")
 
-    def setAeroEffect(self, hWnd: int, gradientColor: str = 'F2F2F230',
-                         isEnableShadow: bool = True, animationId: int = 0):
-        pass
     def setDarkBlurEffect(self, hWnd: int, 
                       effect: int = 48,
                       isEnableShadow: bool = True, 

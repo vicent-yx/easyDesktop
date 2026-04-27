@@ -147,34 +147,43 @@ def is_focused_window_fullscreen():
     except Exception as e:
         print(f"检测全屏时出错: {e}")
         return False
-    
-def is_desktop_and_mouse_in_corner():
+def get_mousePosition():
+    while True:
+        try:
+            mouse_x, mouse_y = win32api.GetCursorPos()
+            break
+        except:
+            time.sleep(0.5)
+    return mouse_x, mouse_y
+def is_desktop_and_mouse_in_corner(wait=0):
     # global ucfg.data
-    try:
-        screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
-        screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
-        corner_size = cfg.CORNER_SIZE  # 角落区域的边长
-        if ucfg.data["outPos"]=="1":
-            corner_rect = (0, screen_height - corner_size, corner_size, screen_height)
-        elif ucfg.data["outPos"]=="2":
-            corner_rect = (0, 0, corner_size, corner_size)
-        elif ucfg.data["outPos"]=="3":
-            cw = int(screen_width//3)
-            corner_rect = (cw,screen_height-corner_size,screen_width-cw,screen_height)
-        elif ucfg.data["outPos"]=="4":
-            cw = int(screen_width//3)
-            corner_rect = (cw,0,screen_width-cw,corner_size)
-        while True:
-            try:
-                mouse_x, mouse_y = win32api.GetCursorPos()
-                break
-            except:
-                time.sleep(0.5)
-        in_corner = corner_rect[0] <= mouse_x <= corner_rect[2] and corner_rect[1] <= mouse_y <= corner_rect[3]
-        return in_corner
-    except Exception as e:
-        print(f"Error: {e}")
-        return False
+    # try:
+    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
+    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+    corner_size = cfg.cornerSize_m[ucfg.data["corner_size"]]  # 角落区域的边长
+    if ucfg.data["outPos"]=="1":
+        corner_rect = (0, screen_height - corner_size, corner_size, screen_height)
+    elif ucfg.data["outPos"]=="2":
+        corner_rect = (0, 0, corner_size, corner_size)
+    elif ucfg.data["outPos"]=="3":
+        cw = int(screen_width//3)
+        corner_rect = (cw,screen_height-corner_size,screen_width-cw,screen_height)
+    elif ucfg.data["outPos"]=="4":
+        cw = int(screen_width//3)
+        corner_rect = (cw,0,screen_width-cw,corner_size)
+    mouse_x, mouse_y = get_mousePosition()
+    in_corner = corner_rect[0] <= mouse_x <= corner_rect[2] and corner_rect[1] <= mouse_y <= corner_rect[3]
+    if wait>0 and in_corner==True:
+        time.sleep(wait)
+        nmx,nmy = get_mousePosition()
+        if nmx==mouse_x and nmy==mouse_y:
+            return in_corner
+        else:
+            return False
+    return in_corner
+    # except Exception as e:
+    #     print(f"Error: {e}")
+    #     return False
     
 def autoStart_registry():
     python_exe = sys.executable

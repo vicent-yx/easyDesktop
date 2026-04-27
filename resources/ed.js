@@ -1796,6 +1796,9 @@ const EventManager = {
         DOMCache.get("outPos_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('outPos', this.value);
         });
+        DOMCache.get("corner_size_toggle").addEventListener('change', function () {
+            ApiHelper.updateConfig('corner_size', this.value);
+        });
         DOMCache.get("dbc_action_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('dbc_action', this.value);
         });
@@ -2698,6 +2701,7 @@ window.addEventListener('pywebviewready', async function () {
             // 更新选择器状态
             DOMCache.get('cf_type_toggle').value = config.cf_type;
             DOMCache.get('out_cf_type_toggle').value = config.out_cf_type;
+            DOMCache.get('corner_size_toggle').value = config.corner_size;
             DOMCache.get('outPos_toggle').value = config.outPos;
             DOMCache.get('dbc_action_toggle').value = config.dbc_action;
             DOMCache.get("bgType_toggle").value = config.bgType;

@@ -478,6 +478,29 @@
             </div>
         </div>
     </div>
+    <!-- 更新内容提示 -->
+    <div class="update-overlay" id="updateOverlay" style="display: none;">
+        <div class="update-container">
+            <h4 id="udt">更新提示</h4>
+            <div class="infobox">
+                <p id="updateInfo"></p>
+            </div>
+            <div style="display: flex;">
+                <button class="file-selection-btn confirm" id="updateConfirmBtn" onclick="close_updateOverlay()" style="margin-left: auto;">确认</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        function open_updateOverlay(title, info){
+            document.getElementById("udt").innerHTML = title;
+            document.getElementById("updateInfo").innerHTML = info;
+            document.getElementById("updateOverlay").style.display = "flex";
+        }
+        function close_updateOverlay(){
+            document.getElementById("updateOverlay").style.display = "none";
+        }
+    </script>
+    <!-- ———————————————————————————— -->
     <style>
         .settings_box {
             width: 100%;
@@ -709,6 +732,16 @@
                             <option value="2">win+shift</option>
                             <option value="3">win+esc</option>
                             <option value="4">自定义</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section" id="corner_size_edit">
+                    <div class="system-theme-toggle">
+                        <span>触发区域判定</span>
+                        <select class="cf_type_toggle" id="corner_size_toggle">
+                            <option value="1">严格</option>
+                            <option value="2">中等</option>
+                            <option value="3">宽松</option>
                         </select>
                     </div>
                 </div>
