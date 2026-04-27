@@ -28,6 +28,9 @@ from src.ucfg import ucfg
 from src import screen
 from src import api
 from src.shutdown import ShutdownHandler
+from src.nonblocking import nonblocking
+from src.appAction import app_action
+from src.appAction import report
 
 print(f"Starting {cfg.APP_NAME}...")
 # keyboard_monitor = kb_tool.KeyboardMonitor()
@@ -146,26 +149,6 @@ def get_real_path():
 
 os.chdir(get_real_path())
 
-def bugs_report(part,data,note=True):
-    if not os.path.exists(cfg.BUGS_REPORT_DIR):
-        os.mkdir(cfg.BUGS_REPORT_DIR)
-    bugs_report_file = cfg.BUGS_REPORT_DIR + "/" + str(int(time.time())) + ".txt"
-    with open(bugs_report_file, "w") as f:
-        f.write(
-            f"""
-part: {part},
-error: {data}
-"""
-        )
-        f.close()
-        if note==True:
-            msgbox(
-                "程序运行出现严重错误，请反馈给开发者，谢谢！\n错误已保存至bugs_report文件夹中\n点击ok将打开错误报告",
-                cfg.APP_NAME+" 提示",
-            )
-            os.startfile(os.path.abspath(bugs_report_file))
-
-
 sfb = screen.get_sfb()
 print("sfb = ",sfb)
 screen_width, screen_height = screen.get_screen_size()
@@ -207,37 +190,6 @@ def sys_theme():
     else:
         window.evaluate_js("load_theme('light')")
 
-
-def check_update():
-    # global ucfg.data
-    try:
-        r = requests_get("https://api.codevicent.xyz/app_inf/ed")
-    except:
-        print("无法访问更新服务器")
-        return
-    if r.status_code != 200:
-        print("无法访问更新服务器")
-        return
-    r = json.loads(str(r.content, "utf-8"))
-    if r["v"] != cfg.APP_VERSION:
-        print("有新版本")
-        if ucfg.data["ign_update"] == r["v"]:
-            return
-        ask = buttonbox(
-            f"{cfg.APP_NAME}有新版本，是否前往更新？\n" + r["update_inf"],
-            f"{cfg.APP_NAME}更新检查",
-            choices=("前往更新", "忽略此版本", "取消"),
-        )
-        if ask == "前往更新":
-            webbrowser.open(r["download_url"])
-        elif ask == "忽略此版本":
-            ucfg.update_config("ign_update", r["v"])
-        else:
-            pass
-    else:
-        print("无新版本")
-
-
 def on_loaded():
     # global hwnd, ucfg.data,window
     windowMgr.update_hwnd()
@@ -245,8 +197,8 @@ def on_loaded():
     if ucfg.data["full_screen"] == True:
         window.resize(screen_width, screen_height)
     hotkeyReg.hotkey_init()
-    Thread(target=check_update).start()
-    Thread(target=stray).start()
+    Thread(target=app_action.main, daemon=True).start()
+    Thread(target=stray, daemon=True).start()
     # Thread(target=hotkey_detect).start()
     start_pipe_server()
     hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
@@ -273,9 +225,31 @@ public_desktop = os.path.join(os.environ["PUBLIC"], "Desktop")
 
 def quit_ed():
     global icon
-    window.destroy()
-    icon.stop()
-    os._exit(0)
+    try:
+        tool.mouseState.stop()
+    except:
+        pass
+    try:
+        import keyboard as _kb
+        _kb.unhook_all()
+    except:
+        pass
+    try:
+        window.destroy()
+    except:
+        pass
+    try:
+        if icon:
+            icon.stop()
+    except:
+        pass
+    try:
+        def _force_exit():
+            time.sleep(0.6)
+            os._exit(0)
+        Thread(target=_force_exit, daemon=True).start()
+    except:
+        return
 def start_out():
     windowMgr.start_action=True
 
@@ -283,7 +257,7 @@ def stray():
     global icon
     image = Image.open("ed_logo.png")
     icon = pystray.Icon("name", image, "title")
-    menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", quit_ed))
+    menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", nonblocking(quit_ed)))
     icon.menu = menu
     icon.title = "EasyDesktop"
     icon.run()
@@ -308,5 +282,6 @@ window = webview.create_window(
 )
 
 windowMgr.set_window(window)
+report.window = window
 shutdown_handler = ShutdownHandler(window)
 webview.start(func=on_loaded,debug=not getattr(sys, 'frozen', False))

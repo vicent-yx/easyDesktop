@@ -3,7 +3,8 @@ from config import app_config as cfg
 import os
 from . import screen
 import sys
-
+from .appAction.report import bugs_report
+import traceback
 # 打包后纠正工作目录
 if getattr(sys, 'frozen', False):
     base_path = os.path.dirname(os.path.realpath(sys.executable))
@@ -12,26 +13,37 @@ if getattr(sys, 'frozen', False):
 class AppConfig:
     def __init__(self):
         # from . import tool
-        screen_width, screen_height = screen.get_screen_size()
-        width = int(screen_width * cfg.WINDOW_WIDTH_RATIO)
-        height = int(screen_height * cfg.WINDOW_HEIGHT_RATIO)
-        default_config = cfg.get_default_config(width, height)
-        if os.path.exists(cfg.CONFIG_FILE):
-            with open(cfg.CONFIG_FILE, "r",encoding="utf-8") as f:
-                config = json.load(f)
-                f.close()
-            for c_item in default_config.keys():
-                if c_item not in config.keys():
-                    config[c_item] = default_config[c_item]
-            config["version"] = cfg.APP_VERSION
-            # json.dump(config, open(cfg.CONFIG_FILE, "w"))
-            self.write_json(cfg.CONFIG_FILE,config)
-        else:
-            config = default_config
-            # json.dump(config, open(cfg.CONFIG_FILE, "w"))
-            self.write_json(cfg.CONFIG_FILE,config)
+        try:
+            screen_width, screen_height = screen.get_screen_size()
+            width = int(screen_width * cfg.WINDOW_WIDTH_RATIO)
+            height = int(screen_height * cfg.WINDOW_HEIGHT_RATIO)
+            default_config = cfg.get_default_config(width, height)
+            if os.path.exists(cfg.CONFIG_FILE):
+                with open(cfg.CONFIG_FILE, "r",encoding="utf-8") as f:
+                    config = json.load(f)
+                    f.close()
+                for c_item in default_config.keys():
+                    if c_item not in config.keys():
+                        config[c_item] = default_config[c_item]
+                config["version"] = cfg.APP_VERSION
+                # json.dump(config, open(cfg.CONFIG_FILE, "w"))
+                self.write_json(cfg.CONFIG_FILE,config)
+            else:
+                config = default_config
+                # json.dump(config, open(cfg.CONFIG_FILE, "w"))
+                self.write_json(cfg.CONFIG_FILE,config)
 
-        self.data = config
+            self.data = config
+        except Exception as me:
+            json_data = "[get failed]"
+            try:
+                with open(cfg.CONFIG_FILE, "r",encoding="utf-8") as f:
+                    json_data = f.read()
+            except Exception as e:
+                json_data = "[get failed]"+str(e)
+            self.data = default_config
+            bugs_report("python-config_init", traceback.format_exc(),True,json_data)
+
 
         if not os.path.exists(cfg.CL_DATA_FILE):
             with open(cfg.CL_DATA_FILE, "w",encoding="utf-8") as f:

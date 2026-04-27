@@ -256,7 +256,12 @@ const ApiHelper = {
 
     async loadSearchIndex(data) {
         return await this.call('load_search_index', data);
-    }
+    },
+
+    async cleanTemp() {
+        await this.call('clean_temp');
+        UIUtils.showMessage("缓存清理完成",false)
+    },
 };
 
 // ========== UI工具类 ==========
@@ -272,7 +277,7 @@ const loadingUI = {
         var wid = setTimeout(()=>{
             var close_func = this.loading_action(container)
             this.closeList.push(close_func);
-        },300)
+        },500)
         this.wait[container.id] = wid;
     },
     sets(area,view){
@@ -287,6 +292,9 @@ const loadingUI = {
         }
     },
     loading_action(container) {
+        if(container.children.length>0){
+            return function hideLoading() {};
+        }
         // 确保容器有定位上下文，以便内部绝对定位生效
         if (getComputedStyle(container).position === 'static') {
             container.style.position = 'relative';
@@ -1788,6 +1796,9 @@ const EventManager = {
         DOMCache.get("outPos_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('outPos', this.value);
         });
+        DOMCache.get("corner_size_toggle").addEventListener('change', function () {
+            ApiHelper.updateConfig('corner_size', this.value);
+        });
         DOMCache.get("dbc_action_toggle").addEventListener('change', function () {
             ApiHelper.updateConfig('dbc_action', this.value);
         });
@@ -2690,6 +2701,7 @@ window.addEventListener('pywebviewready', async function () {
             // 更新选择器状态
             DOMCache.get('cf_type_toggle').value = config.cf_type;
             DOMCache.get('out_cf_type_toggle').value = config.out_cf_type;
+            DOMCache.get('corner_size_toggle').value = config.corner_size;
             DOMCache.get('outPos_toggle').value = config.outPos;
             DOMCache.get('dbc_action_toggle').value = config.dbc_action;
             DOMCache.get("bgType_toggle").value = config.bgType;
@@ -2949,6 +2961,11 @@ const drag_move = {
 }
 async function detect_posMove(){
     r = await ApiHelper.call("drag_posMoveAction")
+    ms = await ApiHelper.call("mouse_state")
+    if(ms==false){
+        try{clearInterval(pos_move_pc)}catch(e){}
+        return
+    }
     if(r!="none"){
         if(r=="bottom"){
             if(pos_move_pc!=null)return

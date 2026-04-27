@@ -7,7 +7,8 @@ import sys
 import json
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "2.5.0"
+APP_VERSION = "2.6.0"
+APP_VERSION_CODE = 2600
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop_Main"
 
@@ -54,9 +55,9 @@ WINDOW_WIDTH_RATIO = 0.65
 WINDOW_HEIGHT_RATIO = 0.4
 WINDOW_POSITION_RATIO = 0.1
 TOLERANCE = 5  # 像素容差
-CORNER_SIZE = 10  # 角落区域的边长
+# CORNER_SIZE = 10  # 角落区域的边长
 WAIT_TIMEOUT = 3  # 等待超时时间（秒）
-SLEEP_INTERVAL = 0.4  # 循环间隔（秒）
+SLEEP_INTERVAL = 0.3  # 循环间隔（秒）
 MOUSE_CHECK_INTERVAL = 0.1  # 鼠标检查间隔（秒）
 
 # ===== 支持的脚本文件类型 =====
@@ -147,6 +148,13 @@ FILE_ICO = {
 DEFAULT_EXE_ICON = "./resources/file_icos/exe.png"
 DEFAULT_UNKONW_ICON = "./resources/file_icos/unkonw.png"
 DEFAULT_DIR_ICON = "./resources/file_icos/dir.png"
+API_URL = "https://api.codevicent.xyz/"
+
+cornerSize_m={
+    "1":1,
+    "2":10,
+    "3":30
+}
 
 # ===== 应用程序默认配置 =====
 def get_default_config(width, height):
@@ -177,6 +185,7 @@ def get_default_config(width, height):
         "fdr": True,
         "cf_type": "1",
         "cf_hotkey":"",
+        "corner_size":"2",
         "out_cf_type": "2",
         "show_sysApp": False,
         "scale": 80,

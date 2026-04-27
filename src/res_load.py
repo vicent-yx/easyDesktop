@@ -18,6 +18,7 @@ from src.windowMgr import windowMgr
 from src import tool
 from src.ucfg import ucfg
 import time
+from .appAction.report import bugs_report
 
 TEMP_FILE="itemsTemp.json"
 desktop_path = tool.get_desktop_path()
@@ -242,7 +243,7 @@ class resource_load:
                     elif info_data["inf_type"]=="file":
                         file_data.append(info_data["inf"])
                 except:
-                    tool.bugs_report(
+                    bugs_report(
                         "python-update_inf_item",
                         traceback.format_exc(),
                         False
@@ -426,7 +427,7 @@ class resource_load:
             
             
         except:
-            tool.bugs_report(
+            bugs_report(
                 "python-update_inf",
                 traceback.format_exc()
             )

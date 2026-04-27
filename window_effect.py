@@ -62,7 +62,7 @@ class WINDOWCOMPOSITIONATTRIBDATA(Structure):
         ('SizeOfData', ULONG),
     ]
 
-class WindowEffect():
+class WindowEffect_main():
     """ 调用windows api实现窗口效果 """
 
     def __init__(self):
@@ -77,35 +77,73 @@ class WindowEffect():
         self.winCompAttrData.Attribute = WINDOWCOMPOSITIONATTRIB.WCA_ACCENT_POLICY.value[0]
         self.winCompAttrData.SizeOfData = sizeof(self.accentPolicy)
         self.winCompAttrData.Data = pointer(self.accentPolicy)
-
-    def setAcrylicEffect(self, hWnd: int, gradient_color: str = 'F2F2F2',effect:int=30,
-                         isEnableShadow: bool = True, animationId: int = 0):
-        gradientColor = gradient_color+str(effect)
-        # 亚克力混合色
-        gradientColor = gradientColor[6:] + gradientColor[4:6] + \
-            gradientColor[2:4] + gradientColor[:2]
-        gradientColor = DWORD(int(gradientColor, base=16))
-        # 磨砂动画
-        animationId = DWORD(animationId)
+    def setLightBlurEffect(self, hWnd: int, 
+                       effect: int = 48,
+                       isEnableShadow: bool = True, 
+                       animationId: int = 0):
+        """
+        设置偏白色毛玻璃效果
+        effect: 透明度通道的十进制值 (0-255)，默认48 (约18.8%不透明度)
+        """
+        # 确保effect在有效范围内
+        effect = 155+effect
+        effect = max(0, min(255, effect))
+        
+        # 白色半透明：A=effect, R=FF, G=FF, B=FF → ARGB格式
+        gradientColor = DWORD((effect << 24) | 0xFFFFFF)
+        
+        # 如果需要ABGR格式，使用这个：
+        # gradientColor = DWORD((effect << 24) | 0xFFFFFF)  # 这里ABGR和ARGB对白色是一样的
+        
         # 窗口阴影
-        accentFlags = DWORD(0x20 | 0x40 | 0x80 |
-                            0x100) if isEnableShadow else DWORD(0)
-        self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_ENABLE_ACRYLICBLURBEHIND.value[0]
+        accentFlags = DWORD(0x20 | 0x40 | 0x80 | 0x100) if isEnableShadow else DWORD(0)
+        # 动画ID
+        animationId = DWORD(animationId)
+        
+        # 配置毛玻璃效果
+        self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_ENABLE_BLURBEHIND.value[0]
+        self.accentPolicy.GradientColor = gradientColor
+        # self.accentPolicy.AccentFlags = accentFlags
+        self.accentPolicy.AnimationId = animationId
+        self.accentPolicy.AccentFlags = DWORD(0)
+        
+        # 开启效果
+        self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
+        set_window_rounded_corners(hWnd)
+        print(f"setLightBlurEffect success (effect={effect})")
+
+    def setDarkBlurEffect(self, hWnd: int, 
+                      effect: int = 48,
+                      isEnableShadow: bool = True, 
+                      animationId: int = 0):
+        """
+        设置偏黑色毛玻璃效果
+        effect: 透明度通道的十进制值 (0-255)，默认48 (约18.8%不透明度)
+        """
+        # 确保effect在有效范围内
+        effect = max(0, min(255, effect))
+        
+        # 黑色半透明：A=effect, R=00, G=00, B=00 → ARGB格式
+        gradientColor = DWORD(effect << 24)
+        
+        # 如果需要ABGR格式，使用这个：
+        # gradientColor = DWORD(effect << 24)  # 这里ABGR和ARGB对黑色也是一样的
+        
+        # 窗口阴影
+        accentFlags = DWORD(0x20 | 0x40 | 0x80 | 0x100) if isEnableShadow else DWORD(0)
+        # 动画ID
+        animationId = DWORD(animationId)
+        
+        # 配置毛玻璃效果
+        self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_ENABLE_BLURBEHIND.value[0]
         self.accentPolicy.GradientColor = gradientColor
         self.accentPolicy.AccentFlags = accentFlags
         self.accentPolicy.AnimationId = animationId
-        # 开启亚克力
+        
+        # 开启效果
         self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
         set_window_rounded_corners(hWnd)
-        print("setAcrylicEffect success")
-
-    def setAeroEffect(self, hWnd: int, gradientColor: str = 'F2F2F230',
-                         isEnableShadow: bool = True, animationId: int = 0):
-        self.accentPolicy.AccentState = ACCENT_STATE.ACCENT_ENABLE_BLURBEHIND.value[0]
-        # 开启Aero
-        self.SetWindowCompositionAttribute(hWnd, pointer(self.winCompAttrData))
-        set_window_rounded_corners(hWnd)
-        print("setAeroEffect success")
+        print(f"setDarkBlurEffect success (effect={effect})")
     
     def resetEffect(self, hWnd: int,corners_only=False):
         """ 恢复窗口默认效果
@@ -161,3 +199,5 @@ def set_window_rounded_corners(hwnd, corner_preference=DWM_WINDOW_CORNER_PREFERE
         print(f"设置圆角失败: {e}")
         return False
     print("set_window_rounded_corners success")
+
+WindowEffect = WindowEffect_main()

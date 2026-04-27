@@ -18,6 +18,7 @@ from src.windowMgr import windowMgr,resize_win
 from src import tool
 from src.ucfg import ucfg
 from src.res_load import itmeRes,imagePreView
+from .appAction.report import bugs_report
 
 SWP_NOMOVE = 0x0002
 SWP_NOZORDER = 0x0004
@@ -49,10 +50,12 @@ def open_sysApp_action(component_name):
 
 class AppAPI:
     file_info_temp = [],
-    def bug_report(self, part, data):
-        tool.bugs_report(
+    def bug_report(self, part, data,note=False,with_data=None):
+        bugs_report(
             part,
-            data
+            data,
+            note,
+            with_data
         )
     def is_path_abs(self,path):
         return os.path.isabs(path)
@@ -114,68 +117,6 @@ class AppAPI:
 
     def fit_window_start(self):
         resize_win.fit_window_start()
-    #     # global ignore_action, ucfg.data, resize_window, hwnd, has_cleared_fit,fit_hwnd
-    #     if ucfg.data["full_screen"] == True:
-    #         return
-    #     windowMgr.disable_autoClose()
-    #     width, height, end_x, end_y = tool.get_window_inf()
-    #     windowMgr.window.hide()
-    #     resize_window = webview.create_window(
-    #         "easyDesktop-fit",
-    #         "easyFileDesk.html",
-    #         x=end_x,
-    #         y=end_y,
-    #         js_api=AppAPI(),
-    #         confirm_close=False,
-    #         shadow=True,
-    #         on_top=True,
-    #         resizable=True,
-    #         draggable=False,
-    #     )
-    #     has_cleared_fit = False
-    #     resize_window.resize(ucfg.data["width"], ucfg.data["height"])
-    #     resize_window.evaluate_js("disable_settings()")
-    #     fit_hwnd = win32gui.FindWindow(None, "easyDesktop-fit")
-    #     win32gui.MoveWindow(fit_hwnd, end_x, end_y, width, height, True)
-    #     remove_title_bar(fit_hwnd)
-    #     print("ucfg.data:", ucfg.data["width"], ucfg.data["height"])
-    #     print("window: ", width, height)
-    #     # print("webview:", window.width, window.height)
-    #     time.sleep(3)
-    #     while True:
-    #         try:
-    #             resize_window.get_cookies()
-    #             active_hwnd = tool.get_active_window()
-    #             if not active_hwnd:
-    #                 break
-    #             window_title = win32gui.GetWindowText(active_hwnd)
-    #             if window_title != "easyDesktop-fit":
-    #                 break
-    #         except:
-    #             break
-    #         time.sleep(cfg.MOUSE_CHECK_INTERVAL)
-    #     if has_cleared_fit == False:
-    #         self.fit_window_end()
-
-    # def fit_window_end(self):
-    #     # global ignore_action, ucfg.data, resize_window, has_cleared_fit
-    #     has_cleared_fit = True
-    #     try:
-    #         width, height, end_x, end_y = tool.get_window_inf(resize_window.title)
-    #     except:
-    #         windowMgr.window.show()
-    #         return
-    #     flags = SWP_NOMOVE | SWP_NOZORDER | 0x0008 # 组合标志位
-    #     endx,endy = tool.get_targetPos(width, height)
-    #     win32gui.MoveWindow(hwnd, endx, endy, width, height, True)
-    #     ucfg.update_ucfg.data("width", width)
-    #     ucfg.update_ucfg.data("height", height)
-    #     resize_window.destroy()
-    #     windowMgr.window.show()
-    #     if ucfg.data['blur_bg']==True:
-    #         windowMgr.fit_blur_effect()
-    #     time.sleep(1)
-    #     ignore_action = False
 
     def change_default_dir(self, path):
         if path == None:
@@ -569,3 +510,14 @@ class AppAPI:
             ucfg.data["ico"][file_path] = os.path.join("icon_set",os.path.basename(icon_path))
             json.dump(ucfg.data,open("ucfg.data.json","w"))
             return {"success":True}
+        
+    def clean_temp(self):
+        if os.path.exists("desktopICO"):
+            shutil.rmtree("desktopICO")
+        if os.path.exists("itemsTemp.json"):
+            os.remove("itemsTemp.json")
+        from src.res_load import itmeRes
+        itmeRes.temp={}
+
+    def mouse_state(self):
+        return tool.mouseState.get_live_state()
