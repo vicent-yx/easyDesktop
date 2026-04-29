@@ -19,7 +19,7 @@ from src.appAction import report
 import traceback
 progressbar=""
 
-
+# 数据结构升级
 class userFileUpdateMgr:
     def __init__(self,install_path):
         self.install_path = install_path
@@ -59,6 +59,8 @@ class userFileUpdateMgr:
     
     def update_230(self):
         config = json.load(open(os.path.join(self.install_path,"config.json"),"r",encoding="utf-8"))
+        if "dir_order" not in config:
+            return
         for path_key in config["dir_order"]:
             if len(config["dir_order"][path_key])==0:
                 continue
@@ -364,6 +366,7 @@ def install():
     except PermissionError:
         messagebox.showerror("EasyDesktop - 安装时出现错误","权限不足，无法在当前位置安装")
         install_started=False
+        report.bugs_report("installer_install_pmsErr",traceback.format_exc(),False,None)
     except Exception as e:
         messagebox.showerror("EasyDesktop - 安装时出现错误",e)
         report.bugs_report("installer_install",traceback.format_exc(),False,None)
@@ -476,7 +479,7 @@ def update_state():
             go_install()
 
 have_network=False
-install_path = "D:/easydesktop"
+install_path = os.path.join(os.environ.get('APPDATA'),"EasyDesktop")
 install_started = False
 install_type = "install"  # 默认操作类型
 

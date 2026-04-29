@@ -69,7 +69,7 @@ class AppConfig:
     def save_config(self):
         self.write_json(cfg.CONFIG_FILE,self.data)
     def write_json(self,file,data):
-        with open(file, "w")as f:
+        with open(file, "w",encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=True, indent=4)
             f.close()
 
