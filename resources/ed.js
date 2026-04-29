@@ -2562,15 +2562,19 @@ async function load_bgType(tid){
     }
 }
 async function fit_window() {
-    await ApiHelper.call('fit_window_start');
+    if(setting_mode==false){
+        await ApiHelper.call('fit_window_start');
+    }else{
+        await ApiHelper.call('fit_window_end');
+    }
 }
 let setting_mode = false
 async function disable_settings() {
     setting_mode = true
     DOMCache.get("fit_btn").innerText = "点击完成调整";
-    DOMCache.get("fit_btn").onclick = async function () {
-        await ApiHelper.call('fit_window_end');
-    };
+    // DOMCache.get("fit_btn").onclick = async function () {
+    //     await ApiHelper.call('fit_window_end');
+    // };
     DOMCache.get("closeThemePanel").style.display = "none";
     DOMCache.getAllBySelector(".settings-section").forEach((item) => {
         item.style.display = "none";
@@ -3130,4 +3134,3 @@ async function save_new_order(reload_part){
     // NavigationManager.refreshCurrentPath()
     // fileRenderer.render(new_order,reload_part)
 }
-loadingUI.sets("items_ctn",true);

@@ -177,7 +177,6 @@ def ease_out_quad(t):
     # 缓动函数
     return t * (2 - t)
 
-
 SWP_NOMOVE = 0x0002
 SWP_NOZORDER = 0x0004
 

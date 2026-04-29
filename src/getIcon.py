@@ -264,7 +264,6 @@ def get_icon(exe_path, name,temp=True):
         return None
 
 def get_url_icon(url_path):
-    print("new " + url_path)
     dir_name = os.path.dirname(url_path).replace("/", "-").replace(R"\\", "-").replace(":", "-")
 
     # 解析 .url 文件
@@ -328,13 +327,20 @@ def get_url_icon(url_path):
         print(f"提取图标失败: {e}")
         return None
 
-def get_shortcut_target(shortcut_path):
+def get_shortcut_target(shortcut_path,sec=False):
     if not os.path.exists(shortcut_path):
         raise FileNotFoundError(f"快捷方式文件 {shortcut_path} 不存在")
 
     shell = win32com.client.Dispatch("WScript.Shell")
     shortcut = shell.CreateShortcut(shortcut_path)
-    return shortcut.TargetPath
+    target = shortcut.TargetPath
+    if target == "" and sec==False:
+        if not os.path.exists("temp"):
+            os.makedirs("temp")
+        shutil.copy(shortcut_path, "temp/temp.lnk")
+        target = get_shortcut_target("temp/temp.lnk",True)
+        os.remove("temp/temp.lnk")
+    return target
 
 def match_ico(file_name):
     print("match_ico " + file_name)

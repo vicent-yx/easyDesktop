@@ -1,7 +1,8 @@
 import os
-from . import getIcon # 本地模块源
+from src import getIcon # 本地模块源
 import config as cfg
 import subprocess
+from src.ucfg import ucfg
 import json
 from .appAction.report import bugs_report
 import traceback
@@ -87,15 +88,12 @@ class icon_mgr():
             return cfg.DEFAULT_UNKONW_ICON
 
     def get_icon(self,file_path,file_name):
-        if ".url" in file_path:
-            print(file_path)
         # 从缓存中获取
         if file_path in self.icon_cache:
             return self.icon_cache[file_path]
         # 自定义图标返回
-        config = cfg.load_json(cfg.CONFIG_FILE)
-        if file_path in config["ico"]:
-            return config["ico"][file_path]
+        if file_path in ucfg.data["ico"]:
+            return ucfg.data["ico"][file_path]
         
         if os.path.isdir(file_path):
             return self.icon_dir()

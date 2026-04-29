@@ -47,6 +47,10 @@ hotkeyReg = hotkeyMgr()
 class resize_widnow_api:
     def fit_window_end(self):
         resize_win.fit_window_end()
+    def fit_resize(self):
+        # global fit_hwnd
+        width, height, end_x, end_y = tool.get_window_inf("easyDesktop-fit")
+        win32gui.MoveWindow(resize_win.fit_hwnd, end_x, end_y, width, height, True)
     def get_version(self):
         return {"success":True,"version":cfg.APP_VERSION}
         
