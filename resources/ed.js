@@ -1060,8 +1060,8 @@ const ThemeManager = {
         }
     },
 
-    async initCustomTheme() {
-        const config = await ApiHelper.getConfig();
+    async initCustomTheme(config=null) {
+        if (!config) config = await ApiHelper.getConfig();  // 【启动优化 P1】可复用启动期 config
         this.originalCustomTheme = config.userTheme || {
             primary: '#667eea',
             secondary: '#28283c',
@@ -1160,13 +1160,16 @@ const ConfigManager = {
         await ApiHelper.updateConfig("scale", value);
     },
 
-    async updateDefaultDirectory() {
-        const config = await ApiHelper.getConfig();
+    async updateDefaultDirectory(config=null, navigate=true) {
+        // 【启动优化 P0/P1｜风险:中】① config 可由调用方传入复用，省去重复 get_config IPC；
+        // ② navigate=false 时只更新默认目录相关 UI、不触发导航渲染——启动时由调用方统一渲染一次，
+        //    消除这里多发起的一次 getFileInfo+render（运行期改默认目录仍用默认 navigate=true，行为不变）。
+        if (!config) config = await ApiHelper.getConfig();
         const settingBtns = DOMCache.get("dir_btn_box");
 
         document.getElementById("b2d").dataset.path = config.df_dir;// 此处DOM缓存项不起作用(似乎获取到的已经不是现在的b2d)，故用回getElementById
         document.getElementById("b2d").innerText = config.df_dir_name;
-        navigateTo(config.df_dir);// 刷新主页
+        if (navigate) navigateTo(config.df_dir);// 刷新主页
         DOMCache.get("defeat_dir_show").innerText = "当前选择：" + config.df_dir;
 
         if (config.df_dir === "desktop") {
@@ -2669,8 +2672,8 @@ function applyBackgroundSettings(config) {
     ThemeManager.applyBackgroundSettings(config);
 }
 
-async function initBackgroundSettings() {
-    const config = await ApiHelper.getConfig();
+async function initBackgroundSettings(config=null) {
+    if (!config) config = await ApiHelper.getConfig();  // 【启动优化 P1】可复用启动期 config
     const blurSlider = DOMCache.get('blurSlider');
     const blurValue = DOMCache.get('blurValue');
 
@@ -2876,18 +2879,19 @@ window.addEventListener('pywebviewready', async function () {
         // 初始化事件管理器
         EventManager.init();
 
-        // 初始化设置
-        await ConfigManager.updateDefaultDirectory();
-        await ThemeManager.initCustomTheme();
+        // 【启动优化 P1｜风险:低】一次 bootstrap 取齐 config+version，替代分散的多次 get_config/get_version。
+        const boot = await ApiHelper.call('bootstrap');
+        const config = boot.config;
 
-        // 加载默认文件
-        const config = await ApiHelper.getConfig();
-        const thisDir = await ApiHelper.getFileInfo(config["df_dir"]);
-        AppState.setFiles(thisDir.data);
-        files_data = thisDir.data; // 同步全局变量
-        await fileRenderer.render(thisDir.data);
-        let version = await ApiHelper.call('get_version')
-        document.getElementById("v_note").innerText = "v"+version["version"]
+        // 初始化设置（透传 config 复用；updateDefaultDirectory 仅更新 UI、不在此处导航）
+        await ConfigManager.updateDefaultDirectory(config, false);
+        await ThemeManager.initCustomTheme(config);
+
+        // 【启动优化 P0｜风险:中】首屏只渲染一次：唯一一次目录加载+渲染统一走 navigateTo
+        // （原先 updateDefaultDirectory、此处、以及末尾 b2d.click() 共渲染 3 次，每次还带 300ms 动画）。
+        await NavigationManager.navigateTo(config["df_dir"]);
+        files_data = AppState.files_data; // 同步全局变量
+        document.getElementById("v_note").innerText = "v"+boot.version
 
         // 初始化UI状态
         const updateUIFromConfig = async (config) => {
@@ -2977,15 +2981,15 @@ window.addEventListener('pywebviewready', async function () {
         await updateUIFromConfig(config);
 
         // 初始化背景设置
-        await initBackgroundSettings();
+        await initBackgroundSettings(config);
 
         // 不在应用启动时禁用滚动，保持正常滚动状态
         // 滚动禁用只在打开设置面板时触发
         console.log('应用初始化完成，滚动状态：正常');
 
-        setTimeout(() => {
-            document.getElementById("b2d").click(); // 自动点击默认目录按钮
-        }, 100);
+        // 【启动优化 P0｜风险:中】删除原 setTimeout 内的 b2d.click() —— 它会再触发一次
+        // refreshCurrentPath 导致第 3 次渲染。首屏导航/box1 显示/fit_btnBar 已由上面的
+        // NavigationManager.navigateTo 完成，无需再点。
         // setInterval(check_dirChange,1000);
 
     render_class_btn()

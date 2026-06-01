@@ -12,7 +12,6 @@ from requests import get as requests_get
 import config as cfg
 from .ucfg import ucfg
 from . import screen
-from pynput import mouse
 from threading import Thread
 
 def is_screenshot_light(region=None,threshold=0.4):
@@ -156,21 +155,19 @@ def get_mousePosition():
             time.sleep(0.5)
     return mouse_x, mouse_y
 def is_desktop_and_mouse_in_corner(wait=0):
-    # global ucfg.data
-    # try:
-    screen_width = win32api.GetSystemMetrics(cfg.SM_CXSCREEN)
-    screen_height = win32api.GetSystemMetrics(cfg.SM_CYSCREEN)
+    # 使用鼠标所在实际显示器的尺寸和原点，支持多显示器
+    screen_width, screen_height, ox, oy = screen.get_active_screen_size(True)
     corner_size = cfg.cornerSize_m[ucfg.data["corner_size"]][0]  # 角落区域的边长
     if ucfg.data["outPos"]=="1":
-        corner_rect = (0, screen_height - corner_size, corner_size, screen_height)
+        corner_rect = (ox, oy + screen_height - corner_size, ox + corner_size, oy + screen_height)
     elif ucfg.data["outPos"]=="2":
-        corner_rect = (0, 0, corner_size, corner_size)
+        corner_rect = (ox, oy, ox + corner_size, oy + corner_size)
     elif ucfg.data["outPos"]=="3":
         cw = int(screen_width//3)
-        corner_rect = (cw,screen_height-corner_size,screen_width-cw,screen_height)
+        corner_rect = (ox + cw, oy + screen_height - corner_size, ox + screen_width - cw, oy + screen_height)
     elif ucfg.data["outPos"]=="4":
         cw = int(screen_width//3)
-        corner_rect = (cw,0,screen_width-cw,corner_size)
+        corner_rect = (ox + cw, oy, ox + screen_width - cw, oy + corner_size)
     mouse_x, mouse_y = get_mousePosition()
     in_corner = corner_rect[0] <= mouse_x <= corner_rect[2] and corner_rect[1] <= mouse_y <= corner_rect[3]
     if wait>0 and in_corner==True:
@@ -181,9 +178,6 @@ def is_desktop_and_mouse_in_corner(wait=0):
         else:
             return False
     return in_corner
-    # except Exception as e:
-    #     print(f"Error: {e}")
-    #     return False
     
 def autoStart_registry():
     python_exe = sys.executable
@@ -201,9 +195,26 @@ def remove_autoStart_registry():
     reg.CloseKey(key)
     print("成功从开机启动项中移除")
 
+_desktop_path_cache = None
 def get_desktop_path():
-    shell = win32com.client.Dispatch("WScript.Shell")
-    return shell.SpecialFolders("Desktop")
+    # 【启动优化 P1｜风险:低】原用 win32com COM Dispatch("WScript.Shell")（首次 ~30-120ms 含 COM 初始化），
+    # 且被 res_load/api/入口三处模块级各调一次。改为读注册表 Shell Folders（<1ms，无 COM）+ 单例缓存，
+    # 消除重复 COM 初始化。结果与 COM 一致（OneDrive/重定向后的桌面同样反映在该注册表项）。
+    global _desktop_path_cache
+    if _desktop_path_cache is not None:
+        return _desktop_path_cache
+    path = None
+    try:
+        key = reg.OpenKey(reg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders")
+        value, _ = reg.QueryValueEx(key, "Desktop")
+        reg.CloseKey(key)
+        path = os.path.expandvars(value)
+    except Exception:
+        path = None
+    if not path:
+        path = os.path.join(os.environ.get("USERPROFILE") or os.path.expanduser("~"), "Desktop")
+    _desktop_path_cache = path
+    return path
 
 user32 = WinDLL('user32', use_last_error=True)
 WTS_CURRENT_SERVER_HANDLE = wintypes.HANDLE(0)
@@ -236,8 +247,15 @@ class mouse_state:
         self.had_click = False
         self.receive = False
         self.listener = None
-        Thread(target=self.reg_listener, daemon=True).start()
+        self._started = False
+        # 【启动优化 P2｜风险:低】不在 import/构造期启动 pynput 监听线程与 WH_MOUSE_LL 钩子，
+        # 推迟到首次呼出（reset()）时再起；监听仅在 receive=True（呼出之后）才有意义。
+    def _ensure_started(self):
+        if not self._started:
+            self._started = True
+            Thread(target=self.reg_listener, daemon=True).start()
     def reg_listener(self):
+        from pynput import mouse  # 惰性导入，移出冷启动 import 链
         self.listener = mouse.Listener(on_click=self.onclick)
         self.listener.start()
         self.listener.join()
@@ -261,6 +279,7 @@ class mouse_state:
     def reset(self):
         self.had_click = False
         self.receive = True
+        self._ensure_started()
     def stop(self):
         self.receive = False
         try:

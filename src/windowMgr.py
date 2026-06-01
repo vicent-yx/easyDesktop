@@ -1,4 +1,6 @@
 
+
+
 import win32gui
 import time
 from ctypes import windll
@@ -9,7 +11,6 @@ import darkdetect
 from .ucfg import ucfg
 from . import screen
 import webview
-from ctypes import windll
 import keyboard
 from threading import Thread
 
@@ -17,12 +18,14 @@ from threading import Thread
 SWP_NOMOVE = 0x0002
 SWP_NOZORDER = 0x0004
 
+
 class hotkeyMgr:
+
     def __init__(self):
         self.hotKey = ""
-        self.event = None
-        self.hadCreate_task = False
-
+        self._kb_event = None
+        self._kb_thread = None
+        self._kb_running = False
 
     def hotKey_action(self):
         if windowMgr.ignore_action == True:
@@ -36,32 +39,60 @@ class hotkeyMgr:
         except:
             self.reRegister()
 
-    def register(self,hotKey):
+    def register(self, hotKey):
+        """注册热键，每 60 秒自动刷新钩子防止被 Windows 静默移除"""
         self.hotKey = hotKey
-        if self.event != None:
-            keyboard.remove_hotkey(self.event)
-        self.event = keyboard.add_hotkey(hotKey,self.hotKey_action)
-        if self.hadCreate_task == False:
-            hotkeyReg.reRegTask()
+        self._clear()
+        self._start_kb(hotKey)
+
+    def _clear(self):
+        self._kb_running = False
+        try:
+            if self._kb_event is not None:
+                keyboard.remove_hotkey(self._kb_event)
+                self._kb_event = None
+        except:
+            pass
+
+    def _start_kb(self, hotKey):
+        try:
+            self._kb_event = keyboard.add_hotkey(hotKey, self.hotKey_action)
+        except Exception as e:
+            print(f"[hotkeyMgr] keyboard 注册异常: {e}")
+
+        if self._kb_thread is None or not self._kb_thread.is_alive():
+            self._kb_running = True
+            self._kb_thread = Thread(target=self._keyboard_refresh_loop, daemon=True)
+            self._kb_thread.start()
+
+    def _keyboard_refresh_loop(self):
+        """每 60 秒重置 keyboard 钩子，防止 WH_KEYBOARD_LL 被 Windows 静默移除"""
+        while self._kb_running:
+            time.sleep(60)
+            if not self._kb_running:
+                break
+            try:
+                keyboard.unhook_all()
+                time.sleep(0.1)
+                self._kb_event = keyboard.add_hotkey(self.hotKey, self.hotKey_action)
+                print("[hotkeyMgr] keyboard 钩子已刷新")
+            except Exception as e:
+                print(f"[hotkeyMgr] keyboard 刷新失败: {e}")
+
     def hotkey_init(self):
-        if ucfg.data["cf_type"]=="2":
+        if ucfg.data["cf_type"] == "2":
             self.register("left windows+shift")
-        if ucfg.data["cf_type"]=="3":
+        if ucfg.data["cf_type"] == "3":
             self.register("left windows+escape")
-        if ucfg.data["cf_type"]=="4":
+        if ucfg.data["cf_type"] == "4":
             self.register(ucfg.data["cf_hotkey"])
+
     def reRegister(self):
         self.register(self.hotKey)
-    def reRegisterTaskAction(self):
-        print("reRegisterTaskAction start")
-        while True:
-            self.register(self.hotKey)
-            time.sleep(300)
-    def reRegTask(self):
-        if self.hadCreate_task == True:
-            return
-        self.hadCreate_task = True
-        Thread(target=self.reRegisterTaskAction, daemon=True).start()
+
+    def cleanup(self):
+        """程序退出时清理所有热键资源"""
+        self._clear()
 
 
 hotkeyReg = hotkeyMgr()
@@ -168,9 +199,13 @@ class windowMgr_main():
         self.ignore_action = False
     def call_js(self,js_code):
         try:
-            self.window.evaluate_js(js_code)
+            # 【复审修复】返回 evaluate_js 结果：res_load.delay_update_action 依赖它取
+            # AppState.currentPath 判断是否仍在当前目录、决定是否刷新。原先无 return 恒为 None，
+            # 会导致冷启动占位图标永远不刷新成真实图标（P1 后台刷新失效）。
+            return self.window.evaluate_js(js_code)
         except:
             print(f"调用js失败: {js_code}")
+            return None
         
     def animateWindow(
         self,start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY
@@ -272,17 +307,18 @@ class windowMgr_main():
             if (tj == True and ucfg.data["full_screen"] == False) or self.fullscreen_close == True:
                 self.fullscreen_close = False
                 if self.ignore_action == False:
-                    self.moveIn_window()
+                    return True
                 break
 
             if self.window_state == False:
                 break
             time.sleep(cfg.MOUSE_CHECK_INTERVAL)
+        return False
 
 
-    def moveIn_window(self):
+    def moveIn_window(self,animate=True):
         screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-        
+
         if self.moving == True:
             return
         self.moving = True
@@ -315,13 +351,27 @@ class windowMgr_main():
         self.window.evaluate_js("window_state=false;preview_runing = false;MenuManager.hideAllMenus();")
         print("movein_ani")
         print(current_x, current_y, start_x, start_y, width, height)
-        self.animateWindow(current_x, current_y, start_x, start_y, width, height)
+        if animate:
+            self.animateWindow(current_x, current_y, start_x, start_y, width, height)
+        else:
+            # 【启动优化 P0】跳过 81 步动画，直接把（仍隐藏的）窗口一步定位到屏外起始点
+            win32gui.MoveWindow(hwnd, start_x, start_y, width, height, False)
         self.window.hide()
         self.moving = False
         self.window.evaluate_js("GroupManager.closeGroup();")
-        self.wait_open()
+
+    def _lifecycle_loop(self):
+        """主生命周期循环，消除递归调用栈累积"""
+        while True:
+            triggered = self.wait_open()
+            if triggered:
+                should_hide = self.out_window()
+                if should_hide:
+                    self.moveIn_window()
+            else:
+                time.sleep(cfg.SLEEP_INTERVAL)
     def wait_open(self):
-        # global key_quick_start, ucfg.data,window_state,start_action
+        """等待呼出触发条件。返回 True 表示触发，返回 False 表示窗口已被其他方式打开"""
         start_wait_time = int(time.time())
         self.had_refresh = False
         
@@ -336,18 +386,15 @@ class windowMgr_main():
                     continue
             if ucfg.data["cf_type"] == "2" or ucfg.data["cf_type"] == "3" or ucfg.data["cf_type"]=="4":
                 if self.key_quick_start == True:
-                    self.out_window()
-                    break
+                    return True
             if self.start_action == True:
                 self.start_action = False
-                self.out_window()
-                break
+                return True
             else:
                 if tool.is_desktop_and_mouse_in_corner(wait=cfg.cornerSize_m[ucfg.data["corner_size"]][1]) and ucfg.data["cf_type"] == "1":
-                    self.out_window()
-                    break
+                    return True
             if self.window_state == True:
-                break
+                return False
             time.sleep(cfg.SLEEP_INTERVAL)
     def fit_blur_effect(self):
         

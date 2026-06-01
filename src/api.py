@@ -6,13 +6,12 @@ import win32api
 import time
 import webview
 import subprocess
-from pypinyin import pinyin, Style, lazy_pinyin
 import shutil
 import json
 import sys
-from easygui import msgbox
-import send2trash
 import config as cfg
+# 【启动优化 P2｜风险:低】pypinyin / easygui / send2trash 仅在交互路径用到，
+# 已下放为函数内惰性导入，移出冷启动 import 链。
 from src import group_mgr
 from src.windowMgr import windowMgr,resize_win
 from src import tool
@@ -28,11 +27,13 @@ public_desktop = os.path.join(os.environ["PUBLIC"], "Desktop")
 
 
 def get_initials(text):
+    from pypinyin import pinyin, Style  # 惰性导入
     initials = pinyin(text, style=Style.FIRST_LETTER, errors="default")
     return "".join([item[0] for item in initials])
 
 
 def getPinyin(text):
+    from pypinyin import lazy_pinyin, Style  # 惰性导入
     result = "".join(lazy_pinyin(text, style=Style.NORMAL, errors="default"))
     return result
 def open_sysApp_action(component_name):
@@ -86,6 +87,11 @@ class AppAPI:
         return_config = ucfg.data.copy()
         del return_config["dir_order"]
         return return_config
+
+    def bootstrap(self):
+        # 【启动优化 P1｜风险:低】把启动期必取的 config + version 合并为一次跨桥调用，
+        # 减少 pywebview IPC 往返；前端再把 config 透传给各初始化函数，避免重复 get_config。
+        return {"config": self.get_config(), "version": cfg.APP_VERSION}
 
     def update_config(self, part, data):
         ucfg.update_config(part, data)
@@ -184,6 +190,7 @@ class AppAPI:
     def remove_file(self, file_path, del_type="remove"):
         try:
             if del_type == "rubbish":
+                import send2trash  # 惰性导入
                 send2trash.send2trash(file_path)
                 return {"success": True}
             if os.path.isfile(file_path):
@@ -467,6 +474,7 @@ class AppAPI:
 
     def select_image(self):
         # global ignore_action
+        from easygui import msgbox  # 惰性导入，仅错误提示用
         windowMgr.disable_autoClose()
         file_types = ('Image Files (*.png;*.jpg;*.gif;*.jpeg;*.webp)', 'All files (*.*)')
 

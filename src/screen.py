@@ -16,16 +16,24 @@ class sfb:
 
     def get_sfb_action(self):
         hdc = win32gui.GetDC(0)
-        # 获取物理分辨率
-        physical_width = win32print.GetDeviceCaps(hdc, win32con.DESKTOPHORZRES)
-        # 获取逻辑分辨率（受缩放影响）
-        logical_width = win32print.GetDeviceCaps(hdc, win32con.HORZRES)
-        
-        # 计算缩放比例
-        scale_factor = round(physical_width / logical_width, 2)
+        try:
+            # 获取物理分辨率
+            physical_width = win32print.GetDeviceCaps(hdc, win32con.DESKTOPHORZRES)
+            # 获取逻辑分辨率（受缩放影响）
+            logical_width = win32print.GetDeviceCaps(hdc, win32con.HORZRES)
+            # 计算缩放比例
+            scale_factor = round(physical_width / logical_width, 2)
+        finally:
+            # 【修复｜风险:低】GetDC(0) 必须配对 ReleaseDC，否则每进程泄漏一个 DC 句柄
+            win32gui.ReleaseDC(0, hdc)
         return scale_factor
-sfb_mgr = sfb()
+
+# 【启动优化 P2｜风险:低】惰性单例：首次 get_sfb() 时再做 GetDC/GetDeviceCaps，不在 import 期触碰 GDI
+sfb_mgr = None
 def get_sfb():
+    global sfb_mgr
+    if sfb_mgr is None:
+        sfb_mgr = sfb()
     return sfb_mgr.get_sfb()
 def get_active_screen_size(with_origin=False,with_work_area=False):
     """

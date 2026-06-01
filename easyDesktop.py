@@ -5,7 +5,6 @@ import win32gui
 import win32api
 import time
 import webview
-import pystray
 import darkdetect
 from PIL import Image
 import sys
@@ -189,9 +188,14 @@ def on_loaded():
     else:
         window.evaluate_js("DisplayModeManager.grid_view()")
     window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
-    windowMgr.fit_blur_effect()
+    # 【启动优化 P0｜风险:中】fit_blur_effect 内部会做窗口区域截图+像素直方图判主题（~30-120ms 同步阻塞）。
+    # 移到后台线程：首帧先由上面 set_blur() 按存储主题立即上毛玻璃，截图判定完成后再异步切到正确主题。
+    Thread(target=windowMgr.fit_blur_effect, daemon=True).start()
     set_window_rounded_corners(hwnd)
-    windowMgr.moveIn_window()
+    # 【启动优化 P0｜风险:中】启动阶段窗口本就隐藏，moveIn 的 81 步滑入动画（~250ms）对首屏无意义；
+    # animate=False 直接把隐藏窗口定位到屏外，省去 ~250ms。运行期呼出/收回仍走默认 animate=True 动画。
+    windowMgr.moveIn_window(animate=False)
+    Thread(target=windowMgr._lifecycle_loop, daemon=True).start()
     # wait_open()
 
 
@@ -200,6 +204,7 @@ public_desktop = os.path.join(os.environ["PUBLIC"], "Desktop")
 
 def quit_ed():
     global icon
+    hotkeyReg.cleanup()
     try:
         tool.mouseState.stop()
     except:
@@ -230,6 +235,9 @@ def start_out():
 
 def stray():
     global icon
+    # 【启动优化 P2｜风险:低】pystray 仅托盘图标使用，且本函数运行在后台线程，
+    # 惰性导入可把 pystray 的加载移出冷启动 import 链。
+    import pystray
     image = Image.open("ed_logo.png")
     icon = pystray.Icon("name", image, "title")
     menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", nonblocking(quit_ed)))

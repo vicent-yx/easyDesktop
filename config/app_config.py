@@ -57,7 +57,7 @@ WINDOW_POSITION_RATIO = 0.1
 TOLERANCE = 5  # 像素容差
 # CORNER_SIZE = 10  # 角落区域的边长
 WAIT_TIMEOUT = 3  # 等待超时时间（秒）
-SLEEP_INTERVAL = 0.3  # 循环间隔（秒）
+SLEEP_INTERVAL = 0.1  # 循环间隔（秒）
 MOUSE_CHECK_INTERVAL = 0.1  # 鼠标检查间隔（秒）
 
 # ===== 支持的脚本文件类型 =====
