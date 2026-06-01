@@ -2,8 +2,10 @@
 
 
 import win32gui
+import win32con
 import time
-from ctypes import windll
+from ctypes import windll, wintypes
+import ctypes as ct
 import config as cfg
 from window_effect import WindowEffect,set_window_rounded_corners
 from . import tool
@@ -11,14 +13,19 @@ import darkdetect
 from .ucfg import ucfg
 from . import screen
 import webview
+<<<<<<< HEAD
 import keyboard
 from threading import Thread
+=======
+from threading import Thread, Event
+>>>>>>> 44c0886592d646b17118968710de406b6082495c
 
 
 SWP_NOMOVE = 0x0002
 SWP_NOZORDER = 0x0004
 
 
+<<<<<<< HEAD
 class hotkeyMgr:
 
     def __init__(self):
@@ -26,19 +33,318 @@ class hotkeyMgr:
         self._kb_event = None
         self._kb_thread = None
         self._kb_running = False
+=======
+# ========== 纯 ctypes 窗口过程回调类型 ==========
+WNDPROC = ct.WINFUNCTYPE(ct.c_longlong, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+
+class WNDCLASSEXW(ct.Structure):
+    _fields_ = [
+        ("cbSize",        wintypes.UINT),
+        ("style",         wintypes.UINT),
+        ("lpfnWndProc",   WNDPROC),
+        ("cbClsExtra",    ct.c_int),
+        ("cbWndExtra",    ct.c_int),
+        ("hInstance",     wintypes.HINSTANCE),
+        ("hIcon",         wintypes.HICON),
+        ("hCursor",       wintypes.HANDLE),
+        ("hbrBackground", wintypes.HBRUSH),
+        ("lpszMenuName",  wintypes.LPCWSTR),
+        ("lpszClassName", wintypes.LPCWSTR),
+        ("hIconSm",       wintypes.HICON),
+    ]
+
+# ---- 低级键盘钩子相关类型和常量 ----
+HOOKPROC = ct.WINFUNCTYPE(ct.c_longlong, ct.c_int, wintypes.WPARAM, wintypes.LPARAM)
+
+class KBDLLHOOKSTRUCT(ct.Structure):
+    _fields_ = [
+        ("vkCode",      wintypes.DWORD),
+        ("scanCode",    wintypes.DWORD),
+        ("flags",       wintypes.DWORD),
+        ("time",        wintypes.DWORD),
+        ("dwExtraInfo", ct.c_ulonglong),
+    ]
+
+_VK_LWIN   = 0x5B
+_VK_RWIN   = 0x5C
+_VK_LSHIFT = 0xA0
+_VK_RSHIFT = 0xA1
+_WH_KEYBOARD_LL = 13
+
+
+class hotkeyMgr:
+
+    _WND_CLASS_NAME = "EasyDesktop_HotkeyWindow_V2"
+
+    def __init__(self):
+        self.hotKey = ""
+        self._hk_id = 1
+        self._run = False
+        self._thread = None
+        self._hwnd = None
+        # 键盘钩子相关
+        self._hook_handle = None
+        self._hook_proc = None
+        self._win_pressed = False
+        self._shift_pressed = False
+
+    # ---------- 热键字符串 → 修饰符 + 虚拟键码 ----------
+
+    @staticmethod
+    def _parse_hotkey(hotKey: str):
+        """将 'left windows+shift' 或 'ctrl+alt+a' 解析为 (mod, vk)"""
+        parts = [p.strip().lower() for p in hotKey.split("+")]
+
+        MOD_MAP = {
+            "left windows":  win32con.MOD_WIN,
+            "right windows": win32con.MOD_WIN,
+            "windows":       win32con.MOD_WIN,
+            "win":           win32con.MOD_WIN,
+            "ctrl":          win32con.MOD_CONTROL,
+            "control":       win32con.MOD_CONTROL,
+            "alt":           win32con.MOD_ALT,
+            "shift":         win32con.MOD_SHIFT,
+        }
+
+        VK_MAP = {
+            "shift":        win32con.VK_SHIFT,
+            "escape":       win32con.VK_ESCAPE,
+            "esc":          win32con.VK_ESCAPE,
+            "space":        win32con.VK_SPACE,
+            "tab":          win32con.VK_TAB,
+            "enter":        win32con.VK_RETURN,
+            "return":       win32con.VK_RETURN,
+            "backspace":    win32con.VK_BACK,
+            "delete":       win32con.VK_DELETE,
+            "insert":       win32con.VK_INSERT,
+            "home":         win32con.VK_HOME,
+            "end":          win32con.VK_END,
+            "page up":      win32con.VK_PRIOR,
+            "page down":    win32con.VK_NEXT,
+            "up":           win32con.VK_UP,
+            "down":         win32con.VK_DOWN,
+            "left":         win32con.VK_LEFT,
+            "right":        win32con.VK_RIGHT,
+            "caps lock":    win32con.VK_CAPITAL,
+            "print screen": win32con.VK_SNAPSHOT,
+            "pause":        win32con.VK_PAUSE,
+            "num lock":     win32con.VK_NUMLOCK,
+            "scroll lock":  win32con.VK_SCROLL,
+        }
+        for i in range(1, 25):
+            VK_MAP[f"f{i}"] = getattr(win32con, f"VK_F{i}", 0x6F + i)
+
+        # 找出哪个键是"主键"（非修饰键）
+        key_name = None
+        for p in parts:
+            if p not in MOD_MAP:
+                key_name = p
+                break
+        # 全是修饰键 → 最后一个作为主键，其余作为修饰键
+        if key_name is None and parts:
+            key_name = parts[-1]
+
+        mod = 0
+        for p in parts:
+            if p == key_name:
+                continue
+            mod |= MOD_MAP.get(p, 0)
+
+        # 解析主键 → 虚拟键码
+        vk = VK_MAP.get(key_name) if key_name else None
+        if vk is None and key_name and len(key_name) == 1:
+            vk = ord(key_name.upper())
+
+        return mod, vk
+
+    # ---------- 纯 ctypes 消息窗口 + 热键注册 ----------
+
+    def _msg_loop(self):
+        mod, vk = self._parse_hotkey(self.hotKey)
+        if vk is None:
+            print(f"[hotkeyMgr] 无法解析热键: '{self.hotKey}'")
+            return
+
+        hk_id = self._hk_id
+        u32 = ct.windll.user32
+        k32 = ct.windll.kernel32
+        hinst = k32.GetModuleHandleW(None)
+
+        # ---- 窗口过程 (ctypes 回调，保证能被 DispatchMessageW 调用) ----
+        mgr = self  # 闭包引用，避免 self 在回调中绑定问题
+
+        @WNDPROC
+        def _wnd_proc(hwnd, msg, wparam, lparam):
+            if msg == win32con.WM_HOTKEY:
+                if wparam == hk_id:
+                    print(f"[hotkeyMgr] 热键触发: {mgr.hotKey}")
+                    mgr.hotKey_action()
+                elif wparam == 99:
+                    print("[hotkeyMgr] 测试热键 Ctrl+Alt+F12 触发成功！热键机制正常工作。")
+                else:
+                    print(f"[hotkeyMgr] WM_HOTKEY wparam={wparam:#x} (未知)")
+            return u32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+        # 设置 *W 函数的 argtypes，确保参数类型正确
+        u32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        u32.DefWindowProcW.restype = ct.c_longlong
+
+        u32.CreateWindowExW.argtypes = [
+            wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+            ct.c_int, ct.c_int, ct.c_int, ct.c_int,
+            wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID,
+        ]
+        u32.CreateWindowExW.restype = wintypes.HWND
+
+        # ---- 注册窗口类 ----
+        cls_name = self._WND_CLASS_NAME
+        wc = WNDCLASSEXW()
+        wc.cbSize = ct.sizeof(WNDCLASSEXW)
+        wc.lpfnWndProc = _wnd_proc
+        wc.hInstance = hinst
+        wc.lpszClassName = cls_name
+
+        if not u32.RegisterClassExW(ct.byref(wc)):
+            err = k32.GetLastError()
+            if err != 1410:  # ERROR_CLASS_ALREADY_EXISTS
+                print(f"[hotkeyMgr] RegisterClassExW 失败，错误码: {err}")
+                return
+
+        # ---- 创建消息窗口 ----
+        hwnd = u32.CreateWindowExW(
+            0, cls_name, "", 0, 0, 0, 0, 0,
+            win32con.HWND_MESSAGE, None, hinst, None
+        )
+        if not hwnd:
+            print(f"[hotkeyMgr] CreateWindowExW 失败，错误码: {k32.GetLastError()}")
+            return
+
+        self._hwnd = hwnd
+
+        # ---- 检测 Win+Shift 系统保留热键，使用低级键盘钩子 ---- #
+        use_hook = False
+        if mod & win32con.MOD_WIN:
+            if vk in (win32con.VK_SHIFT,):
+                use_hook = True
+                print(f"[hotkeyMgr] '{self.hotKey}' 是系统保留热键，使用低级键盘钩子")
+
+        if use_hook:
+            # ---- 安装低级键盘钩子 ---- #
+            u32.SetWindowsHookExW.argtypes = [
+                ct.c_int, HOOKPROC, wintypes.HINSTANCE, wintypes.DWORD
+            ]
+            u32.SetWindowsHookExW.restype = ct.c_void_p
+            u32.UnhookWindowsHookEx.argtypes = [ct.c_void_p]
+            u32.UnhookWindowsHookEx.restype = wintypes.BOOL
+            u32.CallNextHookEx.argtypes = [ct.c_void_p, ct.c_int, wintypes.WPARAM, wintypes.LPARAM]
+            u32.CallNextHookEx.restype = ct.c_longlong
+
+            @HOOKPROC
+            def _hook_proc(nCode, wParam, lParam):
+                if nCode == 0:  # HC_ACTION
+                    p = ct.cast(lParam, ct.POINTER(KBDLLHOOKSTRUCT)).contents
+                    down = wParam in (win32con.WM_KEYDOWN, win32con.WM_SYSKEYDOWN)
+                    up   = wParam in (win32con.WM_KEYUP,   win32con.WM_SYSKEYUP)
+                    if down or up:
+                        vk_code = p.vkCode
+                        if vk_code in (_VK_LWIN, _VK_RWIN):
+                            # 放行 Win 键，不干扰系统快捷键（Win+R、Win+E 等）
+                            mgr._win_pressed = down
+                        elif vk_code in (_VK_LSHIFT, _VK_RSHIFT, win32con.VK_SHIFT):
+                            mgr._shift_pressed = down
+                            if down and mgr._win_pressed:
+                                # Win+Shift 触发 → 关掉开始菜单 + 吃掉 Shift
+                                print("[hotkeyMgr] 系统热键触发 (via Hook): Win+Shift")
+                                u32.keybd_event(win32con.VK_ESCAPE, 0, 0, 0)
+                                u32.keybd_event(win32con.VK_ESCAPE, 0, win32con.KEYEVENTF_KEYUP, 0)
+                                mgr.hotKey_action()
+                                return 1  # 吃掉 Shift，阻止切换键盘布局
+                return u32.CallNextHookEx(None, nCode, wParam, lParam)
+
+            self._hook_proc = _hook_proc  # 保持引用，防止 GC
+            hook_handle = u32.SetWindowsHookExW(_WH_KEYBOARD_LL, _hook_proc, None, 0)
+            if hook_handle:
+                self._hook_handle = hook_handle
+                print("[hotkeyMgr] 键盘钩子已安装")
+            else:
+                err = k32.GetLastError()
+                print(f"[hotkeyMgr] 键盘钩子安装失败，错误码: {err}")
+                u32.DestroyWindow(hwnd)
+                self._hwnd = None
+                return
+
+            test_ok = False
+        else:
+            # ---- 注册系统热键 (RegisterHotKey) ---- #
+            if not u32.RegisterHotKey(hwnd, hk_id, mod, vk):
+                print(f"[hotkeyMgr] RegisterHotKey 失败: '{self.hotKey}' (可能被其他程序占用)")
+                u32.DestroyWindow(hwnd)
+                self._hwnd = None
+                return
+
+            print(f"[hotkeyMgr] 热键已注册: {self.hotKey} (mod={mod:#x}, vk={vk:#x})")
+
+            # ---- 注册测试热键 Ctrl+Alt+F12（验证热键机制是否正常） ---- #
+            test_ok = False
+            TEST_HK_ID = 99
+            test_ok = u32.RegisterHotKey(hwnd, TEST_HK_ID, win32con.MOD_CONTROL | win32con.MOD_ALT, win32con.VK_F12)
+            if test_ok:
+                print("[hotkeyMgr] 测试热键已注册: Ctrl+Alt+F12，请按下测试")
+
+        # ---- 给自己发一条测试消息，验证消息循环是否正常 ---- #
+        u32.PostMessageW(hwnd, win32con.WM_USER, 0xDEAD, 0xBEEF)
+        print("[hotkeyMgr] 已发送 WM_USER 测试消息，如果收到说明消息循环正常")
+
+        # ---- 消息循环 ---- #
+        u32.GetMessageW.argtypes = [wintypes.LPMSG, wintypes.HWND, wintypes.UINT, wintypes.UINT]
+        u32.GetMessageW.restype = wintypes.BOOL
+        u32.TranslateMessage.argtypes = [ct.POINTER(wintypes.MSG)]
+        u32.TranslateMessage.restype = wintypes.BOOL
+        u32.DispatchMessageW.argtypes = [ct.POINTER(wintypes.MSG)]
+        u32.DispatchMessageW.restype = ct.c_longlong
+
+        msg = wintypes.MSG()
+        try:
+            while self._run:
+                ret = u32.GetMessageW(ct.byref(msg), None, 0, 0)
+                if ret == 0:
+                    print("[hotkeyMgr] GetMessageW 返回 0 (WM_QUIT)，退出循环")
+                    break
+                if ret == -1:
+                    err = k32.GetLastError()
+                    print(f"[hotkeyMgr] GetMessageW 返回 -1，错误码: {err}，退出循环")
+                    break
+                u32.TranslateMessage(ct.byref(msg))
+                u32.DispatchMessageW(ct.byref(msg))
+        finally:
+            if self._hook_handle:
+                u32.UnhookWindowsHookEx(self._hook_handle)
+                self._hook_handle = None
+                self._hook_proc = None
+                print("[hotkeyMgr] 键盘钩子已卸载")
+            if not use_hook:
+                u32.UnregisterHotKey(hwnd, hk_id)
+                if test_ok:
+                    u32.UnregisterHotKey(hwnd, 99)
+            u32.DestroyWindow(hwnd)
+            self._hwnd = None
+            print("[hotkeyMgr] 热键已注销")
+
+    # ---------- 对外接口 ----------
+>>>>>>> 44c0886592d646b17118968710de406b6082495c
 
     def hotKey_action(self):
-        if windowMgr.ignore_action == True:
+        if windowMgr.ignore_action:
             return
         try:
             if windowMgr.window_state == False:
                 windowMgr.key_quick_start = True
             else:
                 windowMgr.fullscreen_close = True
-            windowMgr.call_js("document.body.focus()")
-        except:
-            self.reRegister()
+        except Exception as e:
+            print(f"[hotkeyMgr] hotKey_action 异常: {e}")
 
+<<<<<<< HEAD
     def register(self, hotKey):
         """注册热键，每 60 秒自动刷新钩子防止被 Windows 静默移除"""
         self.hotKey = hotKey
@@ -78,6 +384,30 @@ class hotkeyMgr:
                 print("[hotkeyMgr] keyboard 钩子已刷新")
             except Exception as e:
                 print(f"[hotkeyMgr] keyboard 刷新失败: {e}")
+=======
+    def startTread(self):
+        print("start hotkey thread")
+        self._run = True
+        self._thread = Thread(target=self._msg_loop, daemon=True)
+        self._thread.start()
+
+    def register(self, hotKey):
+        self.hotKey = hotKey
+        # 先停止旧线程（不要跨线程卸载钩子，让 finally 同线程清理）
+        self._run = False
+        if self._hwnd:
+            try:
+                ct.windll.user32.PostMessageW(self._hwnd, win32con.WM_QUIT, 0, 0)
+            except:
+                pass
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2)
+        # 启动新线程
+        self.startTread()
+
+    def _clear(self):
+        self._run = False
+>>>>>>> 44c0886592d646b17118968710de406b6082495c
 
     def hotkey_init(self):
         if ucfg.data["cf_type"] == "2":
@@ -87,12 +417,33 @@ class hotkeyMgr:
         if ucfg.data["cf_type"] == "4":
             self.register(ucfg.data["cf_hotkey"])
 
+<<<<<<< HEAD
     def reRegister(self):
         self.register(self.hotKey)
 
     def cleanup(self):
         """程序退出时清理所有热键资源"""
         self._clear()
+=======
+    def cleanup(self):
+        self._run = False
+        # 先发 WM_QUIT，让线程的 finally 同线程清理钩子
+        if self._hwnd:
+            try:
+                ct.windll.user32.PostMessageW(self._hwnd, win32con.WM_QUIT, 0, 0)
+            except:
+                pass
+        if self._thread:
+            self._thread.join(timeout=2)
+        # 兜底：如果线程未能正常退出，跨线程卸载钩子
+        if self._hook_handle:
+            try:
+                ct.windll.user32.UnhookWindowsHookEx(self._hook_handle)
+            except:
+                pass
+            self._hook_handle = None
+            self._hook_proc = None
+>>>>>>> 44c0886592d646b17118968710de406b6082495c
 
 
 hotkeyReg = hotkeyMgr()
@@ -464,6 +815,20 @@ class windowMgr_main():
                 tool.autoStart_registry()
             else:
                 tool.remove_autoStart_registry()
+                # 关闭自启动时一并取消任务计划优先级
+                tool.remove_autoStart_taskScheduler()
+        if part == "auto_start_priority":
+            if data == True:
+                rs = tool.autoStart_taskScheduler()
+                if rs:
+                    self.window.evaluate_js("setPriorityBtnActive(true)")
+            else:
+                rs = tool.remove_autoStart_taskScheduler()
+                if rs:
+                    self.window.evaluate_js("setPriorityBtnActive(false)")
+        if part == "get_taskScheduler_state":
+            enabled = tool.is_taskScheduler_enabled()
+            self.window.evaluate_js(f"setPriorityBtnActive({str(enabled).lower()})")
         if part == "full_screen":
             if data == False:
                 self.ignore_action = True

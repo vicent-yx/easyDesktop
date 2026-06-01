@@ -11,6 +11,7 @@ import sys
 from easygui import msgbox
 from ctypes import windll,WinDLL,wintypes
 from threading import Thread
+import ctypes
 import config as cfg
 import winerror
 import win32event
@@ -99,6 +100,23 @@ if win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS:
 if getattr(sys, 'frozen', False):
     base_path = os.path.dirname(os.path.realpath(sys.executable))
     os.chdir(base_path)
+
+# 通过任务计划启动时，提升进程优先级
+def _try_high_priority():
+    try:
+        import subprocess as _sp
+        r = _sp.run(
+            'schtasks /Query /TN "EasyDesktop"',
+            shell=True, capture_output=True, text=True
+        )
+        if r.returncode == 0:
+            HIGH_PRIORITY_CLASS = 0x00000080
+            h = ctypes.windll.kernel32.GetCurrentProcess()
+            ctypes.windll.kernel32.SetPriorityClass(h, HIGH_PRIORITY_CLASS)
+            print("任务计划检测到，已设置高优先级")
+    except:
+        pass
+Thread(target=_try_high_priority, daemon=True).start()
 
 resize_window = None
 icon = None
@@ -192,9 +210,13 @@ def on_loaded():
     # 移到后台线程：首帧先由上面 set_blur() 按存储主题立即上毛玻璃，截图判定完成后再异步切到正确主题。
     Thread(target=windowMgr.fit_blur_effect, daemon=True).start()
     set_window_rounded_corners(hwnd)
+<<<<<<< HEAD
     # 【启动优化 P0｜风险:中】启动阶段窗口本就隐藏，moveIn 的 81 步滑入动画（~250ms）对首屏无意义；
     # animate=False 直接把隐藏窗口定位到屏外，省去 ~250ms。运行期呼出/收回仍走默认 animate=True 动画。
     windowMgr.moveIn_window(animate=False)
+=======
+    windowMgr.moveIn_window()
+>>>>>>> 44c0886592d646b17118968710de406b6082495c
     Thread(target=windowMgr._lifecycle_loop, daemon=True).start()
     # wait_open()
 

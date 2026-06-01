@@ -96,6 +96,11 @@ class AppAPI:
     def update_config(self, part, data):
         ucfg.update_config(part, data)
 
+    def get_taskScheduler_state(self):
+        """初始化时同步优先级按钮状态"""
+        enabled = tool.is_taskScheduler_enabled()
+        windowMgr.window.evaluate_js(f"setPriorityBtnActive({str(enabled).lower()})")
+
     def update_config_order(self,path,order):
 
         path_order = []

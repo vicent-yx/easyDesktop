@@ -655,6 +655,28 @@
             display: none;
             /* 隐藏滚动条 */
         }
+        .priority-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #fff;
+            color: #333;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        .priority-btn:hover {
+            background: #e8e8e8;
+        }
+        .priority-btn.active {
+            background: #4CAF50;
+            color: white;
+            border-color: #4CAF50;
+        }
+        .priority-btn.active:hover {
+            background: #45a049;
+        }
     </style>
     <!-- 主题设置面板 -->
     <div class="settings_box" id="themeSettingsPanel" style="display: flex;">
@@ -668,10 +690,13 @@
                 <div class="settings-section">
                     <div class="system-theme-toggle">
                         <span>开机自启动</span>
-                        <label class="switch">
-                            <input type="checkbox" id="autoStartToggle">
-                            <span class="slider round"></span>
-                        </label>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <button id="autoStartPriorityBtn" class="priority-btn" style="display: none;">启用优先级</button>
+                            <label class="switch">
+                                <input type="checkbox" id="autoStartToggle">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
                 <div class="settings-section">

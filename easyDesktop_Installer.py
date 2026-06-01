@@ -70,20 +70,11 @@ class userFileUpdateMgr:
                     order_list.append(item["filePath"])
                 config["dir_order"][path_key] = order_list
         json.dump(config, open(os.path.join(self.install_path,"config.json"),"w",encoding="utf-8"))
-    def update_263(self):
-        del_list = ["_internal/VCRUNTIME140.dll","_internal/VCRUNTIME140_1.dll"]
-        try:
-            for file in del_list:
-                if os.path.exists(os.path.join(self.install_path,file)):
-                    os.remove(os.path.join(self.install_path,file))
-        except:
-            pass
     def updateAction(self):
         if not hasattr(self, "user_config"):
             return
         actions = {
             230:self.update_230,
-            263:self.update_263,
         }
         version = self.user_config["version"] if "version" in self.user_config else "0.0.0"
         version = int(version.replace(".",""))
@@ -242,8 +233,15 @@ def un_install():
         if os.path.exists(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk")):
             os.remove(os.path.join(os.path.expanduser("~"), "Desktop","EasyDesktop.lnk"))
         pythoncom.CoUninitialize()
-        download_inf_var.set("正在删除注册表项:")
+        download_inf_var.set("正在删除注册表项")
         try:
+            # 删除注册表自动启动项
+            key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+                try:
+                    winreg.DeleteValue(key, "EasyDesktop")
+                except FileNotFoundError:
+                    pass
             # 打开父键（HKEY_CURRENT_USER\Software）
             parent_path = r"Software"
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, parent_path, 0, winreg.KEY_WRITE) as parent_key:
@@ -252,6 +250,15 @@ def un_install():
                 print("注册表项已成功删除")
         except:
             print("注册表项删除失败")
+
+        download_inf_var.set("正在删除任务计划")
+        try:
+            subprocess.run(
+                'schtasks /Delete /TN "EasyDesktop" /F',
+                shell=True, capture_output=True
+            )
+        except:
+            pass
 
         download_inf_var.set("卸载完成")
         install_started=False

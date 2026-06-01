@@ -6,6 +6,7 @@ import time
 from PIL import ImageGrab
 import winreg as reg
 import sys
+import subprocess
 from easygui import msgbox, buttonbox
 from ctypes import windll,WinDLL,wintypes
 from requests import get as requests_get
@@ -191,9 +192,81 @@ def autoStart_registry():
 def remove_autoStart_registry():
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_path, 0, reg.KEY_SET_VALUE)
-    reg.DeleteValue(key, cfg.APP_NAME)
+    try:
+        reg.DeleteValue(key, cfg.APP_NAME)
+        print("成功从开机启动项中移除")
+    except FileNotFoundError:
+        pass
     reg.CloseKey(key)
-    print("成功从开机启动项中移除")
+
+# ========== 任务计划程序自启动（比注册表 Run 启动更早） ==========
+
+TASK_SCHEDULER_NAME = "EasyDesktop"
+
+def autoStart_taskScheduler():
+    """使用任务计划程序设置自启动（比注册表 Run 更早触发，弹 UAC 提权）"""
+    if getattr(sys, 'frozen', False):
+        exe_path = os.path.join(os.path.dirname(sys.executable), "easyDesktop.exe")
+    else:
+        exe_path = sys.executable
+    
+    # 路径用反斜杠转义引号包裹，避免空格问题
+    params = f'/Create /TN "{TASK_SCHEDULER_NAME}" /SC ONLOGON /TR "\\"{exe_path}\\"" /F'
+    print(f"[任务计划] 请求管理员权限创建: schtasks {params}")
+    
+    # ShellExecuteW + runas → 弹出 UAC 提权窗口
+    ret = windll.shell32.ShellExecuteW(
+        None,           # hwnd
+        "runas",        # 触发 UAC
+        "schtasks.exe", # 目标程序
+        params,         # 参数
+        None,           # 工作目录
+        0               # SW_HIDE，不闪 cmd 窗口
+    )
+    
+    if ret > 32:
+        print(f"任务计划 '{TASK_SCHEDULER_NAME}' 创建成功（已提权）")
+        return True
+    else:
+        print(f"任务计划创建失败或用户取消，错误码: {ret}")
+        return False
+
+def remove_autoStart_taskScheduler():
+    """移除任务计划自启动（先尝试不弹窗删除，失败则弹 UAC 提权）"""
+    # 任务不存在则直接返回成功
+    if not is_taskScheduler_enabled():
+        return True
+    
+    # 先尝试普通删除（部分系统不需要提权即可删除自己的任务）
+    try:
+        subprocess.run(
+            f'schtasks /Delete /TN "{TASK_SCHEDULER_NAME}" /F',
+            shell=True, check=True, capture_output=True, text=True
+        )
+        print(f"任务计划 '{TASK_SCHEDULER_NAME}' 已删除（无需提权）")
+        return True
+    except subprocess.CalledProcessError:
+        pass
+    
+    # 普通删除失败，弹 UAC 提权删除
+    params = f'/Delete /TN "{TASK_SCHEDULER_NAME}" /F'
+    ret = windll.shell32.ShellExecuteW(
+        None, "runas", "schtasks.exe", params, None, 0
+    )
+    ok = ret > 32
+    print(f"任务计划 '{TASK_SCHEDULER_NAME}' 删除操作完成, ret={ret}, ok={ok}")
+    return ok
+
+def is_taskScheduler_enabled():
+    """检查任务计划是否已设置"""
+    try:
+        result = subprocess.run(
+            f'schtasks /Query /TN "{TASK_SCHEDULER_NAME}"',
+            shell=True, capture_output=True, text=True
+        )
+        return result.returncode == 0
+    except:
+        return False
 
 _desktop_path_cache = None
 def get_desktop_path():
