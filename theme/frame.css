@@ -140,14 +140,13 @@ body {
     border: 1px solid rgba(255, 255, 255, 0);
 }
 
+/* 不在 .file-item 上做 translate：位移会改 hit-test，边缘悬停会反复进出 hover 闪烁 */
 .file-item:hover {
-    transform: translateY(-5px);
     opacity: 1;
     z-index: 10;
 }
 
 .file-item_hover {
-    transform: translateY(-5px);
     opacity: 1;
     z-index: 10;
 }
@@ -160,8 +159,9 @@ body {
     transition: transform 0.3s;
 }
 
-.file-item:hover .file-icon {
-    transform: scale(1.1);
+.file-item:hover .file-icon,
+.file-item_hover .file-icon {
+    transform: translateY(-5px) scale(1.1);
 }
 
 .file-name {

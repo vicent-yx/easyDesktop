@@ -2817,10 +2817,10 @@ function setPriorityBtnActive(active) {
     if (!btn) return;
     if (active) {
         btn.classList.add('active');
-        btn.innerText = '取消优先级';
+        btn.innerText = '取消快速自启';
     } else {
         btn.classList.remove('active');
-        btn.innerText = '启用优先级';
+        btn.innerText = '启用快速自启';
     }
 }
 let setting_mode = false

@@ -746,19 +746,28 @@ class windowMgr_main():
                 
         if part == "auto_start":
             if data == True:
-                tool.autoStart_registry()
+                # 若已开任务计划快速自启，只保留任务，不写 Run（避免双启动）
+                if tool.is_taskScheduler_enabled():
+                    pass
+                else:
+                    tool.autoStart_registry()
             else:
                 tool.remove_autoStart_registry()
-                # 关闭自启动时一并取消任务计划优先级
+                # 关闭自启动时一并取消任务计划快速自启
                 tool.remove_autoStart_taskScheduler()
         if part == "auto_start_priority":
             if data == True:
                 rs = tool.autoStart_taskScheduler()
                 if rs:
+                    # 任务计划成功后移除注册表 Run，避免登录双拉起
+                    tool.remove_autoStart_registry()
                     self.window.evaluate_js("setPriorityBtnActive(true)")
             else:
                 rs = tool.remove_autoStart_taskScheduler()
                 if rs:
+                    # 仍开启自启动时写回 Run
+                    if ucfg.data.get("auto_start"):
+                        tool.autoStart_registry()
                     self.window.evaluate_js("setPriorityBtnActive(false)")
         if part == "get_taskScheduler_state":
             enabled = tool.is_taskScheduler_enabled()

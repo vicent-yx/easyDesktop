@@ -181,11 +181,19 @@ def is_desktop_and_mouse_in_corner(wait=0):
     return in_corner
     
 def autoStart_registry():
-    python_exe = sys.executable
-    script_path = os.path.abspath(sys.argv[0])
+    """注册表 Run 自启动。打包后直接指向 easyDesktop.exe。"""
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     key = reg.OpenKey(reg.HKEY_CURRENT_USER, key_path, 0, reg.KEY_SET_VALUE)
-    reg.SetValueEx(key, cfg.APP_NAME, 0, reg.REG_SZ, f'"{python_exe}" "{script_path}"')
+    if getattr(sys, "frozen", False):
+        exe_path = os.path.join(
+            os.path.dirname(os.path.realpath(sys.executable)), "easyDesktop.exe"
+        )
+        cmd = f'"{exe_path}"'
+    else:
+        python_exe = sys.executable
+        script_path = os.path.abspath(sys.argv[0])
+        cmd = f'"{python_exe}" "{script_path}"'
+    reg.SetValueEx(key, cfg.APP_NAME, 0, reg.REG_SZ, cmd)
     reg.CloseKey(key)
 
 
@@ -202,34 +210,150 @@ def remove_autoStart_registry():
 # ========== 任务计划程序自启动（比注册表 Run 启动更早） ==========
 
 TASK_SCHEDULER_NAME = "EasyDesktop"
+FROM_TASK_ARG = "--from-task"
+
+
+def _autostart_exe_and_args():
+    """返回 (exe_path, arguments, working_dir)。arguments 含 --from-task。"""
+    if getattr(sys, "frozen", False):
+        base = os.path.dirname(os.path.realpath(sys.executable))
+        exe_path = os.path.join(base, "easyDesktop.exe")
+        return exe_path, FROM_TASK_ARG, base
+    exe_path = sys.executable
+    script_path = os.path.abspath(sys.argv[0])
+    return exe_path, f'"{script_path}" {FROM_TASK_ARG}', os.path.dirname(script_path)
+
+
+def _xml_escape(text):
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
+
 
 def autoStart_taskScheduler():
-    """使用任务计划程序设置自启动（比注册表 Run 更早触发，弹 UAC 提权）"""
-    if getattr(sys, 'frozen', False):
-        exe_path = os.path.join(os.path.dirname(sys.executable), "easyDesktop.exe")
-    else:
-        exe_path = sys.executable
-    
-    # 路径用反斜杠转义引号包裹，避免空格问题
-    params = f'/Create /TN "{TASK_SCHEDULER_NAME}" /SC ONLOGON /TR "\\"{exe_path}\\"" /F'
-    print(f"[任务计划] 请求管理员权限创建: schtasks {params}")
-    
-    # ShellExecuteW + runas → 弹出 UAC 提权窗口
-    ret = windll.shell32.ShellExecuteW(
-        None,           # hwnd
-        "runas",        # 触发 UAC
-        "schtasks.exe", # 目标程序
-        params,         # 参数
-        None,           # 工作目录
-        0               # SW_HIDE，不闪 cmd 窗口
+    """任务计划 ONLOGON 快速自启：无延迟、与 Run 互斥；不抬进程 CPU 优先级。
+
+    优先用 XML（Priority=7 正常调度、无 Logon Delay、InteractiveToken）。
+    ShellExecuteW 异步返回，不能立刻删 XML；改用固定路径 + 延迟清理。
+    """
+    import getpass
+    import tempfile
+    import threading
+
+    exe_path, arguments, work_dir = _autostart_exe_and_args()
+    user = getpass.getuser()
+    # 固定路径：UAC 提权后的 schtasks 仍可读当前用户 temp
+    xml_path = os.path.join(
+        os.environ.get("TEMP") or tempfile.gettempdir(),
+        f"EasyDesktop_autostart_{os.getpid()}.xml",
     )
-    
-    if ret > 32:
-        print(f"任务计划 '{TASK_SCHEDULER_NAME}' 创建成功（已提权）")
-        return True
+    xml = f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <Triggers>
+    <LogonTrigger>
+      <Enabled>true</Enabled>
+      <UserId>{_xml_escape(user)}</UserId>
+    </LogonTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author">
+      <UserId>{_xml_escape(user)}</UserId>
+      <LogonType>InteractiveToken</LogonType>
+      <RunLevel>LeastPrivilege</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{_xml_escape(exe_path)}</Command>
+      <Arguments>{_xml_escape(arguments)}</Arguments>
+      <WorkingDirectory>{_xml_escape(work_dir)}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+"""
+
+    def _delayed_remove(path, delay_sec=8):
+        def _run():
+            time.sleep(delay_sec)
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except Exception:
+                pass
+        threading.Thread(target=_run, daemon=True).start()
+
+    try:
+        # schtasks /XML 需要 UTF-16
+        with open(xml_path, "w", encoding="utf-16") as f:
+            f.write(xml)
+        params = f'/Create /TN "{TASK_SCHEDULER_NAME}" /XML "{xml_path}" /F'
+        print(f"[任务计划] 请求管理员权限创建: schtasks {params}")
+        ret = windll.shell32.ShellExecuteW(
+            None, "runas", "schtasks.exe", params, None, 0
+        )
+        _delayed_remove(xml_path)
+        if ret > 32:
+            # ShellExecute 只表示已启动提权进程，轮询确认任务是否真正建好
+            for _ in range(40):
+                time.sleep(0.25)
+                if is_taskScheduler_enabled():
+                    print(f"任务计划 '{TASK_SCHEDULER_NAME}' 创建成功（快速自启 / Normal）")
+                    return True
+            print("任务计划 XML 创建未确认成功，回退 schtasks 参数")
+        else:
+            print(f"任务计划 XML 创建失败或用户取消，错误码: {ret}，回退 schtasks 参数")
+    except Exception as e:
+        print(f"[任务计划] XML 创建异常: {e}，回退 schtasks 参数")
+        try:
+            if os.path.exists(xml_path):
+                os.remove(xml_path)
+        except Exception:
+            pass
+
+    # 回退：ONLOGON + --from-task，不抬 RunLevel
+    if getattr(sys, "frozen", False):
+        tr = f'\\"{exe_path}\\" {FROM_TASK_ARG}'
     else:
-        print(f"任务计划创建失败或用户取消，错误码: {ret}")
-        return False
+        tr = f'\\"{exe_path}\\" \\"{os.path.abspath(sys.argv[0])}\\" {FROM_TASK_ARG}'
+    params = (
+        f'/Create /TN "{TASK_SCHEDULER_NAME}" /SC ONLOGON /IT /F /TR "{tr}"'
+    )
+    print(f"[任务计划] 回退创建: schtasks {params}")
+    ret = windll.shell32.ShellExecuteW(
+        None, "runas", "schtasks.exe", params, None, 0
+    )
+    if ret > 32:
+        for _ in range(40):
+            time.sleep(0.25)
+            if is_taskScheduler_enabled():
+                print(f"任务计划 '{TASK_SCHEDULER_NAME}' 创建成功（回退 ONLOGON）")
+                return True
+    print(f"任务计划创建失败或用户取消，错误码: {ret}")
+    return False
 
 def remove_autoStart_taskScheduler():
     """移除任务计划自启动（先尝试不弹窗删除，失败则弹 UAC 提权）"""

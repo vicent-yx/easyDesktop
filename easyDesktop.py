@@ -5,13 +5,10 @@ import win32gui
 import win32api
 import time
 import webview
-import darkdetect
-from PIL import Image
 import sys
 from easygui import msgbox
 from ctypes import windll,WinDLL,wintypes
 from threading import Thread
-import ctypes
 import config as cfg
 import winerror
 import win32event
@@ -26,8 +23,6 @@ from src import screen
 from src import api
 from src.shutdown import ShutdownHandler, set_shutdown_registry
 from src.nonblocking import nonblocking
-from src.appAction import app_action
-from src.appAction import report
 sys.stdout.reconfigure(encoding='utf-8')
 
 
@@ -101,22 +96,7 @@ if getattr(sys, 'frozen', False):
     base_path = os.path.dirname(os.path.realpath(sys.executable))
     os.chdir(base_path)
 
-# 通过任务计划启动时，提升进程优先级
-def _try_high_priority():
-    try:
-        import subprocess as _sp
-        r = _sp.run(
-            'schtasks /Query /TN "EasyDesktop"',
-            shell=True, capture_output=True, text=True
-        )
-        if r.returncode == 0:
-            HIGH_PRIORITY_CLASS = 0x00000080
-            h = ctypes.windll.kernel32.GetCurrentProcess()
-            ctypes.windll.kernel32.SetPriorityClass(h, HIGH_PRIORITY_CLASS)
-            print("任务计划检测到，已设置高优先级")
-    except:
-        pass
-Thread(target=_try_high_priority, daemon=True).start()
+# 不做 SetPriorityClass：长期 HIGH 会抢 CPU；开机慢靠任务计划更早触发 + 冷启动减负
 
 resize_window = None
 icon = None
@@ -177,6 +157,7 @@ SWP_NOZORDER = 0x0004
 ox = oy = 0
 
 def sys_theme():
+    import darkdetect  # 惰性：仅主题同步
     if darkdetect.isDark() == True:
         window.evaluate_js("load_theme('dark')")
     else:
@@ -189,7 +170,10 @@ def on_loaded():
     if ucfg.data["full_screen"] == True:
         window.resize(screen_width, screen_height)
     hotkeyReg.hotkey_init()
-    Thread(target=app_action.main, daemon=True).start()
+    def _run_app_action():
+        from src.appAction import app_action  # 惰性：更新检查不挡冷启动
+        app_action.main()
+    Thread(target=_run_app_action, daemon=True).start()
     Thread(target=stray, daemon=True).start()
     # Thread(target=hotkey_detect).start()
     start_pipe_server()
@@ -253,15 +237,18 @@ def start_out():
 
 def stray():
     global icon
-    # 【启动优化 P2｜风险:低】pystray 仅托盘图标使用，且本函数运行在后台线程，
-    # 惰性导入可把 pystray 的加载移出冷启动 import 链。
+    # 【启动优化 P2｜风险:低】pystray / PIL 仅托盘使用，惰性导入移出冷启动链
     import pystray
+    from PIL import Image
     image = Image.open("ed_logo.png")
     icon = pystray.Icon("name", image, "title")
     menu = (pystray.MenuItem("呼出", start_out),pystray.MenuItem("退出", nonblocking(quit_ed)))
     icon.menu = menu
     icon.title = "EasyDesktop"
     icon.run()
+
+# api 仅 create_window 需要，延后 import 以缩短 mutex 前依赖链
+from src import api
 
 webview.settings["ALLOW_FILE_URLS"] = True
 win_width,win_height,px,py = tool.get_windowCurrentTargetPos()
