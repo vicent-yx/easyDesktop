@@ -7,8 +7,8 @@ import sys
 import json
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "2.8.0"
-APP_VERSION_CODE = 2801
+APP_VERSION = "2.8.1"
+APP_VERSION_CODE = 2810
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop_Main"
 
@@ -17,13 +17,19 @@ if hasattr(sys, '_MEIPASS'):
     DESKTOP_ICO_PATH = "./_internal/desktopICO/"
     ICON_SET_PATH = "./_internal/icon_set/"
     ICON_GETTER = ['exeIconGet.exe']
+    SC_INFO_GETTER = ['sc.exe']
 else:
     DESKTOP_ICO_PATH = "./desktopICO/"
     ICON_SET_PATH = "./icon_set/"
     ICON_GETTER = ['python', 'exeIconGet.py']
+    SC_INFO_GETTER = ['python', 'sc.py']
 
 def iconGetter(start_data):
     cmd = ICON_GETTER + [json.dumps(start_data)]
+    return cmd
+
+def scInfoGetter(sc_id):
+    cmd = SC_INFO_GETTER + [str(sc_id)]
     return cmd
 
 DESKTOP_ICO_RELATIVE_PATH = "./desktopICO/"
@@ -168,6 +174,7 @@ def get_default_config(width, height):
     Returns:
         dict: 默认配置字典
     """
+    
     return {
         "version":"0.0.0",
         "theme": "light",
@@ -202,7 +209,12 @@ def get_default_config(width, height):
         "ico":{},
         "dbc_action":"1",
         "show_hidden_file":False,
-        "custom":{}
+        "custom":{},
+        "screens_winInfo":{
+            "w_pc":WINDOW_WIDTH_RATIO,
+            "h_pc":WINDOW_HEIGHT_RATIO,
+            "infos":{}
+        }
     }
 
 # ===== 系统应用程序配置 =====

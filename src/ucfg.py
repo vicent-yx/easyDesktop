@@ -25,6 +25,12 @@ class AppConfig:
                 for c_item in default_config.keys():
                     if c_item not in config.keys():
                         config[c_item] = default_config[c_item]
+                        print(default_config[c_item])
+                    else:
+                        if type(config[c_item])==type({}):
+                            for c_sub_item in default_config[c_item].keys():
+                                if c_sub_item not in config[c_item].keys():
+                                    config[c_item][c_sub_item] = default_config[c_item][c_sub_item]
                 config["version"] = cfg.APP_VERSION
                 # json.dump(config, open(cfg.CONFIG_FILE, "w"))
                 self.write_json(cfg.CONFIG_FILE,config)
@@ -84,3 +90,31 @@ class AppConfig:
         
 
 ucfg = AppConfig()
+
+def get_windowSize():
+    index = screen.get_info_str()
+    sfb = 1
+    print("get_windowSize index:",index)
+    print("use sfb:",sfb)
+    if index in ucfg.data["screens_winInfo"]['infos']:
+        info = ucfg.data["screens_winInfo"]['infos'][index]
+        return info['w'],info['h']
+    else:
+        sw,sh = screen.get_screen_size()
+        w = int(sw * ucfg.data["screens_winInfo"]['w_pc'] * sfb)
+        h = int(sh * ucfg.data["screens_winInfo"]['h_pc'] * sfb)
+        print("init get_windowSize:[sw,sh]",sw,sh,"[w,h]",w,h)
+        ucfg.data["screens_winInfo"]['infos'][index] = {'w':w,'h':h}
+        ucfg.save_config()
+        return w,h
+
+def update_windowSize(w,h):
+    print("update_wss")
+    index = screen.get_info_str()
+    ucfg.data["screens_winInfo"]['infos'][index] = {'w':w,'h':h}
+    print("update_windowSize:",index,w,h)
+    if screen.active_screen.getActive() == 0:
+        sw,sh = screen.get_screen_size()
+        ucfg.data["screens_winInfo"]['w_pc'] = w/sw
+        ucfg.data["screens_winInfo"]['h_pc'] = h/sh
+    ucfg.save_config()

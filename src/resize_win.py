@@ -7,6 +7,7 @@ from window_effect import WindowEffect,set_window_rounded_corners
 from . import tool
 import darkdetect
 from .ucfg import ucfg
+from .ucfg import get_windowSize,update_windowSize
 from . import screen
 import webview
 from ctypes import windll,WinDLL,wintypes
@@ -47,12 +48,13 @@ class resize_window():
             draggable=False,
         )
         self.has_cleared_fit = False
-        self.resize_window.resize(ucfg.data["width"], ucfg.data["height"])
+        ww,hh = get_windowSize()
+        self.resize_window.resize(ww, hh)
         self.resize_window.evaluate_js("disable_settings()")
         fit_hwnd = win32gui.FindWindow(None, "easyDesktop-fit")
         win32gui.MoveWindow(fit_hwnd, end_x, end_y, width, height, True)
         tool.remove_title_bar(fit_hwnd)
-        print("ucfg.data:", ucfg.data["width"], ucfg.data["height"])
+        print("ucfg.data:",ww,hh)
         print("window: ", width, height)
         print("webview:", windowMgr.window.width, windowMgr.window.height)
         time.sleep(3)
@@ -81,9 +83,10 @@ class resize_window():
         flags = SWP_NOMOVE | SWP_NOZORDER | 0x0008 # 组合标志位
         endx,endy = tool.get_targetPos(width, height)
         win32gui.MoveWindow(windowMgr.hwnd, endx, endy, width, height, True)
-        ucfg.update_config("width", width)
-        ucfg.update_config("height", height)
-        self.resize_window.destroy()
+        update_windowSize(width, height)
+        # ucfg.update_config("width", width)
+        # ucfg.update_config("height", height)
+        # self.resize_window.destroy()
         windowMgr.window.show()
         if ucfg.data['blur_bg']==True:
             windowMgr.fit_blur_effect()

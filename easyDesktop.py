@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import os
+# 必须在所有 Win32/GUI 库导入之前设置 DPI 感知，否则 webview 等可能先调用 SetProcessDPIAware
+import ctypes as _ctypes
+try:
+    _ctypes.windll.shcore.SetProcessDpiAwareness(2)  # PROCESS_PER_MONITOR_DPI_AWARE_V2
+except Exception:
+    try:
+        _ctypes.windll.user32.SetProcessDPIAware()
+    except Exception:
+        pass
 import win32gui
 import win32api
 import time
@@ -21,6 +30,7 @@ from src import tool
 from src.ucfg import ucfg
 from src import screen
 from src import api
+from src.appAction import report
 from src.shutdown import ShutdownHandler, set_shutdown_registry
 from src.nonblocking import nonblocking
 sys.stdout.reconfigure(encoding='utf-8')

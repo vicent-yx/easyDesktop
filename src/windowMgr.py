@@ -11,6 +11,7 @@ from window_effect import WindowEffect,set_window_rounded_corners
 from . import tool
 import darkdetect
 from .ucfg import ucfg
+from .ucfg import get_windowSize,update_windowSize
 from . import screen
 import webview
 from threading import Thread, Event
@@ -403,6 +404,7 @@ class resize_window():
         if ucfg.data["full_screen"] == True:
             return
         windowMgr.disable_autoClose()
+        ww,hh = get_windowSize()
         width, height, end_x, end_y = tool.get_window_inf()
         windowMgr.window.hide()
         self.resize_window = webview.create_window(
@@ -418,13 +420,13 @@ class resize_window():
             draggable=False,
         )
         self.has_cleared_fit = False
-        self.resize_window.resize(ucfg.data["width"], ucfg.data["height"])
+        self.resize_window.resize(ww, hh)
         self.resize_window.evaluate_js("disable_settings()")
         fit_hwnd = win32gui.FindWindow(None, "easyDesktop-fit")
         win32gui.MoveWindow(fit_hwnd, end_x, end_y, width, height, True)
         tool.remove_title_bar(fit_hwnd)
         self.fit_hwnd = fit_hwnd
-        print("ucfg.data:", ucfg.data["width"], ucfg.data["height"])
+        print("ucfg.data:", ww, hh)
         print("window: ", width, height)
         print("webview:", windowMgr.window.width, windowMgr.window.height)
         time.sleep(3)
@@ -453,8 +455,9 @@ class resize_window():
         flags = SWP_NOMOVE | SWP_NOZORDER | 0x0008 # 组合标志位
         endx,endy = tool.get_targetPos(width, height)
         win32gui.MoveWindow(windowMgr.hwnd, endx, endy, width, height, True)
-        ucfg.update_config("width", width)
-        ucfg.update_config("height", height)
+        update_windowSize(width, height)
+        # ucfg.update_config("width", width)
+        # ucfg.update_config("height", height)
         self.resize_window.destroy()
         windowMgr.window.show()
         if ucfg.data['blur_bg']==True:
@@ -510,9 +513,12 @@ class windowMgr_main():
         delay = 0.25 / steps  # 总时长250ms
         hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
         for x, y, w, h in positions:
-            win32gui.MoveWindow(hwnd, x, y, w, h, False)
+            win32gui.MoveWindow(hwnd, x, y, w, h, True)
             time.sleep(delay)
     def out_window(self):
+        screen.active_screen.markActive()
+        self.window.evaluate_js("document.getElementById('screen_infShow').innerText='当前屏幕："+screen.get_info_str()+"';")
+        ww,hh = get_windowSize()
         screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
         self.key_quick_start = False
         if self.moving == True:
@@ -524,7 +530,7 @@ class windowMgr_main():
             w,h = screen.get_screen_size()
             self.window.resize(w, h)
         else:
-            self.window.resize(ucfg.data["width"], ucfg.data["height"])
+            self.window.resize(ww, hh)
         hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
         if not hwnd:
             print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
@@ -556,7 +562,7 @@ class windowMgr_main():
             end_y = oy
         else:
             end_x,end_y = tool.get_targetPos(width,height)
-        win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
+        win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"]+1, True) # +1触发重绘（切换到副屏时可能dpi不正确）
         win32gui.UpdateWindow(hwnd)
 
         Thread(target=self.fit_blur_effect, daemon=True).start()
@@ -737,6 +743,7 @@ class windowMgr_main():
             self.window.evaluate_js("load_theme('light')")
     def update_state(self,part,data):
         hwnd = self.hwnd
+        ww,hh = get_windowSize()
         screen_width, screen_height = screen.get_screen_size()
         if part == "themeChangeType":
             if data == "1":
@@ -775,7 +782,7 @@ class windowMgr_main():
         if part == "full_screen":
             if data == False:
                 self.ignore_action = True
-                self.window.resize(ucfg.data["width"], ucfg.data["height"])
+                self.window.resize(ww, hh)
                 width, height, end_x, end_y = tool.get_window_inf(self.window.title)
                 win32gui.MoveWindow(hwnd, int(end_x), int(end_y), width, height, True)
                 time.sleep(1)

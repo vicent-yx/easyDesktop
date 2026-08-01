@@ -12,6 +12,7 @@ from ctypes import windll,WinDLL,wintypes
 from requests import get as requests_get
 import config as cfg
 from .ucfg import ucfg
+from .ucfg import get_windowSize
 from . import screen
 from threading import Thread
 
@@ -431,12 +432,13 @@ def remove_title_bar(hwnd):
     user32.SetWindowPos(hwnd, 0, 0, 0, 0, 0, 0x0027)
 
 def get_windowCurrentTargetPos():
-    px,py = get_targetPos(ucfg.data["width"],ucfg.data["height"])
+    ww,hh = get_windowSize()
+    px,py = get_targetPos(ww,hh)
     if ucfg.data["full_screen"]==True:
         win_width,win_height = screen.get_screen_size()
         px,py = 0,0
     else:
-        win_width,win_height = ucfg.data["width"],ucfg.data["height"]
+        win_width,win_height = ww,hh
     return win_width,win_height,px,py
 
 class mouse_state:

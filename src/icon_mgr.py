@@ -61,7 +61,7 @@ class icon_mgr():
                     if data[item]==None:
                         data[item] = "/resources/file_icos/exe.png"
                     self.save_cache(item, data[item])
-                    print(f"已更新图标缓存: {item} -> {data[item]}")
+                    # print(f"已更新图标缓存: {item} -> {data[item]}")
             else:
                 print(f"错误: {data['error']}")
     def icon_file(self,file_path):
