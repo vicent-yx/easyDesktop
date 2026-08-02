@@ -16,6 +16,8 @@ from . import screen
 import webview
 from threading import Thread, Event
 
+windll.user32.SetProcessDPIAware()
+
 
 SWP_NOMOVE = 0x0002
 SWP_NOZORDER = 0x0004
@@ -542,9 +544,8 @@ class windowMgr_main():
         except:
             pass
         screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-        rect = tool.get_window_rect(hwnd)
-        width = rect["width"]
-        height = rect["height"]
+        width = ww
+        height = hh
         if ucfg.data["outPos"]=="1":
             start_x = ox+(-width)
             start_y = oy+(screen_height - height // 2)
@@ -562,15 +563,15 @@ class windowMgr_main():
             end_y = oy
         else:
             end_x,end_y = tool.get_targetPos(width,height)
-        win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"]+1, True) # +1触发重绘（切换到副屏时可能dpi不正确）
+        self.window.show()
+        win32gui.MoveWindow(hwnd, start_x, start_y, width, height+1, True) # +1触发重绘（切换到副屏时可能dpi不正确）
         win32gui.UpdateWindow(hwnd)
 
         Thread(target=self.fit_blur_effect, daemon=True).start()
 
-        self.window.show()
         time.sleep(0.1)
         print("outwindow_ani")
-        self.animateWindow(start_x, start_y, end_x, end_y, rect["width"], rect["height"])
+        self.animateWindow(start_x, start_y, end_x, end_y, width, height)
         self.window.evaluate_js("window_state=true;")
         self.window.evaluate_js("NavigationManager.refreshCurrentPath(true,false,false);fit_btnBar();")
 

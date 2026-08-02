@@ -19,7 +19,7 @@ from threading import Thread
 def is_screenshot_light(region=None,threshold=0.4):
     try:
         if region:
-            screenshot = ImageGrab.grab(bbox=region)
+            screenshot = ImageGrab.grab(bbox=region,all_screens=True)
         else:
             screenshot = ImageGrab.grab()
         screenshot = screenshot.convert('RGB')
