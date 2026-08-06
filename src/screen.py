@@ -76,6 +76,37 @@ def _get_monitor_by_screen_id(screen_id):
     except KeyError:
         return None
 
+def get_screen_id_by_point(x, y):
+    """
+    根据坐标获取所在屏幕的ID
+    
+    参数:
+        x, y: 坐标点
+    返回:
+        screen_id: 屏幕ID（0=主屏幕，1/2/3...=副屏幕），找不到返回 -1
+    """
+    screenInfo._refresh_monitors()
+    monitor, _ = _get_monitor_info_by_point(x, y)
+    for i, h in enumerate(screenInfo._monitors):
+        if h == monitor:
+            return i
+    return -1
+
+
+def is_point_on_other_screen(x, y):
+    """
+    判断指定坐标是否在非当前活跃屏幕上
+
+    参数:
+        x, y: 坐标点
+    返回:
+        True: 坐标所在的屏幕与 active_screen.getActive() 不一致
+        False: 坐标在活跃屏幕上
+    """
+    point_screen_id = get_screen_id_by_point(x, y)
+    return point_screen_id != active_screen.getActive()
+
+
 def get_active_screen_size(with_origin=False, with_work_area=False):
     """
     获取屏幕的宽高

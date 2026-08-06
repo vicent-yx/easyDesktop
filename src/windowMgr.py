@@ -515,7 +515,7 @@ class windowMgr_main():
         delay = 0.25 / steps  # 总时长250ms
         hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
         for x, y, w, h in positions:
-            win32gui.MoveWindow(hwnd, x, y, w, h, True)
+            win32gui.MoveWindow(hwnd, x, y, w, h, False)
             time.sleep(delay)
     def out_window(self):
         screen.active_screen.markActive()
@@ -528,15 +528,18 @@ class windowMgr_main():
         self.moving = True
         self.window_state = True
         self.window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
-        if ucfg.data["full_screen"] == True:
-            w,h = screen.get_screen_size()
-            self.window.resize(w, h)
-        else:
-            self.window.resize(ww, hh)
         hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
         if not hwnd:
             print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
             return False
+        # 闪屏问题出现在此处的resize方法，解决方案：使用win32api。全屏模式的适配，需要获取当前屏幕的顶点坐标
+        if ucfg.data["full_screen"] == True:
+            w,h = screen.get_screen_size()
+            width = w
+            height = h
+        else:
+            width = ww
+            height = hh
         try:
             windll.user32.keybd_event(0x12, 0, 0, 0)
             windll.user32.SetForegroundWindow(hwnd)
@@ -544,8 +547,6 @@ class windowMgr_main():
         except:
             pass
         screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-        width = ww
-        height = hh
         if ucfg.data["outPos"]=="1":
             start_x = ox+(-width)
             start_y = oy+(screen_height - height // 2)
@@ -563,15 +564,23 @@ class windowMgr_main():
             end_y = oy
         else:
             end_x,end_y = tool.get_targetPos(width,height)
+        if len(webview.screens)>1:
+            offset = 1
+        else:
+            offset = 0
+        need_dpi_fix = screen.is_point_on_other_screen(start_x, start_y) and len(webview.screens)>1
+        if need_dpi_fix:
+            win32gui.MoveWindow(hwnd, start_x, start_y, width, height+offset, True) # +1触发重绘（切换到副屏时可能dpi不正确）
+            win32gui.UpdateWindow(hwnd)
         self.window.show()
-        win32gui.MoveWindow(hwnd, start_x, start_y, width, height+1, True) # +1触发重绘（切换到副屏时可能dpi不正确）
-        win32gui.UpdateWindow(hwnd)
 
         Thread(target=self.fit_blur_effect, daemon=True).start()
-
-        time.sleep(0.1)
         print("outwindow_ani")
         self.animateWindow(start_x, start_y, end_x, end_y, width, height)
+        if need_dpi_fix:
+            win32gui.MoveWindow(hwnd, end_x, end_y, width, height+1, True)
+            self.window.hide()
+            self.window.show()
         self.window.evaluate_js("window_state=true;")
         self.window.evaluate_js("NavigationManager.refreshCurrentPath(true,false,false);fit_btnBar();")
 
