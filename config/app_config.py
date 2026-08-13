@@ -7,8 +7,8 @@ import sys
 import json
 
 # ===== 应用程序基本信息 =====
-APP_VERSION = "2.8.1"
-APP_VERSION_CODE = 2810
+APP_VERSION = "2.9.0"
+APP_VERSION_CODE = 2900
 APP_NAME = "EasyDesktop"
 DEFAULT_WINDOW_TITLE = "EasyDesktop_Main"
 
