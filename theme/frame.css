@@ -1,8 +1,13 @@
+/* 【启动优化 P3｜风险:低】font-display:swap —— 先用系统后备字体立即显示文本（消除 FOIT 白屏等待），
+   待 5.3MB 的 MiSans 加载完成后再无感替换，避免首屏文本被字体加载阻塞。
+   注：彻底方案（MiSans 转 woff2 + CJK 子集化、FontAwesome 按需子集）属构建期改动、需在 Windows 实机
+   校验字形完整，详见 ANALYSIS_REPORT.md 与 STARTUP_OPTIMIZATION.md 的构建步骤说明。 */
 @font-face {
     font-family: 'df';
     src: url('/resources/MiSans-Semibold.woff') format('truetype');
     font-weight: normal;
     font-style: normal;
+    font-display: swap;
 }
 
 @font-face {
@@ -10,6 +15,7 @@
     src: url('/theme/zzz_font.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
+    font-display: swap;
 }
 
 * {
@@ -134,14 +140,13 @@ body {
     border: 1px solid rgba(255, 255, 255, 0);
 }
 
+/* 不在 .file-item 上做 translate：位移会改 hit-test，边缘悬停会反复进出 hover 闪烁 */
 .file-item:hover {
-    transform: translateY(-5px);
     opacity: 1;
     z-index: 10;
 }
 
 .file-item_hover {
-    transform: translateY(-5px);
     opacity: 1;
     z-index: 10;
 }
@@ -154,8 +159,9 @@ body {
     transition: transform 0.3s;
 }
 
-.file-item:hover .file-icon {
-    transform: scale(1.1);
+.file-item:hover .file-icon,
+.file-item_hover .file-icon {
+    transform: translateY(-5px) scale(1.1);
 }
 
 .file-name {

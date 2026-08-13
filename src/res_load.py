@@ -196,7 +196,7 @@ class resource_load:
         else:
             ft = "file"
         return {"inf_type":ft,"inf":info}
-    def load_items(self,dir_path,ignore_icno=False):
+    def load_items(self,dir_path,ignore_icno=False,fast=False):
         exe_data = []
         dir_data = []
         file_data = []
@@ -215,7 +215,8 @@ class resource_load:
             path_list = [dir_path]
         for i in range(get_count):
             current_dir = path_list[i]
-            if ignore_icno==False:
+            # 【启动优化 P1】fast=True 时跳过会阻塞首屏的整目录 exe 图标子进程提取
+            if ignore_icno==False and fast==False:
                 iconMgr.update(current_dir)
             for item in os.listdir(current_dir):
                 try:
@@ -229,7 +230,7 @@ class resource_load:
                     else:
                         filename = item
 
-                    ico = iconMgr.get_icon(full_path,filename)
+                    ico = iconMgr.get_icon(full_path,filename,quick=fast)
                     if os.path.isfile(full_path):
                         ext = os.path.splitext(full_path)[1]
                     else:
@@ -259,15 +260,18 @@ class resource_load:
                         traceback.format_exc(),
                         False
                     )
-        self.write_temp(
-            dir_path,
-            {
-                "exe": exe_data,
-                "dir": dir_data,
-                "file": file_data
-            }
-        )
-        self.last_update_time = time.time()
+        # 【启动优化 P1】fast 首屏只回占位图，不持久化（避免把占位图写进 itemsTemp.json）；
+        # 真实图标由随后的后台 delay_update_action(full) 写入并刷新。
+        if fast==False:
+            self.write_temp(
+                dir_path,
+                {
+                    "exe": exe_data,
+                    "dir": dir_data,
+                    "file": file_data
+                }
+            )
+            self.last_update_time = time.time()
         return exe_data,dir_data,file_data
     def delay_update_action(self,dir_path):
         self.last_update_time = time.time()
@@ -290,13 +294,17 @@ class resource_load:
             return self.load_items(dir_path,ignore_icno)
         temp_data = self.read_temp(dir_path)
         if temp_data==None:
-            return self.load_items(dir_path,ignore_icno)
+            # 【启动优化 P1｜风险:中】无缓存的首次冷启动：用占位图标(fast=True)即时返回首屏，
+            # 同时后台线程做真实图标提取(子进程)、写缓存，完成后若仍在该目录则 refreshCurrentPath 增量刷新。
+            result = self.load_items(dir_path,ignore_icno,fast=True)
+            Thread(target=self.delay_update_action,args=(dir_path,),daemon=True).start()
+            return result
         else:
             self.delay_update(dir_path)
             return temp_data["exe"],temp_data["dir"],temp_data["file"]
         
     
-    def order_items(self,dir_path,exe_data,dir_data,file_data):
+    def order_items(self,dir_path,exe_data,dir_data,file_data,quick=False):
         # if config["show_sysApp"]==True:
         out_data = []
         index = 0
@@ -334,7 +342,7 @@ class resource_load:
                         break
                 else:
                     fn = os.path.splitext(os.path.basename(fp))[0]
-                    group_icons.append(iconMgr.get_icon(fp, fn))
+                    group_icons.append(iconMgr.get_icon(fp, fn, quick=quick))
             group_item = {
                 "fileName": ginfo["name"],
                 "filePath": "__group__:" + gid,
@@ -433,8 +441,12 @@ class resource_load:
                 dir_path = "desktop"
 
             # global config
+            # 【复审修复】冷启动(无缓存且 quick_update)时，order_items 内的应用组封面图标也走占位(quick)，
+            # 避免组内 exe 触发同步子进程阻塞首屏；真实封面随后台刷新一并补上。
+            # 注意：is_cold 必须在 get_items 之前算（get_items 的 fast 路径会起后台线程写缓存）。
+            is_cold = quick_update and (self.read_temp(dir_path) is None)
             exe_data,dir_data,file_data = self.get_items(dir_path,quick_update,ignore_icno)
-            return self.order_items(dir_path,exe_data,dir_data,file_data)
+            return self.order_items(dir_path,exe_data,dir_data,file_data,quick=is_cold)
             
             
         except:

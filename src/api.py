@@ -1,38 +1,77 @@
-from src import getIcon # 本地模块源
-from src.icon_mgr import iconMgr
 import os
 import win32gui
 import win32api
 import time
 import webview
 import subprocess
-from pypinyin import pinyin, Style, lazy_pinyin
 import shutil
 import json
 import sys
-from easygui import msgbox
-import send2trash
 import config as cfg
-from src import group_mgr
+# 【启动优化】getIcon/icon_mgr/group_mgr/res_load/bugs_report 仅交互路径用，惰性导入
 from src.windowMgr import windowMgr,resize_win
 from src import tool
 from src.ucfg import ucfg
-from src.res_load import itmeRes,imagePreView
-from .appAction.report import bugs_report
 
 SWP_NOMOVE = 0x0002
 SWP_NOZORDER = 0x0004
 
-desktop_path = tool.get_desktop_path()
-public_desktop = os.path.join(os.environ["PUBLIC"], "Desktop")
+_desktop_path_cache = None
+_public_desktop_cache = None
+
+
+def _desktop_path():
+    global _desktop_path_cache
+    if _desktop_path_cache is None:
+        _desktop_path_cache = tool.get_desktop_path()
+    return _desktop_path_cache
+
+
+def _public_desktop():
+    global _public_desktop_cache
+    if _public_desktop_cache is None:
+        _public_desktop_cache = os.path.join(os.environ["PUBLIC"], "Desktop")
+    return _public_desktop_cache
+
+
+def _bugs_report(*args, **kwargs):
+    from .appAction.report import bugs_report
+    return bugs_report(*args, **kwargs)
+
+
+def _icon_mgr():
+    from src.icon_mgr import iconMgr
+    return iconMgr
+
+
+def _group_mgr():
+    from src import group_mgr
+    return group_mgr
+
+
+def _itme_res():
+    from src.res_load import itmeRes
+    return itmeRes
+
+
+def _image_preview():
+    from src.res_load import imagePreView
+    return imagePreView
+
+
+def _get_icon():
+    from src import getIcon
+    return getIcon
 
 
 def get_initials(text):
+    from pypinyin import pinyin, Style  # 惰性导入
     initials = pinyin(text, style=Style.FIRST_LETTER, errors="default")
     return "".join([item[0] for item in initials])
 
 
 def getPinyin(text):
+    from pypinyin import lazy_pinyin, Style  # 惰性导入
     result = "".join(lazy_pinyin(text, style=Style.NORMAL, errors="default"))
     return result
 def open_sysApp_action(component_name):
@@ -51,7 +90,7 @@ def open_sysApp_action(component_name):
 class AppAPI:
     file_info_temp = [],
     def bug_report(self, part, data,note=False,with_data=None):
-        bugs_report(
+        _bugs_report(
             part,
             data,
             note,
@@ -87,6 +126,11 @@ class AppAPI:
         del return_config["dir_order"]
         return return_config
 
+    def bootstrap(self):
+        # 【启动优化 P1｜风险:低】把启动期必取的 config + version 合并为一次跨桥调用，
+        # 减少 pywebview IPC 往返；前端再把 config 透传给各初始化函数，避免重复 get_config。
+        return {"config": self.get_config(), "version": cfg.APP_VERSION}
+
     def update_config(self, part, data):
         ucfg.update_config(part, data)
 
@@ -106,11 +150,11 @@ class AppAPI:
 
 
     def search_desktop_path(self):
-        return desktop_path
+        return _desktop_path()
 
     def get_parent(self, path):
         pr_path = os.path.dirname(path)
-        if pr_path == desktop_path or pr_path == public_desktop:
+        if pr_path == _desktop_path() or pr_path == _public_desktop():
             return "desktop"
         return pr_path
 
@@ -144,7 +188,7 @@ class AppAPI:
     def get_fileinfo(self, path,quck=True,ignore_icno=False):
         if path == "desktop" or path == "" or path == "\\":
             path = "desktop"
-        data = itmeRes.update_inf(path,quck,ignore_icno)
+        data = _itme_res().update_inf(path,quck,ignore_icno)
         r_data = {"success": True, "data": data["data"],"same":self.file_info_temp==data}
         self.file_info_temp = data
         return r_data
@@ -189,6 +233,7 @@ class AppAPI:
     def remove_file(self, file_path, del_type="remove"):
         try:
             if del_type == "rubbish":
+                import send2trash  # 惰性导入
                 send2trash.send2trash(file_path)
                 return {"success": True}
             if os.path.isfile(file_path):
@@ -202,7 +247,7 @@ class AppAPI:
 
     def new_file(self, suffix, current_path):
         if current_path == "desktop" or current_path == "" or current_path == "\\":
-            current_path = desktop_path
+            current_path = _desktop_path()
         try:
             if suffix == "folder":
                 base_name = "新建文件夹"
@@ -254,7 +299,7 @@ class AppAPI:
         open_sysApp_action(app_name)
     def put_file(self, target_path):
         if target_path == "desktop" or target_path == "" or target_path == "\\":
-            target_path = desktop_path
+            target_path = _desktop_path()
         saved_files = []
         command = [
             "powershell",
@@ -351,60 +396,60 @@ class AppAPI:
     # ===== 应用组 API =====
     def create_group(self, name):
         # global ucfg.data
-        gid = group_mgr.create_group(ucfg.data["df_dir"], name)
+        gid = _group_mgr().create_group(ucfg.data["df_dir"], name)
         return {"success": True, "groupId": gid}
 
     def rename_group(self, group_id, new_name):
         # global ucfg.data
-        ok = group_mgr.rename_group(ucfg.data["df_dir"], group_id, new_name)
+        ok = _group_mgr().rename_group(ucfg.data["df_dir"], group_id, new_name)
         return {"success": ok}
 
     def delete_group(self, group_id):
         # global ucfg.data
-        ok = group_mgr.delete_group(ucfg.data["df_dir"], group_id)
+        ok = _group_mgr().delete_group(ucfg.data["df_dir"], group_id)
         return {"success": ok}
 
     def add_to_group(self, group_id, file_paths):
         # global ucfg.data
-        ok = group_mgr.add_items(ucfg.data["df_dir"], group_id, file_paths)
+        ok = _group_mgr().add_items(ucfg.data["df_dir"], group_id, file_paths)
         return {"success": ok}
 
     def remove_from_group(self, group_id, file_path):
         # global ucfg.data
-        ok = group_mgr.remove_item(ucfg.data["df_dir"], group_id, file_path)
+        ok = _group_mgr().remove_item(ucfg.data["df_dir"], group_id, file_path)
         return {"success": ok}
 
     def get_group_contents(self, group_id):
         # global ucfg.data
-        items = group_mgr.get_group_items(ucfg.data["df_dir"], group_id)
+        items = _group_mgr().get_group_items(ucfg.data["df_dir"], group_id)
         result = []
         for fp in items:
             if not os.path.exists(fp):
                 continue
             fn = os.path.splitext(os.path.basename(fp))[0]
-            ico = iconMgr.get_icon(fp, fn)
+            ico = _icon_mgr().get_icon(fp, fn)
             if os.path.isfile(fp):
                 ext = os.path.splitext(fp)[1]
             else:
                 ext = "dir"
             if ext == ".lnk":
-                real_file = getIcon.get_shortcut_target(fp)
+                real_file = _get_icon().get_shortcut_target(fp)
                 if os.path.isfile(real_file):
                     ext = os.path.splitext(real_file)[1]
                 else:
                     ext = "dir"
-                info_data = itmeRes.mix_fileInfo(fp, os.path.basename(real_file), ico, ext, real_file)
+                info_data = _itme_res().mix_fileInfo(fp, os.path.basename(real_file), ico, ext, real_file)
             else:
-                info_data = itmeRes.mix_fileInfo(fp, fn, ico, ext)
+                info_data = _itme_res().mix_fileInfo(fp, fn, ico, ext)
             info = info_data["inf"]
             info["f_type"] = info_data["inf_type"]
-            info["cl"] = itmeRes.is_cl(fp)
+            info["cl"] = _itme_res().is_cl(fp)
             result.append(info)
         return {"success": True, "data": result}
 
     def get_groups(self):
         # global ucfg.data
-        groups = group_mgr.get_all_groups(ucfg.data["df_dir"])
+        groups = _group_mgr().get_all_groups(ucfg.data["df_dir"])
         return {"success": True, "data": groups}
 
     def save_group_order(self, ordered_ids):
@@ -419,12 +464,12 @@ class AppAPI:
             return {"success": False, "message": "参数错误"}
         # global ucfg.data
         now_dir = ucfg.data["df_dir"]
-        data = group_mgr._load_groups()
+        data = _group_mgr()._load_groups()
         data[now_dir][group_id]["items"]=ordered_paths
-        group_mgr._save_groups(data)
+        _group_mgr()._save_groups(data)
         return {"success": True}
     def get_imageBase64(self,file_path):
-        return imagePreView.get_imageBase64(file_path)
+        return _image_preview().get_imageBase64(file_path)
 
     def set_blur_effect(self,open_state,real_theme=None):
         windowMgr.set_blur(open_state,real_theme)
@@ -472,6 +517,7 @@ class AppAPI:
 
     def select_image(self):
         # global ignore_action
+        from easygui import msgbox  # 惰性导入，仅错误提示用
         windowMgr.disable_autoClose()
         file_types = ('Image Files (*.png;*.jpg;*.gif;*.jpeg;*.webp)', 'All files (*.*)')
 
@@ -521,8 +567,8 @@ class AppAPI:
             shutil.rmtree("desktopICO")
         if os.path.exists("itemsTemp.json"):
             os.remove("itemsTemp.json")
-        itmeRes.temp={}
-        iconMgr.icon_cache={}
+        _itme_res().temp={}
+        _icon_mgr().icon_cache={}
 
     def mouse_state(self):
         return tool.mouseState.get_live_state()

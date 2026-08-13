@@ -691,7 +691,7 @@
                     <div class="system-theme-toggle">
                         <span>开机自启动</span>
                         <div style="display: flex; align-items: center; gap: 6px;">
-                            <button id="autoStartPriorityBtn" class="priority-btn" style="display: none;">启用优先级</button>
+                            <button id="autoStartPriorityBtn" class="priority-btn" style="display: none;" title="使用任务计划在登录时更早启动，并关闭注册表自启以免双开（不抬进程CPU优先级）">启用快速自启</button>
                             <label class="switch">
                                 <input type="checkbox" id="autoStartToggle">
                                 <span class="slider round"></span>
@@ -800,11 +800,6 @@
                     </div>
                 </div>
                 <div class="settings-section">
-                    <label id="sc_input">缩放比例：</label>
-                    <input type="range" style="width: 100%;" id="sc_slider" class="sc-slider" min="40" max="120"
-                        value="100">
-                </div>
-                <div class="settings-section">
                     <div class="system-theme-toggle">
                         <span>双击项目的操作</span>
                         <select class="cf_type_toggle" id="dbc_action_toggle">
@@ -830,6 +825,12 @@
                         <span>清理缓存</span>
                         <button class="fit_btn" id="fit_btn" style="width: 30%;margin: unset;" onclick="ApiHelper.cleanTemp()">清理</button>
                     </div>
+                </div>
+                <p id="screen_infShow" class="setting_note" style="font-size: 14px;">当前屏幕：--</p>
+                <div class="settings-section">
+                    <label id="sc_input">缩放比例：</label>
+                    <input type="range" style="width: 100%;" id="sc_slider" class="sc-slider" min="40" max="120"
+                        value="100">
                 </div>
                 <button class="fit_btn" id="fit_btn" onclick="fit_window()">调整尺寸</button>
                 <div class="settings-section">

@@ -61,7 +61,7 @@ class icon_mgr():
                     if data[item]==None:
                         data[item] = "/resources/file_icos/exe.png"
                     self.save_cache(item, data[item])
-                    print(f"已更新图标缓存: {item} -> {data[item]}")
+                    # print(f"已更新图标缓存: {item} -> {data[item]}")
             else:
                 print(f"错误: {data['error']}")
     def icon_file(self,file_path):
@@ -89,18 +89,28 @@ class icon_mgr():
             print(f"无法获取URL图标，使用默认图标: {file_path}")
             return cfg.DEFAULT_UNKONW_ICON
 
-    def get_icon(self,file_path,file_name):
+    def get_icon(self,file_path,file_name,quick=False):
         # 从缓存中获取
         if file_path in self.icon_cache:
             return self.icon_cache[file_path]
         # 自定义图标返回
         if file_path in ucfg.data["ico"]:
             return ucfg.data["ico"][file_path]
-        
+
         if os.path.isdir(file_path):
             return self.icon_dir()
 
         extension = os.path.splitext(file_path)[1]
+        # 【启动优化 P1｜风险:中】quick=True（冷启动首屏）跳过需要子进程/COM/编码的图标提取，
+        # 先返回占位图标即时渲染；真实图标由后台 delay_update_action 提取完成后经 refreshCurrentPath 刷新。
+        if quick:
+            if extension == ".lnk":
+                return cfg.FILE_ICO.get(".lnk", cfg.DEFAULT_UNKONW_ICON)
+            if extension == ".url":
+                return cfg.DEFAULT_UNKONW_ICON
+            if extension in [".exe", ".EXE"]:
+                return cfg.DEFAULT_EXE_ICON
+            return self.icon_file(file_path)
         # 快捷方式解析
         if extension == ".lnk":
             # 直接从快捷方式获取

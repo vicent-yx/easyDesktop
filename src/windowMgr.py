@@ -11,9 +11,12 @@ from window_effect import WindowEffect,set_window_rounded_corners
 from . import tool
 import darkdetect
 from .ucfg import ucfg
+from .ucfg import get_windowSize,update_windowSize
 from . import screen
 import webview
 from threading import Thread, Event
+
+windll.user32.SetProcessDPIAware()
 
 
 SWP_NOMOVE = 0x0002
@@ -403,6 +406,7 @@ class resize_window():
         if ucfg.data["full_screen"] == True:
             return
         windowMgr.disable_autoClose()
+        ww,hh = get_windowSize()
         width, height, end_x, end_y = tool.get_window_inf()
         windowMgr.window.hide()
         self.resize_window = webview.create_window(
@@ -418,13 +422,13 @@ class resize_window():
             draggable=False,
         )
         self.has_cleared_fit = False
-        self.resize_window.resize(ucfg.data["width"], ucfg.data["height"])
+        self.resize_window.resize(ww, hh)
         self.resize_window.evaluate_js("disable_settings()")
         fit_hwnd = win32gui.FindWindow(None, "easyDesktop-fit")
         win32gui.MoveWindow(fit_hwnd, end_x, end_y, width, height, True)
         tool.remove_title_bar(fit_hwnd)
         self.fit_hwnd = fit_hwnd
-        print("ucfg.data:", ucfg.data["width"], ucfg.data["height"])
+        print("ucfg.data:", ww, hh)
         print("window: ", width, height)
         print("webview:", windowMgr.window.width, windowMgr.window.height)
         time.sleep(3)
@@ -453,8 +457,9 @@ class resize_window():
         flags = SWP_NOMOVE | SWP_NOZORDER | 0x0008 # 组合标志位
         endx,endy = tool.get_targetPos(width, height)
         win32gui.MoveWindow(windowMgr.hwnd, endx, endy, width, height, True)
-        ucfg.update_config("width", width)
-        ucfg.update_config("height", height)
+        update_windowSize(width, height)
+        # ucfg.update_config("width", width)
+        # ucfg.update_config("height", height)
         self.resize_window.destroy()
         windowMgr.window.show()
         if ucfg.data['blur_bg']==True:
@@ -484,9 +489,13 @@ class windowMgr_main():
         self.ignore_action = False
     def call_js(self,js_code):
         try:
-            self.window.evaluate_js(js_code)
+            # 【复审修复】返回 evaluate_js 结果：res_load.delay_update_action 依赖它取
+            # AppState.currentPath 判断是否仍在当前目录、决定是否刷新。原先无 return 恒为 None，
+            # 会导致冷启动占位图标永远不刷新成真实图标（P1 后台刷新失效）。
+            return self.window.evaluate_js(js_code)
         except:
             print(f"调用js失败: {js_code}")
+            return None
         
     def animateWindow(
         self,start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY
@@ -509,6 +518,9 @@ class windowMgr_main():
             win32gui.MoveWindow(hwnd, x, y, w, h, False)
             time.sleep(delay)
     def out_window(self):
+        screen.active_screen.markActive()
+        self.window.evaluate_js("document.getElementById('screen_infShow').innerText='当前屏幕："+screen.get_info_str()+"';")
+        ww,hh = get_windowSize()
         screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
         self.key_quick_start = False
         if self.moving == True:
@@ -516,15 +528,18 @@ class windowMgr_main():
         self.moving = True
         self.window_state = True
         self.window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
-        if ucfg.data["full_screen"] == True:
-            w,h = screen.get_screen_size()
-            self.window.resize(w, h)
-        else:
-            self.window.resize(ucfg.data["width"], ucfg.data["height"])
         hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
         if not hwnd:
             print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
             return False
+        # 闪屏问题出现在此处的resize方法，解决方案：使用win32api。全屏模式的适配，需要获取当前屏幕的顶点坐标
+        if ucfg.data["full_screen"] == True:
+            w,h = screen.get_screen_size()
+            width = w
+            height = h
+        else:
+            width = ww
+            height = hh
         try:
             windll.user32.keybd_event(0x12, 0, 0, 0)
             windll.user32.SetForegroundWindow(hwnd)
@@ -532,9 +547,6 @@ class windowMgr_main():
         except:
             pass
         screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-        rect = tool.get_window_rect(hwnd)
-        width = rect["width"]
-        height = rect["height"]
         if ucfg.data["outPos"]=="1":
             start_x = ox+(-width)
             start_y = oy+(screen_height - height // 2)
@@ -552,15 +564,23 @@ class windowMgr_main():
             end_y = oy
         else:
             end_x,end_y = tool.get_targetPos(width,height)
-        win32gui.MoveWindow(hwnd, start_x, start_y, rect["width"], rect["height"], True)
-        win32gui.UpdateWindow(hwnd)
+        if len(webview.screens)>1:
+            offset = 1
+        else:
+            offset = 0
+        need_dpi_fix = screen.is_point_on_other_screen(start_x, start_y) and len(webview.screens)>1
+        if need_dpi_fix:
+            win32gui.MoveWindow(hwnd, start_x, start_y, width, height+offset, True) # +1触发重绘（切换到副屏时可能dpi不正确）
+            win32gui.UpdateWindow(hwnd)
+        self.window.show()
 
         Thread(target=self.fit_blur_effect, daemon=True).start()
-
-        self.window.show()
-        time.sleep(0.1)
         print("outwindow_ani")
-        self.animateWindow(start_x, start_y, end_x, end_y, rect["width"], rect["height"])
+        self.animateWindow(start_x, start_y, end_x, end_y, width, height)
+        if need_dpi_fix:
+            win32gui.MoveWindow(hwnd, end_x, end_y, width, height+1, True)
+            self.window.hide()
+            self.window.show()
         self.window.evaluate_js("window_state=true;")
         self.window.evaluate_js("NavigationManager.refreshCurrentPath(true,false,false);fit_btnBar();")
 
@@ -597,9 +617,9 @@ class windowMgr_main():
         return False
 
 
-    def moveIn_window(self):
+    def moveIn_window(self,animate=True):
         screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-        
+
         if self.moving == True:
             return
         self.moving = True
@@ -632,7 +652,11 @@ class windowMgr_main():
         self.window.evaluate_js("window_state=false;preview_runing = false;MenuManager.hideAllMenus();")
         print("movein_ani")
         print(current_x, current_y, start_x, start_y, width, height)
-        self.animateWindow(current_x, current_y, start_x, start_y, width, height)
+        if animate:
+            self.animateWindow(current_x, current_y, start_x, start_y, width, height)
+        else:
+            # 【启动优化 P0】跳过 81 步动画，直接把（仍隐藏的）窗口一步定位到屏外起始点
+            win32gui.MoveWindow(hwnd, start_x, start_y, width, height, False)
         self.window.hide()
         self.moving = False
         self.window.evaluate_js("GroupManager.closeGroup();")
@@ -729,6 +753,7 @@ class windowMgr_main():
             self.window.evaluate_js("load_theme('light')")
     def update_state(self,part,data):
         hwnd = self.hwnd
+        ww,hh = get_windowSize()
         screen_width, screen_height = screen.get_screen_size()
         if part == "themeChangeType":
             if data == "1":
@@ -738,19 +763,28 @@ class windowMgr_main():
                 
         if part == "auto_start":
             if data == True:
-                tool.autoStart_registry()
+                # 若已开任务计划快速自启，只保留任务，不写 Run（避免双启动）
+                if tool.is_taskScheduler_enabled():
+                    pass
+                else:
+                    tool.autoStart_registry()
             else:
                 tool.remove_autoStart_registry()
-                # 关闭自启动时一并取消任务计划优先级
+                # 关闭自启动时一并取消任务计划快速自启
                 tool.remove_autoStart_taskScheduler()
         if part == "auto_start_priority":
             if data == True:
                 rs = tool.autoStart_taskScheduler()
                 if rs:
+                    # 任务计划成功后移除注册表 Run，避免登录双拉起
+                    tool.remove_autoStart_registry()
                     self.window.evaluate_js("setPriorityBtnActive(true)")
             else:
                 rs = tool.remove_autoStart_taskScheduler()
                 if rs:
+                    # 仍开启自启动时写回 Run
+                    if ucfg.data.get("auto_start"):
+                        tool.autoStart_registry()
                     self.window.evaluate_js("setPriorityBtnActive(false)")
         if part == "get_taskScheduler_state":
             enabled = tool.is_taskScheduler_enabled()
@@ -758,7 +792,7 @@ class windowMgr_main():
         if part == "full_screen":
             if data == False:
                 self.ignore_action = True
-                self.window.resize(ucfg.data["width"], ucfg.data["height"])
+                self.window.resize(ww, hh)
                 width, height, end_x, end_y = tool.get_window_inf(self.window.title)
                 win32gui.MoveWindow(hwnd, int(end_x), int(end_y), width, height, True)
                 time.sleep(1)

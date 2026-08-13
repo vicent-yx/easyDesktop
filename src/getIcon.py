@@ -13,14 +13,23 @@ import win32api
 import win32con
 import win32ui
 from PIL import Image
-from icoextract import IconExtractor  
+# 【启动优化 P2｜风险:低】icoextract(含 pefile) 仅 exe 图标 Win32 提取失败的 fallback 才用，
+# 已改为函数内惰性导入，移出冷启动 import 链。
 
-try:
-    if os.path.exists("./temp"):
-        shutil.rmtree("./temp")
-        os.makedirs("./temp")
-except Exception:
-    pass
+_temp_cleaned = False
+def _clean_temp_once():
+    # 原在 import 顶层 rmtree('./temp')（把磁盘副作用放在 import 期的反模式）。
+    # 改为首次实际使用 ./temp 时再清理一次，移出冷启动 import 链。
+    global _temp_cleaned
+    if _temp_cleaned:
+        return
+    _temp_cleaned = True
+    try:
+        if os.path.exists("./temp"):
+            shutil.rmtree("./temp")
+            os.makedirs("./temp")
+    except Exception:
+        pass
 
 def _ensure_dir(path: str):
     if not os.path.exists(path):
@@ -233,6 +242,7 @@ def get_icon(exe_path, name,temp=True):
         ico_path = os.path.join(out_dir, f"{name}.ico")
         extractor = None
         try:
+            from icoextract import IconExtractor  # 惰性导入
             extractor = IconExtractor(exe_path)
             extractor.export_icon(ico_path)
 
@@ -342,6 +352,7 @@ def get_shortcut_target(shortcut_path,sec=False):
     shortcut = shell.CreateShortcut(shortcut_path)
     target = shortcut.TargetPath
     if target == "" and sec==False:
+        _clean_temp_once()
         if not os.path.exists("./temp"):
             os.makedirs("./temp")
         temp_name = str(int(time.time())) + ".lnk"
