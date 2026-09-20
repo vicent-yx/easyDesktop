@@ -392,6 +392,11 @@ class resize_widnow_api:
     def fit_resize(self):
         # global fit_hwnd
         width, height, end_x, end_y = tool.get_window_inf("easyDesktop-fit")
+        sw,sh = screen.get_active_screen_size()
+        if (width+end_x)>sw:
+            width = sw-end_x
+        if (height+end_y)>sh:
+            height = sh-end_y
         win32gui.MoveWindow(resize_win.fit_hwnd, end_x, end_y, width, height, True)
     def get_version(self):
         return {"success":True,"version":cfg.APP_VERSION}
@@ -401,6 +406,7 @@ class resize_window():
         self.resize_window = None
         self.has_cleared_fit = False
         self.fit_hwnd = None
+        self.resizeApi = resize_widnow_api()
     def fit_window_start(self):
         # global ignore_action, ucfg.data, resize_window, hwnd, has_cleared_fit,fit_hwnd
         if ucfg.data["full_screen"] == True:
@@ -414,7 +420,7 @@ class resize_window():
             "easyFileDesk.html",
             x=end_x,
             y=end_y,
-            js_api=resize_widnow_api(),
+            js_api=self.resizeApi,
             confirm_close=False,
             shadow=True,
             on_top=True,
@@ -448,6 +454,7 @@ class resize_window():
             self.fit_window_end()
     def fit_window_end(self):
         # global ignore_action, ucfg.data, resize_window, has_cleared_fit
+        self.resizeApi.fit_resize()
         self.has_cleared_fit = True
         try:
             width, height, end_x, end_y = tool.get_window_inf(self.resize_window.title)

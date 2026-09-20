@@ -2837,8 +2837,12 @@ async function disable_settings() {
     DOMCache.getAllBySelector(".setting_note").forEach((item) => {
         item.style.display = "none";
     });
-    window.addEventListener("resize",async function(event) {
-        await ApiHelper.call('fit_resize');
+    let timer = null;
+    window.addEventListener("resize", () => {
+        clearTimeout(timer);
+        timer = setTimeout(async () => {
+            await ApiHelper.call('fit_resize');
+        }, 200);
     });
 }
 
