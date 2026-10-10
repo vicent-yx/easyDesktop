@@ -354,6 +354,11 @@ class AppAPI:
         if key=="" or key=="all" or key=="全部":
             if not ucfg.data["df_dir"] in ucfg.itemClass:
                 ucfg.itemClass[ucfg.data["df_dir"]]={}
+            # 检查class_order是否存在缺失项
+            for key in ucfg.itemClass[ucfg.data["df_dir"]]:
+                if key not in ucfg.data["class_order"]:
+                    ucfg.data["class_order"].append(key)
+                    ucfg.save_config()
             # 排序
             class_order_inf = ucfg.data["class_order"]
             if len(class_order_inf)==0:

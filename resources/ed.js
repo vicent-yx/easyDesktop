@@ -3101,6 +3101,7 @@ async function class_filter(path){
 let last_group = "全部"
 async function render_class_btn(){
     var classData =  await ApiHelper.call('read_class', '');
+    console.log(classData)
     class_btn_bar.innerHTML = '';
     var class_names = ["全部"]
     for(item in classData.data){

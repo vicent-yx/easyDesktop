@@ -7,6 +7,7 @@
     --bg-gradient: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     --body-bg-size: auto;
     --text-color: #e0e0e0;
+    --sub-text-color: #333;
     --selection-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
     --time-display-color: #e0e0e0;
     --time-display-icon-color: #667eea;
@@ -79,6 +80,7 @@
     --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e4edf5 100%);
     --body-bg-size: auto;
     --text-color: #333;
+    --sub-text-color: #333;
     --selection-bg: #fff;
     --time-display-color: #2c3e50;
     --time-display-icon-color: #3498db;
@@ -151,6 +153,7 @@
     --bg-gradient: url('/theme/zzz_bg.png');
     --body-bg-size: cover;
     --text-color: #fff;
+    --sub-text-color: #ccc;
     --selection-bg: url('/theme/zzz_bg.png');
     --time-display-color: white;
     --time-display-icon-color: white;
