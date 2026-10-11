@@ -113,7 +113,7 @@ def update_windowSize(w,h):
     index = screen.get_info_str()
     ucfg.data["screens_winInfo"]['infos'][index] = {'w':w,'h':h}
     print("update_windowSize:",index,w,h)
-    if screen.active_screen.getActive() == 0:
+    if screen.is_active_screen_primary():
         sw,sh = screen.get_screen_size()
         ucfg.data["screens_winInfo"]['w_pc'] = w/sw
         ucfg.data["screens_winInfo"]['h_pc'] = h/sh

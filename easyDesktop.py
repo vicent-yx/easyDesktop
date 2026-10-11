@@ -198,6 +198,7 @@ def on_loaded():
     Thread(target=delayed_fit_blur, daemon=True).start()
     set_window_rounded_corners(hwnd)
     windowMgr.moveIn_window()
+    # windowMgr.out_window()
     Thread(target=windowMgr._lifecycle_loop, daemon=True).start()
     # wait_open()
 
