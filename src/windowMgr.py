@@ -322,8 +322,7 @@ class hotkeyMgr:
     # ---------- 对外接口 ----------
 
     def hotKey_action(self):
-        if windowMgr.ignore_action:
-            return
+        # 移除对 ignore_action 的拦截，手动热键应该始终有效
         try:
             if windowMgr.window_state == False:
                 windowMgr.key_quick_start = True
@@ -507,166 +506,185 @@ class windowMgr_main():
     def animateWindow(
         self,start_x, start_y, end_x, end_y, width, height, steps=cfg.ANIMATION_STEPS, delay=cfg.ANIMATION_DELAY
     ):
-        positions = []
-        w = width
-        h = height
-        # print("w:",w,"h:",h,"start_x:",start_x,"start_y:",start_y,"end_x:",end_x,"end_y:")
-        for i in range(steps + 1):
-            progress = i / steps
-            eased = progress * (2 - progress)  # easeOutQuad
-            x = start_x + (end_x - start_x) * eased
-            y = start_y + (end_y - start_y) * eased
-            positions.append((int(x), int(y),int(w),int(h)))
-        # print(positions)
-        # 执行动画
-        delay = 0.25 / steps  # 总时长250ms
-        hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-        for x, y, w, h in positions:
-            win32gui.MoveWindow(hwnd, x, y, w, h, False)
-            time.sleep(delay)
-    def out_window(self):
-        screen.active_screen.markActive()
-        self.window.evaluate_js("document.getElementById('screen_infShow').innerText='当前屏幕："+screen.get_info_str()+"';")
-        ww,hh = get_windowSize()
-        screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-        self.key_quick_start = False
-        if self.moving == True:
-            return
-        self.moving = True
-        self.window_state = True
-        self.window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
-        hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-        if not hwnd:
-            print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
-            return False
-        # 闪屏问题出现在此处的resize方法，解决方案：使用win32api。全屏模式的适配，需要获取当前屏幕的顶点坐标
-        if ucfg.data["full_screen"] == True:
-            w,h = screen.get_screen_size()
-            width = w
-            height = h
-        else:
-            width = ww
-            height = hh
         try:
-            windll.user32.keybd_event(0x12, 0, 0, 0)
-            windll.user32.SetForegroundWindow(hwnd)
-            windll.user32.keybd_event(0x12, 0, 0x0002, 0)
-        except:
-            pass
-        screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-        if ucfg.data["outPos"]=="1":
-            start_x = ox+(-width)
-            start_y = oy+(screen_height - height // 2)
-        elif ucfg.data["outPos"]=="2":
-            start_x = ox+(-width)
-            start_y = oy+( - (height // 2))
-        elif ucfg.data["outPos"]=="3":
-            start_x = ox+(int((screen_width-width)//2))
-            start_y = oy+(screen_height + height)
-        elif ucfg.data["outPos"]=="4":
-            start_x = ox+((screen_width-width)//2)
-            start_y = oy+(-height)
-        if ucfg.data["full_screen"] == True:
-            end_x = ox
-            end_y = oy
-        else:
-            end_x,end_y = tool.get_targetPos(width,height)
-        if len(webview.screens)>1:
-            offset = 1
-        else:
-            offset = 0
-        need_dpi_fix = screen.is_point_on_other_screen(start_x, start_y) and len(webview.screens)>1
-        if need_dpi_fix:
-            win32gui.MoveWindow(hwnd, start_x, start_y, width, height+offset, True) # +1触发重绘（切换到副屏时可能dpi不正确）
-            win32gui.UpdateWindow(hwnd)
-        self.window.show()
-
-        Thread(target=self.fit_blur_effect, daemon=True).start()
-        print("outwindow_ani")
-        self.animateWindow(start_x, start_y, end_x, end_y, width, height)
-        if need_dpi_fix:
-            win32gui.MoveWindow(hwnd, end_x, end_y, width, height+1, True)
-            self.window.hide()
-            self.window.show()
-        self.window.evaluate_js("window_state=true;")
-        self.window.evaluate_js("NavigationManager.refreshCurrentPath(true,false,false);fit_btnBar();")
-
-        tool.mouseState.reset()
-        while True:
-            if self.fullscreen_close == True:
-                break
-            if ucfg.data["out_cf_type"] == "2" and (
-                tool.is_ed_focused() == True
-                or (tool.mouseState.get_state()==True and tool.is_ed_focused()==False)
-            ):
-                break
-            if ucfg.data["out_cf_type"] == "1" and (tool.is_mouse_in_easyDesktop() == True or (tool.mouseState.get_state()==True and tool.is_ed_focused()==False)):
-                break
-            if ucfg.data["fdr"] == True and tool.is_focused_window_fullscreen() == True:
-                break
-            time.sleep(cfg.MOUSE_CHECK_INTERVAL)
-        self.moving = False
-
-        while True:
-            if ucfg.data["out_cf_type"] == "1" or (ucfg.data["out_cf_type"]=="3" and ucfg.data["cf_type"]=="1"):
-                tj = tool.is_mouse_in_easyDesktop() == False and self.ignore_action == False
+            positions = []
+            w = width
+            h = height
+            for i in range(steps + 1):
+                progress = i / steps
+                eased = progress * (2 - progress)  # easeOutQuad
+                x = start_x + (end_x - start_x) * eased
+                y = start_y + (end_y - start_y) * eased
+                positions.append((int(x), int(y),int(w),int(h)))
+            
+            delay = 0.25 / steps  # 总时长250ms
+            hwnd = self.hwnd if self.hwnd else win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
+            if not hwnd:
+                return
+                
+            for x, y, w, h in positions:
+                try:
+                    win32gui.MoveWindow(hwnd, x, y, w, h, False)
+                except:
+                    break # 窗口可能已失效
+                time.sleep(delay)
+        except Exception as e:
+            print(f"动画执行异常: {e}")
+    def out_window(self):
+        if self.moving:
+            return False
+        
+        self.moving = True
+        try:
+            screen.active_screen.markActive()
+            self.window.evaluate_js("document.getElementById('screen_infShow').innerText='当前屏幕："+screen.get_info_str()+"';")
+            ww,hh = get_windowSize()
+            screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
+            self.key_quick_start = False
+            self.window_state = True
+            self.window.evaluate_js("document.getElementById('themeSettingsPanel').style.display='none';enableScroll();")
+            hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
+            if not hwnd:
+                print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
+                return False
+            
+            if ucfg.data["full_screen"] == True:
+                w,h = screen.get_screen_size()
+                width = w
+                height = h
             else:
-                tj = tool.is_ed_focused() == False and self.ignore_action == False
-            if (tj == True and ucfg.data["full_screen"] == False) or self.fullscreen_close == True:
-                self.fullscreen_close = False
-                if self.ignore_action == False:
-                    return True
-                break
+                width = ww
+                height = hh
+            
+            try:
+                windll.user32.keybd_event(0x12, 0, 0, 0)
+                windll.user32.SetForegroundWindow(hwnd)
+                windll.user32.keybd_event(0x12, 0, 0x0002, 0)
+            except:
+                pass
+                
+            if ucfg.data["outPos"]=="1":
+                start_x = ox+(-width)
+                start_y = oy+(screen_height - height // 2)
+            elif ucfg.data["outPos"]=="2":
+                start_x = ox+(-width)
+                start_y = oy+( - (height // 2))
+            elif ucfg.data["outPos"]=="3":
+                start_x = ox+(int((screen_width-width)//2))
+                start_y = oy+(screen_height + height)
+            elif ucfg.data["outPos"]=="4":
+                start_x = ox+((screen_width-width)//2)
+                start_y = oy+(-height)
+                
+            if ucfg.data["full_screen"] == True:
+                end_x = ox
+                end_y = oy
+            else:
+                end_x,end_y = tool.get_targetPos(width,height)
+            
+            offset = 1 if len(webview.screens) > 1 else 0
+            need_dpi_fix = screen.is_point_on_other_screen(start_x, start_y) and len(webview.screens)>1
+            
+            if need_dpi_fix:
+                win32gui.MoveWindow(hwnd, start_x, start_y, width, height+offset, True)
+                win32gui.UpdateWindow(hwnd)
+            
+            self.window.show()
+            Thread(target=self.fit_blur_effect, daemon=True).start()
+            self.animateWindow(start_x, start_y, end_x, end_y, width, height)
+            
+            if need_dpi_fix:
+                win32gui.MoveWindow(hwnd, end_x, end_y, width, height+1, True)
+                self.window.hide()
+                self.window.show()
+                
+            self.window.evaluate_js("window_state=true;")
+            self.window.evaluate_js("NavigationManager.refreshCurrentPath(true,false,false,false,true);fit_btnBar();")
+            tool.mouseState.reset()
+        finally:
+            self.moving = False
 
-            if self.window_state == False:
+        # 隐藏检测循环
+        while True:
+            # 允许通过手动标志强制关闭
+            if self.fullscreen_close:
+                break
+                
+            # 自动关闭条件检测
+            if not self.ignore_action:
+                if ucfg.data["out_cf_type"] == "2" and (
+                    tool.is_ed_focused() or (tool.mouseState.get_state() and not tool.is_ed_focused())
+                ):
+                    break
+                if ucfg.data["out_cf_type"] == "1" and (
+                    tool.is_mouse_in_easyDesktop() or (tool.mouseState.get_state() and not tool.is_ed_focused())
+                ):
+                    break
+                if ucfg.data["fdr"] and tool.is_focused_window_fullscreen():
+                    break
+            
+            time.sleep(cfg.MOUSE_CHECK_INTERVAL)
+
+        # 等待离开触发点循环
+        while True:
+            # 允许通过手动标志强制关闭
+            if self.fullscreen_close:
+                self.fullscreen_close = False
+                return True
+                
+            if ucfg.data["out_cf_type"] == "1" or (ucfg.data["out_cf_type"]=="3" and ucfg.data["cf_type"]=="1"):
+                tj = not tool.is_mouse_in_easyDesktop()
+            else:
+                tj = not tool.is_ed_focused()
+                
+            # 如果不处于忽略动作状态，且满足离开条件，或者窗口已被外部改变状态
+            if not self.ignore_action:
+                if (tj and not ucfg.data["full_screen"]):
+                    return True
+            
+            if not self.window_state:
                 break
             time.sleep(cfg.MOUSE_CHECK_INTERVAL)
+            
         return False
 
 
     def moveIn_window(self,animate=True):
-        screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
-
-        if self.moving == True:
+        if self.moving:
             return
+        
         self.moving = True
-        self.window_state = False
-        hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
-        if not hwnd:
-            print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
-            return False
-        screen_width,screen_height,_,_ = screen.get_active_screen_size(True)
-        rect = tool.get_window_rect(hwnd)
-        print("rect:")
-        print(rect)
-        width = rect["width"]
-        height = rect["height"]
-        current_x = rect["left"]
-        current_y = rect["top"]
-        if ucfg.data["outPos"]=="1":
-            start_x = ox+(-width)
-            start_y = oy+(screen_height - height // 2)
-        elif ucfg.data["outPos"]=="2":
-            start_x = ox+(-width)
-            start_y = oy+(0 - (height // 2))
-        elif ucfg.data["outPos"]=="3":
-            start_x = ox+(int((screen_width-width)//2))
-            start_y = oy+(screen_height + height)
-        elif ucfg.data["outPos"]=="4":
-            start_x = ox+((screen_width-width)//2)
-            start_y = oy+(-height)
-        print("start_x:",start_x,"start_y:",start_y,"current_x:",current_x,"current_y:",current_y,"width:",width,"height:",height)
-        self.window.evaluate_js("window_state=false;preview_runing = false;MenuManager.hideAllMenus();")
-        print("movein_ani")
-        print(current_x, current_y, start_x, start_y, width, height)
-        if animate:
-            self.animateWindow(current_x, current_y, start_x, start_y, width, height)
-        else:
-            # 【启动优化 P0】跳过 81 步动画，直接把（仍隐藏的）窗口一步定位到屏外起始点
-            win32gui.MoveWindow(hwnd, start_x, start_y, width, height, False)
-        self.window.hide()
-        self.moving = False
-        self.window.evaluate_js("GroupManager.closeGroup();")
+        try:
+            self.window_state = False
+            hwnd = win32gui.FindWindow(None, cfg.DEFAULT_WINDOW_TITLE)
+            if not hwnd:
+                print(f"未找到名为 '{cfg.DEFAULT_WINDOW_TITLE}' 的窗口")
+                return
+            
+            screen_width,screen_height,ox,oy = screen.get_active_screen_size(True)
+            rect = tool.get_window_rect(hwnd)
+            width, height = rect["width"], rect["height"]
+            current_x, current_y = rect["left"], rect["top"]
+            
+            if ucfg.data["outPos"]=="1":
+                start_x, start_y = ox-width, oy+(screen_height - height // 2)
+            elif ucfg.data["outPos"]=="2":
+                start_x, start_y = ox-width, oy-(height // 2)
+            elif ucfg.data["outPos"]=="3":
+                start_x, start_y = ox+int((screen_width-width)//2), oy+screen_height+height
+            elif ucfg.data["outPos"]=="4":
+                start_x, start_y = ox+(screen_width-width)//2, oy-height
+            
+            self.window.evaluate_js("window_state=false;preview_runing = false;MenuManager.hideAllMenus();")
+            if animate:
+                self.animateWindow(current_x, current_y, start_x, start_y, width, height)
+            else:
+                win32gui.MoveWindow(hwnd, start_x, start_y, width, height, False)
+            
+            self.window.hide()
+            self.window.evaluate_js("GroupManager.closeGroup();")
+        finally:
+            self.moving = False
 
     def _lifecycle_loop(self):
         """主生命周期循环，消除递归调用栈累积"""
@@ -679,30 +697,43 @@ class windowMgr_main():
             else:
                 time.sleep(cfg.SLEEP_INTERVAL)
     def wait_open(self):
-        """等待呼出触发条件。返回 True 表示触发，返回 False 表示窗口已被其他方式打开"""
+        """等待呼出触发条件。返回 True 表示触发，返回 False 表示窗口状态已改变"""
         start_wait_time = int(time.time())
         self.had_refresh = False
         
         while True:
+            # 定期刷新逻辑
             if int(time.time()) - start_wait_time > cfg.WAIT_TIMEOUT:
-                if self.had_refresh == False:
+                if not self.had_refresh:
                     self.call_refresh()
                     self.had_refresh = True
-            if ucfg.data["fdr"] == True:
-                if tool.is_focused_window_fullscreen() == True:
+            
+            # 全屏检测跳过
+            if ucfg.data.get("fdr") == True:
+                if tool.is_focused_window_fullscreen():
                     time.sleep(cfg.SLEEP_INTERVAL)
                     continue
-            if ucfg.data["cf_type"] == "2" or ucfg.data["cf_type"] == "3" or ucfg.data["cf_type"]=="4":
-                if self.key_quick_start == True:
-                    return True
-            if self.start_action == True:
+            
+            # 手动触发检测 (优先级最高)
+            # 即使 window_state 为 True，如果收到了手动触发指令，也应该返回 True 
+            # 这样 lifecycle_loop 会调用 out_window，从而有机会修复可能的状态不一致或重新显示窗口
+            if self.key_quick_start or self.start_action:
                 self.start_action = False
+                # 注意：key_quick_start 在 out_window 中重置
                 return True
-            else:
+            
+            # 自动触发检测 (角落触发)
+            if not self.ignore_action:
                 if tool.is_desktop_and_mouse_in_corner(wait=cfg.cornerSize_m[ucfg.data["corner_size"]][1]) and ucfg.data["cf_type"] == "1":
                     return True
-            if self.window_state == True:
+            
+            # 状态同步检查：如果 window_state 为 True 但实际上在 lifecycle_loop 中没有处于 out_window 的循环里，
+            # 这种情况说明状态可能错乱了。我们返回 False 让 lifecycle_loop 继续循环。
+            # 但为了防止死循环，如果 window_state 为 True，我们稍微多睡一会。
+            if self.window_state:
+                time.sleep(cfg.SLEEP_INTERVAL * 2)
                 return False
+                
             time.sleep(cfg.SLEEP_INTERVAL)
     def fit_blur_effect(self):
         

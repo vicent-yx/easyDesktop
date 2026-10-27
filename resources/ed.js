@@ -889,7 +889,11 @@ const NavigationManager = {
         scroll_top();
     },
 
-    async refreshCurrentPath(quick_update=true,ani=true,kws_clear=true,ign_icno=false) {
+    async refreshCurrentPath(quick_update=true,ani=true,kws_clear=true,ign_icno=false,ignore_search=true) {
+        console.warn("界面刷新",quick_update,ani,kws_clear,ign_icno)
+        if(ignore_search==true){
+            if(DOMCache.get("search_input").value!="")return
+        }
         return new Promise(async (resolve) => { 
             loadingUI.sets("items_ctn",true)
             const result = await ApiHelper.getFileInfo(AppState.currentPath,quick_update,ign_icno);
@@ -2770,7 +2774,7 @@ async function load_theme(theme,from_fit) {
         if (theme === 'custom') {
             ThemeManager.applyCustomThemeVariables(ThemeManager.customThemeConfig);
         }
-        NavigationManager.refreshCurrentPath();
+        NavigationManager.refreshCurrentPath(true,false,false,false,true);
         render_class_btn()
         console.log(`主题已切换到: ${theme}`);
         if(theme=="light"){
