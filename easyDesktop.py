@@ -264,7 +264,9 @@ window = webview.create_window(
     confirm_close=False,
     frameless=True,
     shadow=True,
-    hidden=True,
+    # 【重要】不要传 hidden=True：pywebview 中 hidden 分支会走 Form.Opacity=0→1，
+    # 使窗口变为分层窗口(WS_EX_LAYERED)并重建句柄，导致 WebView2 透明画面不被合成
+    # （表现为只有磨砂背景、无任何内容）。不传则走透明窗口专用分支，启动仍由 on_loaded 立即 hide。
     easy_drag=False,
     resizable=False,
     transparent=True,
