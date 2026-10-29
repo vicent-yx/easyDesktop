@@ -574,6 +574,30 @@ class FileRenderer {
             this.listContainer.classList.remove(class_name);
         }
     }
+    async fit_clTheme_color(){
+        const root = getComputedStyle(document.documentElement)
+        if(document.documentElement.getAttribute('data-theme')=='zzz'){
+            var bg_color_isLight = false
+        }else{
+            var bg_color_isLight = isLightColor(root.getPropertyValue('--bg-gradient').trim());
+        }
+        for(let f of AppState.files_data){
+            if(f.cl==false){
+                if(bg_color_isLight==true){
+                    var ico = "cl.png"
+                }else{
+                    var ico = 'cl_w.png'
+                }
+                var ico_img = `./resources/imgs/${ico}`
+                var cl_es = document.querySelectorAll(`[id="${Utils.generateFileId(f.filePath)}"]`)
+                for(var cl_e of cl_es){
+                    if(cl_e.children[0].children[0].src!=ico_img){
+                        cl_e.children[0].children[0].src=ico_img
+                    }
+                }
+            }
+        }
+    }
 
     /**
      * 渲染文件列表
@@ -594,6 +618,7 @@ class FileRenderer {
         if(ani==true)this.changeClass_ani_state(false,"fade-in-up")
         image_preview()
         loadingUI.sets("items_ctn",false)
+        this.fit_clTheme_color()
     }
 
     clearContainers(target_ctn) {
@@ -660,12 +685,7 @@ class FileRenderer {
 
         cl_e.className = isGrid ? 'file-cl' : 'file-list-cl';;
         if(file.cl==false){
-            if(document.getElementById("theme_css").href.includes("light")==true){
-                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl.png'>"
-            }else{
-                cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl_w.png'>"
-            }
-
+            cl_e.innerHTML="<img draggable = false src=''>"
         }else{
             cl_e.innerHTML="<img draggable = false src='./resources/imgs/cl-active.png'>"
             cl_e.style.display="block"
@@ -1153,6 +1173,7 @@ const ThemeManager = {
         DOMCache.get('themeEditorOverlay').style.display = 'none';
         ApiHelper.call('unlock_window_visibility');
         DOMCache.get("themeSettings_box").style.display = 'block';
+        fileRenderer.fit_clTheme_color()
     },
 
     cancelEdit() {
@@ -2786,6 +2807,7 @@ async function load_theme(theme,from_fit) {
         config = await ApiHelper.getConfig();
         if(config["bgType"]=="3")load_bgType(config["bgType"])
         ThemeManager.applyBackgroundSettings(config);
+        fileRenderer.fit_clTheme_color()
         return true;
 
 }

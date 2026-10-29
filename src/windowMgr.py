@@ -736,7 +736,6 @@ class windowMgr_main():
                 
             time.sleep(cfg.SLEEP_INTERVAL)
     def fit_blur_effect(self):
-        
         width, height, end_x, end_y = tool.get_window_inf()
         if ucfg.data["themeChangeType"]=="2":
             color_r = tool.is_screenshot_light((end_x,end_y,end_x+width,end_y+height),threshold=0.4)
