@@ -284,7 +284,7 @@ class AppAPI:
                     print(f"已创建: {new_path}")
                     return {"success": True, "file": new_path}
                 count += 1
-        except:
+        except PermissionError:
             return {"success": False, "message": "拒绝访问"}
 
     def lock_window_visibility(self):
